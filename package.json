@@ -1,0 +1,23 @@
+{
+  "name": "dmmaps",
+  "version": "0.0.1",
+  "description": "A DM's world building toolkit.",
+  "main": "./src/index.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": "https://github.com/electron/electron-quick-start",
+  "keywords": [
+    "Electron",
+    "quick",
+    "start",
+    "tutorial",
+    "demo"
+  ],
+  "author": "GitHub",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "electron": "^9.2.1",
+    "electron-packager": "^15.1.0"
+  }
+}
