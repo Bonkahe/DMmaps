@@ -1,3 +1,8 @@
+require('electron').ipcRenderer.on('ping', (event, message) => {
+  const startBtn = document.getElementById('startBtn');
+  startBtn.innerText = 'Recording';
+  console.log(message) // Prints 'whoooooooh!'
+})
 
 
 //USE FOR REFERENCE!
@@ -11,7 +16,7 @@
 
     <button id="videoSelectBtn" class="button is-text"> Choose a video source</button>
      */
-
+/*
 const { desktopCapturer, remote } = require('electron');
 
 const { writeFile } = require('fs');
@@ -120,3 +125,4 @@ async function handleStop(e) {
   }
 
 }
+*/

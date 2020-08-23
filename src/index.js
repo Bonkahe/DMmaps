@@ -32,9 +32,7 @@ const template = [
       submenu: [
          {
             label: 'New Project',
-            click: function(){
-               console.log('test')
-            }
+            click: () => { win.webContents.send('ping', 'whoooooooh!') }
          },
          {
             label: 'Load Project'
