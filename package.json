@@ -2,7 +2,7 @@
   "name": "dmmaps",
   "version": "0.0.1",
   "description": "A DM's world building toolkit.",
-  "main": "./src/index.js",
+  "main": "./main.js",
   "scripts": {
     "start": "electron ."
   },
@@ -19,5 +19,9 @@
   "devDependencies": {
     "electron": "^9.2.1",
     "electron-packager": "^15.1.0"
+  },
+  "dependencies": {
+    "electron-context-menu": "^2.3.0",
+    "electron-json-storage": "^4.2.0"
   }
 }

@@ -1,8 +1,17 @@
-require('electron').ipcRenderer.on('ping', (event, message) => {
-  const startBtn = document.getElementById('startBtn');
-  startBtn.innerText = 'Recording';
-  console.log(message) // Prints 'whoooooooh!'
+const {ipcRenderer} = require('electron');
+const {
+  SAVE_PROJECT_TO_STORAGE,
+  LOAD_PROJECT_FROM_STORAGE,
+  CREATE_NEW_PROJECT,
+}  = require('../utils/constants');
+
+
+
+ipcRenderer.on(LOAD_PROJECT_FROM_STORAGE, (event, message) => {
+  const img = document.getElementById('map');
+  img.setAttribute('src', message);
 })
+
 
 
 //USE FOR REFERENCE!
