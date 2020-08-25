@@ -4,6 +4,12 @@
   box-sizing: border-box;
 }
 
+html, body{
+  margin: 0; 
+  height: 100%;
+  max-width:100%;
+  overflow:hidden;
+}
 
 header{
   display: flex;
@@ -21,4 +27,52 @@ header{
 
 .option:hover {
   background: red;
+}
+
+#mapdiv{
+  position: absolute;
+  width: 500px;
+  height: auto;
+}
+
+#mapdiv img{
+  width: 100%;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#no-map-info {
+  margin-top: 100px;
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+#no-map-info-content{
+  flex: 0 0 200px;
+  padding: 10px;
+  background: slategray;
+  color: white;
+  border-radius: 5px;
+}
+
+#no-project-info {
+  margin-top: 100px;
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+#no-project-info-content{
+  flex: 0 0 200px;
+  padding: 10px;
+  background: slategray;
+  color: white;
+  border-radius: 5px;
+}
+
+#no-project-info-content h1{
+  padding-bottom: 10px;
+  font-weight: bold;
 }

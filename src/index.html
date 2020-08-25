@@ -10,8 +10,26 @@
     <script defer src="render.js"></script>
   </head>
   <body>
-    <div id ="startBtn">Start</button>
-      <input type="text">
-      <img id="map" src="" alt="">
+    <header>
+
+    </header>
+
+    <div id="mapdiv">
+      <img src="ArtalacesMap.jpg" alt="">
+    </div>
+
+    <div id="no-map-info">
+      <div id="no-map-info-content">
+        <h1>You do not currently have a map loaded.</h1>
+        <button id="backgroundBtn">LoadBackgroundImage</button>
+      </div>
+    </div>
+
+    <div id="no-project-info">
+      <div id="no-project-info-content">
+        <h1>You do not currently have a project loaded.</h1>
+        <p>You can select 'file/NewProject' to create a new project, or select 'file/LoadProject' to access a previously made project.</p>
+      </div>
+    </div>    
   </body>
 </html>
