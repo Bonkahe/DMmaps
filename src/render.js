@@ -15,7 +15,6 @@ var zoom = 1;
 
 window.addEventListener('contextmenu', (e) => {
   rightClickPosition = {x: e.x, y: e.y}
-  console.log(rightClickPosition);
 }, false)
 
 const backgroundload = document.getElementById('backgroundBtn');
@@ -150,7 +149,6 @@ ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
 })
 
 
-
 // Make the DIV element draggable:
 dragElement(document.getElementById("mapdiv"));
 
@@ -164,38 +162,33 @@ function dragElement(elmnt) {
     elmnt.onmousedown = dragMouseDown;
   }
   
-
-  /* The flag that determines whether the wheel event is supported. */
   var supportsWheel = false;
 
-  /* The function that will run when the events are triggered. */
+  // The function that will run when the events are triggered. 
   function DoSomething (e) {
-    /* Check whether the wheel event is supported. */
     if (e.type == "wheel") supportsWheel = true;
     else if (supportsWheel) return;
-
-    /* Determine the direction of the scroll (< 0 → up, > 0 → down). */
     var delta = ((e.deltaY || -e.wheelDelta || e.detail) >> 10) || 1;
 
     //var mousePos = screen.getCursorScreenPoint();
-
-    /* ... */
     if (delta < 0)
-    {
+    {      
       zoom = zoom + 0.1;
     }
     else if (delta > 0)
     {
       zoom = zoom - 0.1;
-      if (zoom <= 0.1) {
+      if (zoom < 0.1) {
         zoom = 0.1;
       }
     }
-    
+    console.log(elmnt.style.transformOrigin);
+
+    elmnt.style.transformOrigin = e.x + "px" + e.y + "px";
     elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
   }
 
-  /* Add the event listeners for each event. */
+  // Add the event listeners for each event.
   document.addEventListener('wheel', DoSomething);
   document.addEventListener('mousewheel', DoSomething);
   document.addEventListener('DOMMouseScroll', DoSomething);
