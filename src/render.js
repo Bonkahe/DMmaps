@@ -4,11 +4,19 @@ const { dialog, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs'); // Load the File System to execute our common tasks (CRUD)
 const {ipcRenderer} = require('electron');
 const {
-  SAVE_PROJECT_TO_STORAGE,
-  LOAD_PROJECT_FROM_STORAGE,
-  CREATE_NEW_PROJECT,
+  SAVE_MAP_TO_STORAGE,
+  CHANGE_MAP,
+  CREATE_NEW_NODE,
   PROJECT_INITIALIZED,
 }  = require('../utils/constants');
+
+let rightClickPosition = null;
+var zoom = 1;
+
+window.addEventListener('contextmenu', (e) => {
+  rightClickPosition = {x: e.x, y: e.y}
+  console.log(rightClickPosition);
+}, false)
 
 const backgroundload = document.getElementById('backgroundBtn');
 backgroundload.onclick = e => {
@@ -39,7 +47,7 @@ const getFileFromUser = async () => {
   });
 
   // If we don't have any files, return early from the function
-  if (!files) {
+  if (!files.filePaths[0]) {
       return;
   }
 
@@ -50,21 +58,98 @@ const getFileFromUser = async () => {
   //const content = fs.readFileSync(file).toString();
 
   // Log the Files to the Console
-  console.log(files)
-  console.log(files.filePaths[0])
+  ipcRenderer.invoke(SAVE_MAP_TO_STORAGE, files.filePaths[0]).then((result) => {
+    if (result)
+    {
+      const map = document.getElementById('map');
+      map.src = files.filePaths[0];
+      switchtomap();
+    }
+    else
+    {
+      console.log("Unable to save map due to no database selected.")
+    }
+  })
+}
+
+function switchtomap()
+{
+  const noprojectinfo = document.getElementById('no-project-info');
+  noprojectinfo.style.display = 'none';
+
+  const nomapinfo = document.getElementById('no-map-info');
+  nomapinfo.style.display = 'none';
+
+  const map = document.getElementById('mapdiv');
+  map.style.display = 'block';
+}
+
+function switchtonomap()
+{
+  const noprojectinfo = document.getElementById('no-project-info');
+  noprojectinfo.style.display = 'none';
+
+  const nomapinfo = document.getElementById('no-map-info');
+  nomapinfo.style.display = 'flex';
+
+  const map = document.getElementById('mapdiv');
+  map.style.display = 'none';
+}
+
+
+function switchtoblank()
+{
+  const noprojectinfo = document.getElementById('no-project-info');
+  noprojectinfo.style.display = 'flex';
+
+  const nomapinfo = document.getElementById('no-map-info');
+  nomapinfo.style.display = 'none';
+
+  const map = document.getElementById('mapdiv');
+  map.style.display = 'none';
 }
 
 
 
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
-  const info = document.getElementById('no-project-info');
-  info.style.display = 'none';
-  //console.log('newprojectloaded')
-  let options = {properties:["multiSelections","openFile"]}
+  const noprojectinfo = document.getElementById('no-project-info');
+  noprojectinfo.style.display = 'none';
+  const projecttitle = document.getElementById('project-title');
+  projecttitle.innerHTML = "ProjectName: " + message.CurrentContent.projectdata.name;
 
-  let filePaths = dialog.showOpenDialog(options)
-  console.log(filePaths);
+  //console.log(message.CurrentContent.projectdata.backgroundurl);
+  if (message.CurrentContent.projectdata.backgroundurl == "")
+  {
+    switchtonomap();
+  }
+  else
+  {
+    const map = document.getElementById('map');
+    map.src = message.CurrentContent.projectdata.backgroundurl;
+    switchtomap();
+  }
 })
+
+ipcRenderer.on(CHANGE_MAP, (event, message) => {
+  getFileFromUser();
+})
+
+ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
+  var elmnt = document.getElementById("mapdiv")
+  var img = document.createElement('img'); 
+  img.id = "node-icon";
+  var modifiedzoom = 1 / zoom;
+
+  img.onload=function() { 
+    img.style.left = ((rightClickPosition.x - elmnt.offsetLeft - (img.style.width / 2)) * modifiedzoom)  + "px";
+    img.style.top = ((rightClickPosition.y - elmnt.offsetTop - (img.style.width / 2)) * modifiedzoom) + "px";
+    elmnt.appendChild(img); 
+  } // assign before src
+
+  img.src = './images/NodeIcon.png'; 
+})
+
+
 
 // Make the DIV element draggable:
 dragElement(document.getElementById("mapdiv"));
@@ -78,8 +163,7 @@ function dragElement(elmnt) {
     // otherwise, move the DIV from anywhere inside the DIV:
     elmnt.onmousedown = dragMouseDown;
   }
-
-  var zoom = 1;
+  
 
   /* The flag that determines whether the wheel event is supported. */
   var supportsWheel = false;
@@ -99,7 +183,6 @@ function dragElement(elmnt) {
     if (delta < 0)
     {
       zoom = zoom + 0.1;
-      elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
     }
     else if (delta > 0)
     {
@@ -107,8 +190,9 @@ function dragElement(elmnt) {
       if (zoom <= 0.1) {
         zoom = 0.1;
       }
-      elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
     }
+    
+    elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
   }
 
   /* Add the event listeners for each event. */

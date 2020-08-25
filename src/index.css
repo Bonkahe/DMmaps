@@ -29,28 +29,41 @@ header{
   background: red;
 }
 
-#mapdiv{
+#node-icon{
   position: absolute;
-  width: 500px;
+  z-index: 2;
+  height: 16px;
+  width: 16px;
+}
+
+#mapdiv{
+  user-select: none;
+  transform-origin: 0 0;
+  -webkit-transform-origin: 0 0;
+  display: none;
+  position: absolute;
+  min-width: 100%;
+  max-width: 100%;
   height: auto;
 }
 
-#mapdiv img{
-  width: 100%;
-  display: block;
+#map{
+  min-width: 100%;
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
+  z-index: 1;
 }
 
 #no-map-info {
-  margin-top: 100px;
+  margin-top: 10vh;
   display: none;
   justify-content: center;
   align-items: center;
 }
 
 #no-map-info-content{
-  flex: 0 0 200px;
+  flex: 0 0 300px;
   padding: 10px;
   background: slategray;
   color: white;
@@ -58,14 +71,14 @@ header{
 }
 
 #no-project-info {
-  margin-top: 100px;
-  display: none;
+  margin-top: 10vh;
+  display: flex;
   justify-content: center;
   align-items: center;
 }
 
 #no-project-info-content{
-  flex: 0 0 200px;
+  flex: 0 0 300px;
   padding: 10px;
   background: slategray;
   color: white;

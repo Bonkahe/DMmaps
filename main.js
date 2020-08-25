@@ -11,13 +11,14 @@ const {basename} = require('path')
 const contextMenu = require('electron-context-menu');
 const fs = require('fs');
 
+let ActiveProject = false;
+
 let CurrentContent = {
-   projectdata: [
-      {
-         name: basename("NA"),
-         backgroundurl: ""
-      }
-   ],
+   projectdata:{
+      projecturl: "",
+      name: basename("NA"),
+      backgroundurl: ""
+   },
    content: [
       {
          textEntries: [
@@ -30,21 +31,31 @@ let CurrentContent = {
 }  
 
 const {
-   SAVE_PROJECT_TO_STORAGE,
-   LOAD_PROJECT_FROM_STORAGE,
-   CREATE_NEW_PROJECT,
+   SAVE_MAP_TO_STORAGE,
+   CHANGE_MAP,
+   CREATE_NEW_NODE,
    PROJECT_INITIALIZED,
 } = require('./utils/constants');
 
 const dbpath = "";
 
-// Add an item to the context menu that appears only when you click on an image
 contextMenu({
-	prepend: (params, browserWindow) => [{
-		label: 'Rainbow',
-		// Only show it when right-clicking images
-		visible: params.mediaType === 'image'
-	}]
+	prepend: (defaultActions, params, browserWindow) => [
+		{
+         label: 'Load Background Image',
+         visible: ActiveProject === true,
+         click: () => {
+            win.webContents.send(CHANGE_MAP , );
+         }
+      },
+      {
+         label: 'Add Node',
+         visible: params.mediaType === 'image',
+         click: () => {
+            win.webContents.send(CREATE_NEW_NODE , );
+         }
+		}
+	]
 });
 
 
@@ -53,7 +64,7 @@ contextMenu({
 let win;
 
 function createWindow() {
-   win = new BrowserWindow({width: 800, height: 600,webPreferences: {
+   win = new BrowserWindow({width: 1500, height: 1000,webPreferences: {
     nodeIntegration: true, enableRemoteModule: true
     }})
    win.loadURL(url.format ({
@@ -178,12 +189,11 @@ const newproject = async () => {
    }
 
    let DefaultContent = {
-      projectdata: [
-         {
+      projectdata:{
+            projecturl: filename.filePath,
             name: basename(filename.filePath, '.dmdb'),
             backgroundurl: ""
-         }
-      ],
+      },
       content: [
          {
             textEntries: [
@@ -203,9 +213,18 @@ const newproject = async () => {
       }
                   
       console.log("The file has been succesfully saved");
-   });
 
-   currentContent = DefaultContent;
+      fs.readFile(filename.filePath, 'utf-8', (err, data) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+   
+         CurrentContent = JSON.parse(data);
+         ActiveProject = true;
+         updaterenderer();
+      }); 
+   });
 }
 
 const loadproject = async () => {
@@ -230,7 +249,7 @@ const loadproject = async () => {
 
  
    // If we don't have any files, return early from the function
-   if (!filename) {
+   if (!filename.filePaths[0]) {
        return;
    }
 
@@ -240,24 +259,51 @@ const loadproject = async () => {
           return;
       }
 
-      // Change how to handle the file content
-      const loadedUsers = JSON.parse(data);
-    //console.log(loadedUsers);
-
-    console.log(loadedUsers);
-  });
+      CurrentContent = JSON.parse(data);
+      ActiveProject = true;
+      updaterenderer();
+   }); 
 }
 
 function saveproject()
 {
+   if (!ActiveProject)
+   {
+      return;
+   }
 
+   //CurrentContent.projectdata.name = "newname";
+
+   let data = JSON.stringify(CurrentContent, null, 2);
+
+   fs.writeFile(CurrentContent.projectdata.projecturl, data, (err) => {
+      if(err){
+          console.log("An error ocurred creating the file "+ err.message)
+      }
+                  
+      console.log("The file has been succesfully saved");
+   });
 }
 
-/* Replace showwindow with the constant of the ping to recieve from render commands.
-ipcMain.on(SHOW_WINDOW, () => {
-   showWindow();
-});
-*/
+function updaterenderer()
+{
+   win.webContents.send(PROJECT_INITIALIZED , {CurrentContent});
+}
+
+ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) => {
+   if (ActiveProject)
+   {
+      CurrentContent.projectdata.backgroundurl = mappath;
+      return true
+   }
+   else
+   {
+      return false
+   }
+ })
+
+
+
 app.on('ready', () => {
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
