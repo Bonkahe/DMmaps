@@ -6,9 +6,8 @@
 
 html, body{
   margin: 0; 
-  height: 100%;
-  max-width:100%;
   overflow:hidden;
+  color: white;
 }
 
 header{
@@ -32,8 +31,6 @@ header{
 #node-icon{
   position: absolute;
   z-index: 2;
-  height: 16px;
-  width: 16px;
 }
 
 #mapdiv{
@@ -42,14 +39,11 @@ header{
   -webkit-transform-origin: 0 0;
   display: none;
   position: absolute;
-  min-width: 100%;
-  max-width: 100%;
-  height: auto;
 }
 
 #map{
-  min-width: 100%;
-  max-width: 100%;
+  position: relative;
+  overflow:hidden;
   margin-left: auto;
   margin-right: auto;
   z-index: 1;

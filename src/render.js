@@ -8,6 +8,7 @@ const {
   CHANGE_MAP,
   CREATE_NEW_NODE,
   PROJECT_INITIALIZED,
+  RESET_MAP,
 }  = require('../utils/constants');
 
 let rightClickPosition = null;
@@ -61,6 +62,7 @@ const getFileFromUser = async () => {
     if (result)
     {
       const map = document.getElementById('map');
+  
       map.src = files.filePaths[0];
       switchtomap();
     }
@@ -124,9 +126,16 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   else
   {
     const map = document.getElementById('map');
+
     map.src = message.CurrentContent.projectdata.backgroundurl;
     switchtomap();
   }
+})
+
+ipcRenderer.on(RESET_MAP, (event, message) => {
+  var elmnt = document.getElementById("mapdiv")
+  elmnt.style.left = 0 + "px";
+  elmnt.style.top = 0 + "px";
 })
 
 ipcRenderer.on(CHANGE_MAP, (event, message) => {
@@ -140,8 +149,8 @@ ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
   var modifiedzoom = 1 / zoom;
 
   img.onload=function() { 
-    img.style.left = ((rightClickPosition.x - elmnt.offsetLeft - (img.style.width / 2)) * modifiedzoom)  + "px";
-    img.style.top = ((rightClickPosition.y - elmnt.offsetTop - (img.style.width / 2)) * modifiedzoom) + "px";
+    img.style.left = ((rightClickPosition.x - elmnt.offsetLeft) * modifiedzoom) - 32  + "px";
+    img.style.top = ((rightClickPosition.y - elmnt.offsetTop) * modifiedzoom) - 32 + "px";
     elmnt.appendChild(img); 
   } // assign before src
 
@@ -173,18 +182,20 @@ function dragElement(elmnt) {
     //var mousePos = screen.getCursorScreenPoint();
     if (delta < 0)
     {      
-      zoom = zoom + 0.1;
+      zoom = zoom + 0.05;
+      if (zoom > 5) {
+        zoom = 5;
+      }
     }
     else if (delta > 0)
     {
-      zoom = zoom - 0.1;
-      if (zoom < 0.1) {
-        zoom = 0.1;
+      zoom = zoom - 0.05;
+      if (zoom < 0.05) {
+        zoom = 0.05;
       }
     }
-    console.log(elmnt.style.transformOrigin);
+    
 
-    elmnt.style.transformOrigin = e.x + "px" + e.y + "px";
     elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
   }
 

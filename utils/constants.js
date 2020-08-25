@@ -3,4 +3,5 @@ module.exports = {
     CHANGE_MAP: 'change-map',
     CREATE_NEW_NODE: 'create-new-node',
     PROJECT_INITIALIZED: 'project-initialized',
+    RESET_MAP: 'reset-map',
 }

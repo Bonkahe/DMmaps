@@ -35,6 +35,7 @@ const {
    CHANGE_MAP,
    CREATE_NEW_NODE,
    PROJECT_INITIALIZED,
+   RESET_MAP,
 } = require('./utils/constants');
 
 const dbpath = "";
@@ -54,6 +55,13 @@ contextMenu({
          click: () => {
             win.webContents.send(CREATE_NEW_NODE , );
          }
+      },
+      {
+         label: 'Reset Map',
+         visible: ActiveProject === true,
+         click: () => {
+            win.webContents.send(RESET_MAP , );
+         }
 		}
 	]
 });
@@ -64,13 +72,13 @@ contextMenu({
 let win;
 
 function createWindow() {
-   win = new BrowserWindow({width: 1500, height: 1000,webPreferences: {
+   win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000,webPreferences: {
     nodeIntegration: true, enableRemoteModule: true
     }})
    win.loadURL(url.format ({
       pathname: path.join(__dirname, './src/index.html'),
       protocol: 'file:',
-      slashes: true
+      slashes: true,
    }))
 }
 
