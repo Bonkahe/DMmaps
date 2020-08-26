@@ -3,6 +3,7 @@ const { Menu} = remote; // Load the dialogs component of the OS
 const { dialog, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs'); // Load the File System to execute our common tasks (CRUD)
 const {ipcRenderer} = require('electron');
+const { renderer } = require('./renderer');
 const {
   SAVE_MAP_TO_STORAGE,
   CHANGE_MAP,
@@ -144,24 +145,96 @@ ipcRenderer.on(CHANGE_MAP, (event, message) => {
 
 ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
   var elmnt = document.getElementById("mapdiv")
-  var img = document.createElement('img'); 
+  
+  var img = document.createElement('button'); 
+  img.addEventListener("click", function() {
+    clickednode(img);
+  });
+  
   img.id = "node-icon";
+  img.setAttribute("Db-Path", "nothingyet")
   var modifiedzoom = 1 / zoom;
 
+  //var previousorigin = elmnt.style.transformOrigin;
+  //var transforms = previousorigin.split("px");
+  
+  var originx = elmnt.getBoundingClientRect().left;
+  var originy = elmnt.getBoundingClientRect().top;
+
+  
+  //var toriginx = parseFloat(transforms[0]);
+  //var toriginy = parseFloat(transforms[1]);
+  
+  //var testx = toriginx - originx;
+  //var testy = toriginy - originy;
+  
+
+  var normalizedx = (rightClickPosition.x - originx);
+  var multipliednormalizedx = (normalizedx * modifiedzoom) - 32;
+
+  var normalizedy = (rightClickPosition.y - originy);
+  var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
+
+  elmnt.appendChild(img); 
+    
+  img.style.left = (multipliednormalizedx  + "px");
+  img.style.top = (multipliednormalizedy  + "px");
+
+  //var nnormalizedx = (normalizedx + originx);
+
+  //var nnormalizedy = (normalizedy + originy);
+
+
+  //console.log(transforms);
+  
+/*
   img.onload=function() { 
+    
+        console.log("mousex:" + rightClickPosition.x)
+        console.log(" -- originx:" + originx)
+        console.log(" -- normalized:" + normalizedx)
+        console.log(" -- modifiedzoom:" + modifiedzoom)
+        console.log(" -- multipliednormalized:" + multipliednormalizedx)
+        console.log(" -- final:" + (multipliednormalizedx - 32)  + "px");
+    
+    //console.log("test " + rightClickPosition.x + "/" + nnormalizedx + "----" + nnormalizedy + "/" + rightClickPosition.y);
+
+    
+    console.log("current origin:x" + originx + ".y" + originy + 
+    " --current mouseloc:x" + rightClickPosition.x + ".y" + rightClickPosition.y + 
+    " --current normalizedloc:x" + normalizedx + ".y" + normalizedy + 
+    " --current finalMultiplied:x" + multipliednormalizedx + ".y" + multipliednormalizedy +
+    " --current experiement1:x" + toriginx + ".y" + toriginy +
+    " --current experiement3:" + modifiedzoom + "---" + zoom
+    )
+    
+    elmnt.appendChild(img); 
+    
+    img.style.left = (multipliednormalizedx  + "px");
+    img.style.top = (multipliednormalizedy  + "px");
+
+    
+    
     img.style.left = ((rightClickPosition.x - elmnt.offsetLeft) * modifiedzoom) - 32  + "px";
     img.style.top = ((rightClickPosition.y - elmnt.offsetTop) * modifiedzoom) - 32 + "px";
-    elmnt.appendChild(img); 
+    
   } // assign before src
-
-  img.src = './images/NodeIcon.png'; 
+*/
 })
+
+function clickednode(elmnt)
+{
+  console.log("test");
+}
 
 
 // Make the DIV element draggable:
 dragElement(document.getElementById("mapdiv"));
 
+
 function dragElement(elmnt) {
+  const instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
+
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   if (document.getElementById(elmnt.id + "header")) {
     // if present, the header is where you move the DIV from:
@@ -177,7 +250,13 @@ function dragElement(elmnt) {
   function DoSomething (e) {
     if (e.type == "wheel") supportsWheel = true;
     else if (supportsWheel) return;
+    /*
     var delta = ((e.deltaY || -e.wheelDelta || e.detail) >> 10) || 1;
+
+    var difference = elmnt.style.offsetWidth * 0.05;
+
+
+    console.log(difference);
 
     //var mousePos = screen.getCursorScreenPoint();
     if (delta < 0)
@@ -194,9 +273,31 @@ function dragElement(elmnt) {
         zoom = 0.05;
       }
     }
-    
+    */
+    instance.zoom({
+      deltaScale: Math.sign(e.deltaY) > 0 ? -1 : 1,
+      x: e.pageX,
+      y: e.pageY
+    });
 
-    elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
+    var test = instance.getzoom(
+      {
+        deltaScale: Math.sign(e.deltaY) > 0 ? -1 : 1
+      }
+    )
+    zoom = test[0];
+    
+    //set div loc
+    /*
+    elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+    elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+    */
+    //scales in 0.05 increments only.
+
+
+
+
+    //elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
   }
 
   // Add the event listeners for each event.
@@ -234,126 +335,3 @@ function dragElement(elmnt) {
     document.onmousemove = null;
   }
 }
-
-
-//USE FOR REFERENCE!
-
-/**    
- * <hr>
-      <video></video>
-      <button id ="startBtn" class="button is-primary">Start</button>
-      <button id ="stopBtn" class="button is-warning">Stop</button>
-    </hr>
-
-    <button id="videoSelectBtn" class="button is-text"> Choose a video source</button>
-     */
-/*
-const { desktopCapturer, remote } = require('electron');
-
-const { writeFile } = require('fs');
-
-const { dialog, Menu } = remote;
-
-// Global state
-let mediaRecorder; // MediaRecorder instance to capture footage
-const recordedChunks = [];
-
-// Buttons
-const videoElement = document.querySelector('video');
-
-const startBtn = document.getElementById('startBtn');
-startBtn.onclick = e => {
-  mediaRecorder.start();
-  startBtn.classList.add('is-danger');
-  startBtn.innerText = 'Recording';
-};
-
-const stopBtn = document.getElementById('stopBtn');
-
-stopBtn.onclick = e => {
-  mediaRecorder.stop();
-  startBtn.classList.remove('is-danger');
-  startBtn.innerText = 'Start';
-};
-
-const videoSelectBtn = document.getElementById('videoSelectBtn');
-videoSelectBtn.onclick = getVideoSources;
-
-// Get the available video sources
-async function getVideoSources() {
-  const inputSources = await desktopCapturer.getSources({
-    types: ['window', 'screen']
-  });
-
-  const videoOptionsMenu = Menu.buildFromTemplate(
-    inputSources.map(source => {
-      return {
-        label: source.name,
-        click: () => selectSource(source)
-      };
-    })
-  );
-
-
-  videoOptionsMenu.popup();
-}
-
-// Change the videoSource window to record
-async function selectSource(source) {
-
-  videoSelectBtn.innerText = source.name;
-
-  const constraints = {
-    audio: false,
-    video: {
-      mandatory: {
-        chromeMediaSource: 'desktop',
-        chromeMediaSourceId: source.id
-      }
-    }
-  };
-
-  // Create a Stream
-  const stream = await navigator.mediaDevices
-    .getUserMedia(constraints);
-
-  // Preview the source in a video element
-  videoElement.srcObject = stream;
-  videoElement.play();
-
-  // Create the Media Recorder
-  const options = { mimeType: 'video/webm; codecs=vp9' };
-  mediaRecorder = new MediaRecorder(stream, options);
-
-  // Register Event Handlers
-  mediaRecorder.ondataavailable = handleDataAvailable;
-  mediaRecorder.onstop = handleStop;
-
-  // Updates the UI
-}
-
-// Captures all recorded chunks
-function handleDataAvailable(e) {
-  console.log('video data available');
-  recordedChunks.push(e.data);
-}
-
-// Saves the video file on stop
-async function handleStop(e) {
-  const blob = new Blob(recordedChunks, {
-    type: 'video/webm; codecs=vp9'
-  });
-
-  const buffer = Buffer.from(await blob.arrayBuffer());
-
-  const { filePath } = await dialog.showSaveDialog({
-    buttonLabel: 'Save video',
-    defaultPath: `vid-${Date.now()}.webm`
-  });
-
-  if (filePath) {
-    writeFile(filePath, buffer, () => console.log('video saved successfully!'));
-  }
-
-}
-*/

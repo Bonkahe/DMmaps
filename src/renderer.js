@@ -29,7 +29,6 @@ const canPan = (state) => ({
         pan({ state, originX: originX - state.transformation.translateX, originY: originY - state.transformation.translateY });
     },
 });
-
 const canZoom = (state) => ({
     zoom: ({ x, y, deltaScale }) => {
         const { left, top } = state.element.getBoundingClientRect();
@@ -49,6 +48,13 @@ const canZoom = (state) => ({
     }
 });
 
+const canGetZoom = (state) => ({
+    getzoom: ({deltaScale}) => {
+        const { minScale, maxScale, scaleSensitivity } = state;
+        return getScale({ scale: state.transformation.scale, deltaScale, minScale, maxScale, scaleSensitivity });
+    }
+});
+
 const renderer = ({ minScale, maxScale, element, scaleSensitivity = 10 }) => {
     const state = {
         element,
@@ -63,7 +69,7 @@ const renderer = ({ minScale, maxScale, element, scaleSensitivity = 10 }) => {
             scale: 1
         },
     };
-    return Object.assign({}, canZoom(state), canPan(state));
+    return Object.assign({}, canZoom(state), canPan(state), canGetZoom(state));
 };
 
 module.exports = { renderer };

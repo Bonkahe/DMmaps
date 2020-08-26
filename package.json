@@ -1,21 +1,18 @@
 {
   "name": "dmmaps",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A DM's world building toolkit.",
   "main": "./main.js",
   "scripts": {
     "start": "electron ."
   },
-  "repository": "https://github.com/electron/electron-quick-start",
+  "repository": "https://github.com/Bonkahe/DMmaps",
   "keywords": [
     "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
+    "DnD"
   ],
-  "author": "GitHub",
-  "license": "CC0-1.0",
+  "author": "David House",
+  "license": "GNU",
   "devDependencies": {
     "electron": "^9.2.1",
     "electron-packager": "^15.1.0"

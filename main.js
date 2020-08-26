@@ -72,7 +72,7 @@ contextMenu({
 let win;
 
 function createWindow() {
-   win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000,webPreferences: {
+   win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, webPreferences: {
     nodeIntegration: true, enableRemoteModule: true
     }})
    win.loadURL(url.format ({
@@ -96,7 +96,8 @@ const template = [
          },
          {
             label: 'Save Project',
-            click: () => { saveproject(); }
+            click: () => { saveproject(); },
+            accelerator: 'CommandOrControl+S'
          },
          {
             type: 'separator'
