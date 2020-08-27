@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "electron-context-menu": "^2.3.0",
-    "electron-json-storage": "^4.2.0"
+    "electron-json-storage": "^4.2.0",
+    "split.js": "^1.6.2"
   },
   "directories": {
     "output": "release/"

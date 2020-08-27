@@ -2,7 +2,7 @@ class Databasetemplate {
     constructor() {
         this.__type = "Databasetemplate";
         this.projecturl = "";
-        this.name = "";
+        this.name = "Default Database";
         this.backgroundurl = "";
         this.content = {
             textEntires: [],
@@ -17,6 +17,7 @@ class DatabaseNodeentry {
         this.id = "";
         this.location = { x: 0, y: 0 };
         this.documentrefs = [];
+        this.locked = false;
     }
 }
 class DatabaseTextentry {
@@ -35,6 +36,7 @@ module.exports = {
     REQUEST_NODE_CONTEXT: 'request-node-context',
     DELETE_NODE: 'delete-node',
     VERIFY_NODE: 'verify-node',
+    TOGGLE_NODE: 'toggle-node',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,

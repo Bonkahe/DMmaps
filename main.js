@@ -20,6 +20,7 @@ const {
    REQUEST_NODE_CONTEXT,
    DELETE_NODE,
    VERIFY_NODE,
+   TOGGLE_NODE,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry
@@ -29,7 +30,7 @@ const dbpath = "";
 var nodepath = "";
 var nodemenu = false;
 
-let ActiveProject = false;
+let dirtyproject = false;
 
 let CurrentContent = new Databasetemplate();
 
@@ -44,18 +45,17 @@ contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
 		{
          label: 'Load Background Image',
-         visible: ActiveProject === true,
          click: () => {
             win.webContents.send(CHANGE_MAP , );
          }
       },
       {
-         label: 'Add Node',
-         visible: ActiveProject === true,
+         label: 'Create Node',
+         visible: CurrentContent.backgroundurl != "",
          visible: params.mediaType === 'image',
          click: () => {
             var newnode = new DatabaseNodeentry();
-            console.log(CurrentContent);
+            //console.log(CurrentContent);
             var loop = true;
             var r = 0;
             
@@ -65,7 +65,7 @@ contextMenu({
                var ownerData = CurrentContent.content.nodes.filter(function(node) {
                   return node.id === r;
                })[0];
-               console.log(ownerData);
+               //console.log(ownerData);
                if(ownerData == null)
                {
                   loop = false;
@@ -76,15 +76,15 @@ contextMenu({
 
             CurrentContent.content.nodes.push(newnode);
 
-            console.log(newnode);
+            //console.log(newnode);
 
             win.webContents.send(CREATE_NEW_NODE , r);
-            
+            dirtyproject = true;
          }
       },
       {
          label: 'Reset Map',
-         visible: ActiveProject === true,
+         visible: CurrentContent.backgroundurl != "",
          click: () => {
             win.webContents.send(RESET_MAP , );
          }
@@ -94,13 +94,23 @@ contextMenu({
          visible: nodemenu === true,
       },
       {
-         label: 'DeleteNode',
+         label: 'Delete Node',
          visible: nodemenu === true,
          click: () => {
             dialog.showMessageBox(null, deleteoptions).then( (data) => {
                if (data.response == 0)
                {
+                  for (var i = 0; i < CurrentContent.content.nodes.length; i++)
+                  {
+                     if (CurrentContent.content.nodes[i].id == nodepath)
+                     {
+                        CurrentContent.content.nodes.splice(i, 1);
+                        break;
+                     }
+                  }
+
                   win.webContents.send(DELETE_NODE, nodepath);
+                  dirtyproject = true;
                }
              });
             /*
@@ -112,15 +122,27 @@ contextMenu({
          }
       },
       {
-         label: 'LockNode',
+         label: 'Lock/Unlock Node',
          visible: nodemenu === true,
          click: () => {
-            dialog.showMessageBox(null, deleteoptions).then( (data) => {
-               if (data.response == 0)
+            var locked = false;
+
+            for (var i = 0; i < CurrentContent.content.nodes.length; i++)
+            {
+               if (CurrentContent.content.nodes[i].id == nodepath)
                {
-                  win.webContents.send(DELETE_NODE, nodepath);
+                  CurrentContent.content.nodes[i].locked = !CurrentContent.content.nodes[i].locked;
+                  locked = CurrentContent.content.nodes[i].locked;
+                  break;
                }
-             });
+            }
+
+            var data = {
+               locked: locked,
+               id: nodepath
+            }
+
+            win.webContents.send(TOGGLE_NODE, data);
             /*
             dialog.showMessageBox(deleteoptions, (response, checkboxChecked) => {
                win.webContents.send(DELETE_NODE, nodepath);
@@ -164,6 +186,11 @@ const template = [
             label: 'Save Project',
             click: () => { saveproject(); },
             accelerator: 'CommandOrControl+S'
+         },
+         {
+            label: 'Save Project As',
+            click: () => { saveasproject(); },
+            accelerator: 'CommandOrControl+Shift+S'
          },
          {
             type: 'separator'
@@ -238,6 +265,32 @@ const template = [
 
 
 const newproject = async () => {
+   if (dirtyproject)
+   {
+      let deleteoptions  = {
+         buttons: ["Yes","No"],
+         message: "You have unsaved data, do you wish to save first?"
+      }
+      dialog.showMessageBox(null, deleteoptions).then( (data) => {
+         if (data.response == 0)
+         {
+            saveasproject(false, true);
+         }
+         else
+         {
+            CurrentContent = new Databasetemplate();
+            updaterenderer();
+         }
+      });
+   }
+   else
+   {
+      CurrentContent = new Databasetemplate();
+      updaterenderer();
+   }
+   
+
+   /*
    let options = {
       title : "Choose new file path", 
 
@@ -262,31 +315,8 @@ const newproject = async () => {
    if (!filename) {
        return;
    }
-   let DefaultContent = new Databasetemplate();
-
-   DefaultContent.name = basename(filename.filePath, '.dmdb');
-   DefaultContent.projecturl = filename.filePath;
-
-/*
-   DefaultContent.name = basename(filename.filePath, '.dmdb');
-   DefaultContent.projectdata.name = basename(filename.filePath, '.dmdb');
-   var test = {
-      id:0,
-      location:{x:0,y:0}  
-   }
-   */
-   //DefaultContent.content.nodes.push(test);
-/*
-   for (var i = 0; i < 10; i++)
-   {
-      var node = new DatabaseNodeentry();
-      node.id = i;
-      node.documentrefs.push("test", "test2");
-
-
-      DefaultContent.content.nodes.push(node)
-   }
-*/
+   CurrentContent.name = basename(filename.filePath, '.dmdb');
+   CurrentContent.projecturl = filename.filePath;
 
    let data = JSON.stringify(DefaultContent, null, 2);
 
@@ -303,27 +333,41 @@ const newproject = async () => {
              return;
          }
 
-         //CurrentContent = Databasetemplate.fromjson(data)/*
-         //var test = Object.create(Databasetemplate.prototype);
-         //test = 
-         //result = result && typeof result === 'object' ? result : testObject;
-         Databasetemplate.fromjson(data);
-
-         /*
-         var obj = JSON.parse(data);
-
-         CurrentContent = Object.assign(obj, Databasetemplate);
-
-         console.log(CurrentContent);
-         */
-         //CurrentContent = JSON.parse(data);
-         ActiveProject = true;
+         
          updaterenderer();
       }); 
    });
+   */
 }
 
-const loadproject = async () => {
+function loadproject()
+{
+   if (dirtyproject)
+   {
+      let deleteoptions  = {
+         buttons: ["Yes","No"],
+         message: "You have unsaved data, do you wish to save first?"
+      }
+      dialog.showMessageBox(null, deleteoptions).then( (data) => {
+         if (data.response == 0)
+         {
+            saveasproject(true, false);
+            return;
+         }
+         else
+         {
+            deeploadproject();
+         }
+      });
+   }
+   else
+   {
+      deeploadproject();
+   }
+}
+
+const deeploadproject = async () => {
+
    let options = {
       title : "Choose a database", 
 
@@ -355,29 +399,85 @@ const loadproject = async () => {
           return;
       }
       Databasetemplate.fromjson(data);
-
-      ActiveProject = true;
       updaterenderer();
    }); 
 }
 
+const saveasproject = async (load, newfile) => {
+   let options = {
+      title : "Save as", 
+
+      defaultPath : ".",
+      
+      buttonLabel : "Save Project",
+      filters: [
+         { name: 'DungeonMaster Database', extensions: ['dmdb'] }
+       ],
+      properties: ['openFile']
+   }
+   // Triggers the OS' Open File Dialog box. We also pass it as a Javascript
+   // object of different configuration arguments to the function
+ 
+   //This operation is asynchronous and needs to be awaited
+   const filename = await dialog.showSaveDialog(win, options, {
+       // The Configuration object sets different properties on the Open File Dialog 
+       //properties: ['openDirectory']
+   });
+ 
+   // If we don't have any files, return early from the function
+   if (!filename) {
+       return;
+   }
+   CurrentContent.name = basename(filename.filePath, '.dmdb');
+   CurrentContent.projecturl = filename.filePath;
+
+   let data = JSON.stringify(CurrentContent, null, 2);
+
+   fs.writeFile(filename.filePath, data, (err) => {
+      if(err){
+          console.log("An error ocurred creating the file "+ err.message)
+      }
+                  
+      console.log("The file has been succesfully saved");
+
+      fs.readFile(filename.filePath, 'utf-8', (err, data) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+
+         dirtyproject = false;
+
+         if (load == true)
+         {
+            deeploadproject();
+         }
+         if (newfile == true)
+         {
+            newproject();
+         }
+      }); 
+   });
+}
+
 function saveproject()
 {
-   if (!ActiveProject)
+   if (CurrentContent.projecturl == "")
    {
+      saveasproject();
       return;
    }
 
    //CurrentContent.projectdata.name = "newname";
 
    let data = JSON.stringify(CurrentContent, null, 2);
-   console.log("output:" + data);
+   //console.log("output:" + data);
 
    fs.writeFile(CurrentContent.projecturl, data, (err) => {
       if(err){
           console.log("An error ocurred creating the file "+ err.message)
       }
-
+      dirtyproject = false;
       console.log("The file has been succesfully saved");
    });
 }
@@ -387,16 +487,11 @@ function updaterenderer()
    win.webContents.send(PROJECT_INITIALIZED , {CurrentContent});
 }
 
-ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) => {
-   if (ActiveProject)
-   {
-      CurrentContent.backgroundurl = mappath;
-      return true
-   }
-   else
-   {
-      return false
-   }
+ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) =>
+{
+   CurrentContent.backgroundurl = mappath;
+   dirtyproject = true;
+   return true;
 })
 
 ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
@@ -408,7 +503,8 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
    for (var i in CurrentContent.content.nodes) {
       if (CurrentContent.content.nodes[i].id == data.id) {
          CurrentContent.content.nodes[i].location = {x: data.x, y: data.y}
-         console.log(CurrentContent.content.nodes[i].location);
+         //console.log(CurrentContent.content.nodes[i].location);
+         dirtyproject = true;
          break; //Stop this loop, we found it!
       }
     }
@@ -436,6 +532,7 @@ Databasetemplate.fromjson = function(json)
       newnode.id = jsonnode.id;
       newnode.location = jsonnode.location;
       newnode.documentrefs = jsonnode.documentrefs;
+      newnode.locked = jsonnode.locked;
       db.content.nodes.push(newnode);
       //console.log(newnode);
    });

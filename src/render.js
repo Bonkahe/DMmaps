@@ -4,6 +4,7 @@ const { dialog, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs'); // Load the File System to execute our common tasks (CRUD)
 const {ipcRenderer} = require('electron');
 const { renderer } = require('./renderer');
+const Split = require('split.js')
 const {
   SAVE_MAP_TO_STORAGE,
   CHANGE_MAP,
@@ -13,12 +14,16 @@ const {
   REQUEST_NODE_CONTEXT,
   DELETE_NODE,
   VERIFY_NODE,
+  TOGGLE_NODE,
 }  = require('../utils/constants');
 
 let rightClickPosition = null;
 var zoom = 1;
 var instance;
 var node;
+
+Split(['.a','.b']);
+
 
 //contextmenuonnodes
 window.addEventListener('contextmenu', (e) => {
@@ -68,7 +73,7 @@ const getFileFromUser = async () => {
   //const file = files[0];
   // Reads from the file and converts the resulting buffer to a string
   //const content = fs.readFileSync(file).toString();
-
+  
   // Log the Files to the Console
   ipcRenderer.invoke(SAVE_MAP_TO_STORAGE, files.filePaths[0]).then((result) => {
     if (result)
@@ -87,9 +92,6 @@ const getFileFromUser = async () => {
 
 function switchtomap()
 {
-  const noprojectinfo = document.getElementById('no-project-info');
-  noprojectinfo.style.display = 'none';
-
   const nomapinfo = document.getElementById('no-map-info');
   nomapinfo.style.display = 'none';
 
@@ -99,9 +101,6 @@ function switchtomap()
 
 function switchtonomap()
 {
-  const noprojectinfo = document.getElementById('no-project-info');
-  noprojectinfo.style.display = 'none';
-
   const nomapinfo = document.getElementById('no-map-info');
   nomapinfo.style.display = 'flex';
 
@@ -110,26 +109,19 @@ function switchtonomap()
 }
 
 
-function switchtoblank()
-{
-  const noprojectinfo = document.getElementById('no-project-info');
-  noprojectinfo.style.display = 'flex';
-
-  const nomapinfo = document.getElementById('no-map-info');
-  nomapinfo.style.display = 'none';
-
-  const map = document.getElementById('mapdiv');
-  map.style.display = 'none';
-}
-
-
-
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
-  const noprojectinfo = document.getElementById('no-project-info');
-  noprojectinfo.style.display = 'none';
+  document.querySelectorAll('.node').forEach(function(a) {
+    a.remove()
+  })
+  /*
+  oldnodes.forEach(element => {
+    element.parentelmnt.removeChild(element);
+  });
+  */
+
   const projecttitle = document.getElementById('project-title');
   projecttitle.innerHTML = "ProjectName: " + message.CurrentContent.name;
-  console.log(message.CurrentContent.backgroundurl);
+  //console.log(message.CurrentContent.backgroundurl);
   //console.log(message.CurrentContent.projectdata.backgroundurl);
   if (message.CurrentContent.backgroundurl == "")
   {
@@ -137,12 +129,11 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   }
   else
   {
-    const map = document.getElementById('map');
-
     map.src = message.CurrentContent.backgroundurl;
+    resetmap();
     switchtomap();
+    importnodes(message);
   }
-  importnodes(message);
 })
 
 
@@ -169,30 +160,48 @@ function resetmap()
 
 function importnodes(database)
 {
-  console.log(database.CurrentContent);
+  //console.log(database.CurrentContent);
   database.CurrentContent.content.nodes.forEach(element => {
-    createnode(element.location.x,element.location.y,element.id);
+    createnode(element.location.x,element.location.y,element.id, element.locked);
   });
   //createnode(rightClickPosition.x,rightClickPosition.y,message);
 }
 
-function createnode(x,y, message)
+function createnode(x,y, message,locked)
 {
   var elmnt = document.getElementById("mapdiv")
   
   var img = document.createElement('button');
-  img.onmouseenter = function(){deactivatepanning = true};
-  img.onmouseout = function(){deactivatepanning = false};
+  img.onmouseenter = function(event){
+    if (event.target.getAttribute("locked") == "true")
+    {
+      return;
+    }
+    deactivatepanning = true
+  };
+  img.onmouseout = function(){
+    deactivatepanning = false
+  };
 
   dragNode(img, elmnt);
   img.id = "node-icon";
+  img.className = "node";
   img.setAttribute("Db-Path", message)
-  img.setAttribute("locked", "false")
+  img.setAttribute("locked", locked)
 
   elmnt.appendChild(img); 
     
   img.style.left = (x  + "px");
   img.style.top = (y  + "px");
+
+  if (locked)
+  {
+    img.style.transform = `matrix(1, 0, 0, 1, 0, 0)`;
+  }
+  else
+  {
+    img.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
+  }
 }
 
 
@@ -201,13 +210,22 @@ function mousecreatenode(x,y, message)
   var elmnt = document.getElementById("mapdiv")
   
   var img = document.createElement('button');
-  img.onmouseenter = function(){deactivatepanning = true};
-  img.onmouseout = function(){deactivatepanning = false};
+  img.onmouseenter = function(event){
+    if (event.target.getAttribute("locked") == "true")
+    {
+      return;
+    }
+    deactivatepanning = true
+  };
+  img.onmouseout = function(){
+    deactivatepanning = false
+  };
 
   dragNode(img, elmnt);
   img.id = "node-icon";
   img.setAttribute("Db-Path", message)
   img.setAttribute("locked", "false")
+  img.className = "node";
   var modifiedzoom = 1 / zoom;
 
   
@@ -225,6 +243,7 @@ function mousecreatenode(x,y, message)
     
   img.style.left = (multipliednormalizedx  + "px");
   img.style.top = (multipliednormalizedy  + "px");
+  img.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
 
   data = {
     x:multipliednormalizedx,
@@ -235,6 +254,7 @@ function mousecreatenode(x,y, message)
 }
 
 ipcRenderer.on(CHANGE_MAP, (event, message) => {
+  
   getFileFromUser();
 })
 
@@ -249,6 +269,26 @@ ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
   mousecreatenode(rightClickPosition.x,rightClickPosition.y,message);
 })
 
+ipcRenderer.on(TOGGLE_NODE, (event, message) => {
+  togglenode(message.id, message.locked);
+})
+
+function togglenode(id, locked)
+{
+  //console.log(id + "----" + locked);
+  var nodetotoggle = document.querySelector('[Db-Path="' + id +'"]');
+  nodetotoggle.setAttribute("locked", locked)
+
+  if (locked)
+  {
+    nodetotoggle.style.transform = `matrix(1, 0, 0, 1, 0, 0)`;
+  }
+  else
+  {
+    nodetotoggle.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
+  }
+}
+
 
 
 function dragNode(buttonelmnt, parentelmnt){
@@ -261,6 +301,13 @@ function dragNode(buttonelmnt, parentelmnt){
     {
       return;
     }
+    //console.log(buttonelmnt.getAttribute("locked"));
+
+
+    if (buttonelmnt.getAttribute("locked") == "true")
+    {
+      return;
+    }
 
     e.preventDefault();
 
@@ -269,7 +316,7 @@ function dragNode(buttonelmnt, parentelmnt){
     document.body.appendChild(buttonelmnt);
     buttonelmnt.style.left = (e.clientX - 32) + "px";
     buttonelmnt.style.top = (e.clientY - 32) + "px";
-    buttonelmnt.style.transform = `matrix(${zoom}, 0, 0, ${zoom}, 0, 0)`;
+    buttonelmnt.style.transform = `matrix(${zoom * 1.1}, 0, 0, ${zoom * 1.1}, 0, 0)`;
 
     document.onmouseup = closeDragElement;
     // call a function whenever the cursor moves:
@@ -292,7 +339,7 @@ function dragNode(buttonelmnt, parentelmnt){
     var x = (parseFloat(buttonelmnt.style.left) + 32);
     var y = (parseFloat(buttonelmnt.style.top) + 32);
 
-    buttonelmnt.style.transform = `matrix(1, 0, 0, 1, 0, 0)`;
+    buttonelmnt.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
 
     var modifiedzoom = 1 / zoom;
 
@@ -314,7 +361,7 @@ function dragNode(buttonelmnt, parentelmnt){
     data = {
       x:multipliednormalizedx,
       y:multipliednormalizedy,
-      id:buttonelmnt.getAttribute("Db-Path")
+      id:buttonelmnt.getAttribute("Db-Path"),
     };
     ipcRenderer.send(VERIFY_NODE, data);
   }
@@ -339,7 +386,7 @@ function dragElement(elmnt) {
 
   // The function that will run when the events are triggered. 
   function DoSomething (e) {
-    if (deactivatepanning) {return;}
+    //if (deactivatepanning) {return;}
 
     if (e.type == "wheel") supportsWheel = true;
     else if (supportsWheel) return;

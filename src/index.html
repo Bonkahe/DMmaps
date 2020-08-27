@@ -7,32 +7,34 @@
     <link rel="stylesheet" href="index.css">
     
     <script defer src="render.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="./Trix/trix.css">
+    <script type="text/javascript" src="./Trix/trix.js"></script>
   </head>
   <body>
-    <div id="nodecontainer"></div>
-    <header>
 
-    </header>
-    <div id="mapdiv" style="transform-origin: 0 0;">
-      <h1 id="project-title"></h1>
-      <div id="nodecontainers">
-        <img id="map" src="" alt="">
+    <div class="content">
+      <div class="cell a">
+        <div id="nodecontainer"></div>
+        <div id="mapdiv" style="transform-origin: 0 0;">
+          <h1 id="project-title"></h1>
+          <div id="nodecontainers">
+            <img src="" id="map" alt="">
+          </div>      
+        </div>
+        <div id="no-map-info">
+          <div id="no-map-info-content">
+            <h1>You do not currently have a map loaded.</h1>
+            <button id="backgroundBtn">Load BackgroundImage</button>
+          </div>
+        </div>
       </div>
-      
-      
-    </div>
-     <div id="no-map-info">
-      <div id="no-map-info-content">
-        <h1>You do not currently have a map loaded.</h1>
-        <button id="backgroundBtn">Load BackgroundImage</button>
+      <div class="cell b">
+        <trix-editor></trix-editor>
       </div>
     </div>
 
-    <div id="no-project-info">
-      <div id="no-project-info-content">
-        <h1>You do not currently have a project loaded.</h1>
-        <p>You can select 'file/NewProject' to create a new project, or select 'file/LoadProject' to access a previously made project.</p>
-      </div>
-    </div>    
+
+
   </body>
 </html>
