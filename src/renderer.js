@@ -1,3 +1,5 @@
+const { stat } = require("fs");
+
 const hasPositionChanged = ({ pos, prevPos }) => pos !== prevPos;
 
 const valueInRange = ({ minScale, maxScale, scale }) => scale <= maxScale && scale >= minScale;
@@ -55,6 +57,17 @@ const canGetZoom = (state) => ({
     }
 });
 
+const canForceZoom = (state) => ({
+    forcezoom: ({}) => {
+
+        state.element.style.transformOrigin = `0px 0px`;
+        state.element.style.transform = getMatrix({ scale: 0.1, translateX: 0, translateY: 0 });
+        state.element.style.left = '0px';
+        state.element.style.top = '0px';
+        state.transformation = { originX: 0, originY: 0, translateX: 0, translateY: 0, scale: 0.1 };
+    }
+});
+
 const renderer = ({ minScale, maxScale, element, scaleSensitivity = 10 }) => {
     const state = {
         element,
@@ -69,7 +82,7 @@ const renderer = ({ minScale, maxScale, element, scaleSensitivity = 10 }) => {
             scale: 1
         },
     };
-    return Object.assign({}, canZoom(state), canPan(state), canGetZoom(state));
+    return Object.assign({}, canZoom(state), canPan(state), canGetZoom(state), canForceZoom(state));
 };
 
 module.exports = { renderer };

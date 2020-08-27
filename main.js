@@ -11,34 +11,34 @@ const {basename} = require('path')
 const contextMenu = require('electron-context-menu');
 const fs = require('fs');
 
-let ActiveProject = false;
-
-let CurrentContent = {
-   projectdata:{
-      projecturl: "",
-      name: basename("NA"),
-      backgroundurl: ""
-   },
-   content: [
-      {
-         textEntries: [
-            {
-               defaultentry: "NA"
-            }
-         ]
-      }
-   ]
-}  
-
 const {
    SAVE_MAP_TO_STORAGE,
    CHANGE_MAP,
    CREATE_NEW_NODE,
    PROJECT_INITIALIZED,
    RESET_MAP,
+   REQUEST_NODE_CONTEXT,
+   DELETE_NODE,
+   VERIFY_NODE,
+   Databasetemplate,
+   DatabaseNodeentry,
+   DatabaseTextentry
 } = require('./utils/constants');
 
 const dbpath = "";
+var nodepath = "";
+var nodemenu = false;
+
+let ActiveProject = false;
+
+let CurrentContent = new Databasetemplate();
+
+
+
+let deleteoptions  = {
+   buttons: ["Yes","No","Cancel"],
+   message: "Do you really want to delete?"
+  }
 
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
@@ -51,9 +51,35 @@ contextMenu({
       },
       {
          label: 'Add Node',
+         visible: ActiveProject === true,
          visible: params.mediaType === 'image',
          click: () => {
-            win.webContents.send(CREATE_NEW_NODE , );
+            var newnode = new DatabaseNodeentry();
+            console.log(CurrentContent);
+            var loop = true;
+            var r = 0;
+            
+            while(loop){
+               r = Math.random() * 10000;
+
+               var ownerData = CurrentContent.content.nodes.filter(function(node) {
+                  return node.id === r;
+               })[0];
+               console.log(ownerData);
+               if(ownerData == null)
+               {
+                  loop = false;
+               }
+            }
+
+            newnode.id = r;
+
+            CurrentContent.content.nodes.push(newnode);
+
+            console.log(newnode);
+
+            win.webContents.send(CREATE_NEW_NODE , r);
+            
          }
       },
       {
@@ -62,7 +88,47 @@ contextMenu({
          click: () => {
             win.webContents.send(RESET_MAP , );
          }
-		}
+      },
+      {
+         type: 'separator',
+         visible: nodemenu === true,
+      },
+      {
+         label: 'DeleteNode',
+         visible: nodemenu === true,
+         click: () => {
+            dialog.showMessageBox(null, deleteoptions).then( (data) => {
+               if (data.response == 0)
+               {
+                  win.webContents.send(DELETE_NODE, nodepath);
+               }
+             });
+            /*
+            dialog.showMessageBox(deleteoptions, (response, checkboxChecked) => {
+               win.webContents.send(DELETE_NODE, nodepath);
+            })
+            */
+            nodemenu = false;
+         }
+      },
+      {
+         label: 'LockNode',
+         visible: nodemenu === true,
+         click: () => {
+            dialog.showMessageBox(null, deleteoptions).then( (data) => {
+               if (data.response == 0)
+               {
+                  win.webContents.send(DELETE_NODE, nodepath);
+               }
+             });
+            /*
+            dialog.showMessageBox(deleteoptions, (response, checkboxChecked) => {
+               win.webContents.send(DELETE_NODE, nodepath);
+            })
+            */
+            nodemenu = false;
+         }
+      }
 	]
 });
 
@@ -196,23 +262,31 @@ const newproject = async () => {
    if (!filename) {
        return;
    }
+   let DefaultContent = new Databasetemplate();
 
-   let DefaultContent = {
-      projectdata:{
-            projecturl: filename.filePath,
-            name: basename(filename.filePath, '.dmdb'),
-            backgroundurl: ""
-      },
-      content: [
-         {
-            textEntries: [
-               {
-                  defaultentry: "You can add or remove entries as you like."
-               }
-            ]
-         }
-      ]
-   }  
+   DefaultContent.name = basename(filename.filePath, '.dmdb');
+   DefaultContent.projecturl = filename.filePath;
+
+/*
+   DefaultContent.name = basename(filename.filePath, '.dmdb');
+   DefaultContent.projectdata.name = basename(filename.filePath, '.dmdb');
+   var test = {
+      id:0,
+      location:{x:0,y:0}  
+   }
+   */
+   //DefaultContent.content.nodes.push(test);
+/*
+   for (var i = 0; i < 10; i++)
+   {
+      var node = new DatabaseNodeentry();
+      node.id = i;
+      node.documentrefs.push("test", "test2");
+
+
+      DefaultContent.content.nodes.push(node)
+   }
+*/
 
    let data = JSON.stringify(DefaultContent, null, 2);
 
@@ -228,8 +302,21 @@ const newproject = async () => {
             console.log("An error ocurred reading the file :" + err.message);
              return;
          }
-   
-         CurrentContent = JSON.parse(data);
+
+         //CurrentContent = Databasetemplate.fromjson(data)/*
+         //var test = Object.create(Databasetemplate.prototype);
+         //test = 
+         //result = result && typeof result === 'object' ? result : testObject;
+         Databasetemplate.fromjson(data);
+
+         /*
+         var obj = JSON.parse(data);
+
+         CurrentContent = Object.assign(obj, Databasetemplate);
+
+         console.log(CurrentContent);
+         */
+         //CurrentContent = JSON.parse(data);
          ActiveProject = true;
          updaterenderer();
       }); 
@@ -267,8 +354,8 @@ const loadproject = async () => {
          console.log("An error ocurred reading the file :" + err.message);
           return;
       }
+      Databasetemplate.fromjson(data);
 
-      CurrentContent = JSON.parse(data);
       ActiveProject = true;
       updaterenderer();
    }); 
@@ -284,12 +371,13 @@ function saveproject()
    //CurrentContent.projectdata.name = "newname";
 
    let data = JSON.stringify(CurrentContent, null, 2);
+   console.log("output:" + data);
 
-   fs.writeFile(CurrentContent.projectdata.projecturl, data, (err) => {
+   fs.writeFile(CurrentContent.projecturl, data, (err) => {
       if(err){
           console.log("An error ocurred creating the file "+ err.message)
       }
-                  
+
       console.log("The file has been succesfully saved");
    });
 }
@@ -302,15 +390,58 @@ function updaterenderer()
 ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) => {
    if (ActiveProject)
    {
-      CurrentContent.projectdata.backgroundurl = mappath;
+      CurrentContent.backgroundurl = mappath;
       return true
    }
    else
    {
       return false
    }
- })
+})
 
+ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
+   nodepath = message;
+   nodemenu = true;
+});
+
+ipcMain.on(VERIFY_NODE, function(event, data) {
+   for (var i in CurrentContent.content.nodes) {
+      if (CurrentContent.content.nodes[i].id == data.id) {
+         CurrentContent.content.nodes[i].location = {x: data.x, y: data.y}
+         console.log(CurrentContent.content.nodes[i].location);
+         break; //Stop this loop, we found it!
+      }
+    }
+});
+
+Databasetemplate.fromjson = function(json)
+{
+   //console.log(json);
+   var data = JSON.parse(json);
+   //console.log(data);
+   db = new Databasetemplate;
+   db.projecturl = data.projecturl;
+   db.backgroundurl = data.backgroundurl;
+   db.name = data.name;
+
+   data.content.textEntires.forEach(jsondoc => {
+      var newdoc = new DatabaseTextentry();
+      newdoc.id = jsondoc.id;
+      newdoc.content = jsondoc.content;
+      db.content.textEntires.push(newdoc);
+   });
+
+   data.content.nodes.forEach(jsonnode => {
+      var newnode = new DatabaseNodeentry();
+      newnode.id = jsonnode.id;
+      newnode.location = jsonnode.location;
+      newnode.documentrefs = jsonnode.documentrefs;
+      db.content.nodes.push(newnode);
+      //console.log(newnode);
+   });
+
+   CurrentContent = db;
+}
 
 
 app.on('ready', () => {

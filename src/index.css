@@ -29,6 +29,7 @@ header{
 }
 
 #node-icon{
+  pointer-events: auto;
   width: 64px;
   height: 64px;
   background-size: cover;
@@ -38,11 +39,9 @@ header{
   position: absolute;
   z-index: 2;
 }
-#node-icon:hover{
-  transform: scale(1.1);
-}
 
 #mapdiv{
+  
   user-select: none;
   transform-origin: 0 0;
   -webkit-transform-origin: 0 0;

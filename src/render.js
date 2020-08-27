@@ -10,13 +10,24 @@ const {
   CREATE_NEW_NODE,
   PROJECT_INITIALIZED,
   RESET_MAP,
+  REQUEST_NODE_CONTEXT,
+  DELETE_NODE,
+  VERIFY_NODE,
 }  = require('../utils/constants');
 
 let rightClickPosition = null;
 var zoom = 1;
+var instance;
+var node;
 
+//contextmenuonnodes
 window.addEventListener('contextmenu', (e) => {
   rightClickPosition = {x: e.x, y: e.y}
+  node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
+  if (node.id == "node-icon")
+  {
+    ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("Db-Path"));
+  }
 }, false)
 
 const backgroundload = document.getElementById('backgroundBtn');
@@ -117,10 +128,10 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   const noprojectinfo = document.getElementById('no-project-info');
   noprojectinfo.style.display = 'none';
   const projecttitle = document.getElementById('project-title');
-  projecttitle.innerHTML = "ProjectName: " + message.CurrentContent.projectdata.name;
-
+  projecttitle.innerHTML = "ProjectName: " + message.CurrentContent.name;
+  console.log(message.CurrentContent.backgroundurl);
   //console.log(message.CurrentContent.projectdata.backgroundurl);
-  if (message.CurrentContent.projectdata.backgroundurl == "")
+  if (message.CurrentContent.backgroundurl == "")
   {
     switchtonomap();
   }
@@ -128,51 +139,86 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   {
     const map = document.getElementById('map');
 
-    map.src = message.CurrentContent.projectdata.backgroundurl;
+    map.src = message.CurrentContent.backgroundurl;
     switchtomap();
   }
+  importnodes(message);
 })
+
 
 ipcRenderer.on(RESET_MAP, (event, message) => {
-  var elmnt = document.getElementById("mapdiv")
-  elmnt.style.left = 0 + "px";
-  elmnt.style.top = 0 + "px";
+  resetmap(); 
 })
 
-ipcRenderer.on(CHANGE_MAP, (event, message) => {
-  getFileFromUser();
-})
+function resetmap()
+{
+  if (instance == null)
+  {
+    return;
+  }
 
-ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
-  var elmnt = document.getElementById("mapdiv")
-  
-  var img = document.createElement('button'); 
-  img.addEventListener("click", function() {
-    clickednode(img);
+  instance.forcezoom({})  
+
+  var test = instance.getzoom(
+    {
+      deltaScale: -1
+    }
+  )
+  zoom = test[0];
+}
+
+function importnodes(database)
+{
+  console.log(database.CurrentContent);
+  database.CurrentContent.content.nodes.forEach(element => {
+    createnode(element.location.x,element.location.y,element.id);
   });
+  //createnode(rightClickPosition.x,rightClickPosition.y,message);
+}
+
+function createnode(x,y, message)
+{
+  var elmnt = document.getElementById("mapdiv")
   
+  var img = document.createElement('button');
+  img.onmouseenter = function(){deactivatepanning = true};
+  img.onmouseout = function(){deactivatepanning = false};
+
+  dragNode(img, elmnt);
   img.id = "node-icon";
-  img.setAttribute("Db-Path", "nothingyet")
+  img.setAttribute("Db-Path", message)
+  img.setAttribute("locked", "false")
+
+  elmnt.appendChild(img); 
+    
+  img.style.left = (x  + "px");
+  img.style.top = (y  + "px");
+}
+
+
+function mousecreatenode(x,y, message)
+{
+  var elmnt = document.getElementById("mapdiv")
+  
+  var img = document.createElement('button');
+  img.onmouseenter = function(){deactivatepanning = true};
+  img.onmouseout = function(){deactivatepanning = false};
+
+  dragNode(img, elmnt);
+  img.id = "node-icon";
+  img.setAttribute("Db-Path", message)
+  img.setAttribute("locked", "false")
   var modifiedzoom = 1 / zoom;
 
-  //var previousorigin = elmnt.style.transformOrigin;
-  //var transforms = previousorigin.split("px");
   
   var originx = elmnt.getBoundingClientRect().left;
   var originy = elmnt.getBoundingClientRect().top;
-
-  
-  //var toriginx = parseFloat(transforms[0]);
-  //var toriginy = parseFloat(transforms[1]);
-  
-  //var testx = toriginx - originx;
-  //var testy = toriginy - originy;
   
 
-  var normalizedx = (rightClickPosition.x - originx);
+  var normalizedx = (x - originx);
   var multipliednormalizedx = (normalizedx * modifiedzoom) - 32;
 
-  var normalizedy = (rightClickPosition.y - originy);
+  var normalizedy = (y - originy);
   var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
 
   elmnt.appendChild(img); 
@@ -180,61 +226,105 @@ ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
   img.style.left = (multipliednormalizedx  + "px");
   img.style.top = (multipliednormalizedy  + "px");
 
-  //var nnormalizedx = (normalizedx + originx);
-
-  //var nnormalizedy = (normalizedy + originy);
-
-
-  //console.log(transforms);
-  
-/*
-  img.onload=function() { 
-    
-        console.log("mousex:" + rightClickPosition.x)
-        console.log(" -- originx:" + originx)
-        console.log(" -- normalized:" + normalizedx)
-        console.log(" -- modifiedzoom:" + modifiedzoom)
-        console.log(" -- multipliednormalized:" + multipliednormalizedx)
-        console.log(" -- final:" + (multipliednormalizedx - 32)  + "px");
-    
-    //console.log("test " + rightClickPosition.x + "/" + nnormalizedx + "----" + nnormalizedy + "/" + rightClickPosition.y);
-
-    
-    console.log("current origin:x" + originx + ".y" + originy + 
-    " --current mouseloc:x" + rightClickPosition.x + ".y" + rightClickPosition.y + 
-    " --current normalizedloc:x" + normalizedx + ".y" + normalizedy + 
-    " --current finalMultiplied:x" + multipliednormalizedx + ".y" + multipliednormalizedy +
-    " --current experiement1:x" + toriginx + ".y" + toriginy +
-    " --current experiement3:" + modifiedzoom + "---" + zoom
-    )
-    
-    elmnt.appendChild(img); 
-    
-    img.style.left = (multipliednormalizedx  + "px");
-    img.style.top = (multipliednormalizedy  + "px");
-
-    
-    
-    img.style.left = ((rightClickPosition.x - elmnt.offsetLeft) * modifiedzoom) - 32  + "px";
-    img.style.top = ((rightClickPosition.y - elmnt.offsetTop) * modifiedzoom) - 32 + "px";
-    
-  } // assign before src
-*/
-})
-
-function clickednode(elmnt)
-{
-  console.log("test");
+  data = {
+    x:multipliednormalizedx,
+    y:multipliednormalizedy,
+    id:message
+  };
+  ipcRenderer.send(VERIFY_NODE, data);
 }
 
+ipcRenderer.on(CHANGE_MAP, (event, message) => {
+  getFileFromUser();
+})
 
-// Make the DIV element draggable:
+ipcRenderer.on(DELETE_NODE, (event, message) => {
+  node.parentNode.removeChild(node);
+  document.getElementById("mapdiv").style.pointerEvents = 'auto';
+})
+
+var deactivatepanning = false;
+
+ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
+  mousecreatenode(rightClickPosition.x,rightClickPosition.y,message);
+})
+
+
+
+function dragNode(buttonelmnt, parentelmnt){
+  buttonelmnt.onmousedown = dragMouseDown; 
+
+  function dragMouseDown(e) {
+    e = e || window.event;
+
+    if ((e.keyCode || e.which) == 3)
+    {
+      return;
+    }
+
+    e.preventDefault();
+
+    parentelmnt.style.pointerEvents = 'none';
+
+    document.body.appendChild(buttonelmnt);
+    buttonelmnt.style.left = (e.clientX - 32) + "px";
+    buttonelmnt.style.top = (e.clientY - 32) + "px";
+    buttonelmnt.style.transform = `matrix(${zoom}, 0, 0, ${zoom}, 0, 0)`;
+
+    document.onmouseup = closeDragElement;
+    // call a function whenever the cursor moves:
+    document.onmousemove = elementDrag;
+  }
+
+  function elementDrag(e) {
+    e = e || window.event;
+    e.preventDefault();
+    buttonelmnt.style.left = (e.clientX - 32) + "px";
+    buttonelmnt.style.top = (e.clientY - 32) + "px";
+  }
+
+  function closeDragElement() {
+    // stop moving when mouse button is released:
+    document.onmouseup = null;
+    document.onmousemove = null;
+    parentelmnt.style.pointerEvents = 'auto';
+
+    var x = (parseFloat(buttonelmnt.style.left) + 32);
+    var y = (parseFloat(buttonelmnt.style.top) + 32);
+
+    buttonelmnt.style.transform = `matrix(1, 0, 0, 1, 0, 0)`;
+
+    var modifiedzoom = 1 / zoom;
+
+    var originx = parentelmnt.getBoundingClientRect().left;
+    var originy = parentelmnt.getBoundingClientRect().top;
+  
+    var normalizedx = (x - originx);
+    var multipliednormalizedx = (normalizedx * modifiedzoom) - 32;
+  
+    var normalizedy = (y - originy);
+    var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
+
+    parentelmnt.appendChild(buttonelmnt);
+
+    buttonelmnt.style.left = (multipliednormalizedx  + "px");
+    buttonelmnt.style.top = (multipliednormalizedy  + "px");
+
+    //send data to main
+    data = {
+      x:multipliednormalizedx,
+      y:multipliednormalizedy,
+      id:buttonelmnt.getAttribute("Db-Path")
+    };
+    ipcRenderer.send(VERIFY_NODE, data);
+  }
+}
+
 dragElement(document.getElementById("mapdiv"));
 
-
 function dragElement(elmnt) {
-  const instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
-
+  instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
+  resetmap();
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   if (document.getElementById(elmnt.id + "header")) {
     // if present, the header is where you move the DIV from:
@@ -243,37 +333,17 @@ function dragElement(elmnt) {
     // otherwise, move the DIV from anywhere inside the DIV:
     elmnt.onmousedown = dragMouseDown;
   }
-  
+
+
   var supportsWheel = false;
 
   // The function that will run when the events are triggered. 
   function DoSomething (e) {
+    if (deactivatepanning) {return;}
+
     if (e.type == "wheel") supportsWheel = true;
     else if (supportsWheel) return;
-    /*
-    var delta = ((e.deltaY || -e.wheelDelta || e.detail) >> 10) || 1;
 
-    var difference = elmnt.style.offsetWidth * 0.05;
-
-
-    console.log(difference);
-
-    //var mousePos = screen.getCursorScreenPoint();
-    if (delta < 0)
-    {      
-      zoom = zoom + 0.05;
-      if (zoom > 5) {
-        zoom = 5;
-      }
-    }
-    else if (delta > 0)
-    {
-      zoom = zoom - 0.05;
-      if (zoom < 0.05) {
-        zoom = 0.05;
-      }
-    }
-    */
     instance.zoom({
       deltaScale: Math.sign(e.deltaY) > 0 ? -1 : 1,
       x: e.pageX,
@@ -286,18 +356,6 @@ function dragElement(elmnt) {
       }
     )
     zoom = test[0];
-    
-    //set div loc
-    /*
-    elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-    elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
-    */
-    //scales in 0.05 increments only.
-
-
-
-
-    //elmnt.style.transform = "scale(" + zoom + "," + zoom + ")";
   }
 
   // Add the event listeners for each event.
@@ -306,6 +364,7 @@ function dragElement(elmnt) {
   document.addEventListener('DOMMouseScroll', DoSomething);
 
   function dragMouseDown(e) {
+    if (deactivatepanning) {return;}
     e = e || window.event;
     e.preventDefault();
     // get the mouse cursor position at startup:
@@ -317,6 +376,7 @@ function dragElement(elmnt) {
   }
 
   function elementDrag(e) {
+    if (deactivatepanning) {return;}
     e = e || window.event;
     e.preventDefault();
     // calculate the new cursor position:

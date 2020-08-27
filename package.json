@@ -15,10 +15,14 @@
   "license": "GNU",
   "devDependencies": {
     "electron": "^9.2.1",
-    "electron-packager": "^15.1.0"
+    "electron-packager": "^15.1.0",
+    "electron-rebuild": "^2.0.1"
   },
   "dependencies": {
     "electron-context-menu": "^2.3.0",
     "electron-json-storage": "^4.2.0"
+  },
+  "directories": {
+    "output": "release/"
   }
 }
