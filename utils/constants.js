@@ -33,6 +33,7 @@ module.exports = {
     CREATE_NEW_NODE: 'create-new-node',
     PROJECT_INITIALIZED: 'project-initialized',
     RESET_MAP: 'reset-map',
+    REFRESH_PAGE: 'refresh-page',
     REQUEST_NODE_CONTEXT: 'request-node-context',
     DELETE_NODE: 'delete-node',
     VERIFY_NODE: 'verify-node',

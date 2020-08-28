@@ -18,6 +18,7 @@ const {
    CREATE_NEW_NODE,
    PROJECT_INITIALIZED,
    RESET_MAP,
+   REFRESH_PAGE,
    REQUEST_NODE_CONTEXT,
    DELETE_NODE,
    VERIFY_NODE,
@@ -230,7 +231,12 @@ const template = [
       label: 'View',
       submenu: [
          {
-            role: 'reload'
+            label: 'Refresh',
+            click: () => {
+               win.reload();
+               updaterenderer();
+            },
+            accelerator: 'CommandOrControl+R'
          },
          {
             role: 'toggledevtools'
@@ -498,6 +504,10 @@ ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) =>
    return true;
 })
 
+ipcMain.on(REFRESH_PAGE, function(event) {
+   updaterenderer();
+});
+
 ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
    nodepath = message;
    nodemenu = true;
@@ -556,8 +566,5 @@ app.on('ready', () => {
    if (!ret) {
       console.log('registration failed')
    }
-
-   // Check whether a shortcut is registered.
-   console.log(globalShortcut.isRegistered('CommandOrControl+D'))
 })
 app.on('ready', createWindow)

@@ -13,14 +13,15 @@ var splitinstance = Split(['.a','.b'], {
   sizes: [100, 0],
   minSize: [100, 0],
 })
-document.getElementsByClassName('gutter')[0].style.display = "block";
-document.getElementById('textbox').style.display = "block";
+//document.getElementsByClassName('gutter')[0].style.display = "block";
+//document.getElementById('textbox').style.display = "block";
 const {
   SAVE_MAP_TO_STORAGE,
   CHANGE_MAP,
   CREATE_NEW_NODE,
   PROJECT_INITIALIZED,
   RESET_MAP,
+  REFRESH_PAGE,
   REQUEST_NODE_CONTEXT,
   DELETE_NODE,
   VERIFY_NODE,
@@ -32,6 +33,8 @@ let rightClickPosition = null;
 var zoom = 1;
 var instance;
 var node;
+
+ipcRenderer.send(REFRESH_PAGE);
 
 //contextmenuonnodes
 window.addEventListener('contextmenu', (e) => {
@@ -121,6 +124,8 @@ function switchtonomap()
 
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
 
+  var text = document.getElementById('texteditor').innerHTML;
+  console.log(text);
 
   document.querySelectorAll('.node').forEach(function(a) {
     a.remove()
@@ -390,7 +395,7 @@ function dragNode(buttonelmnt, parentelmnt){
   }
 }
 
-dragElement(document.getElementById("mapdiv"), document.getElementById("textbox"));
+dragElement(document.getElementById("mapdiv"), document.getElementById("textcontainera"));
 
 function dragElement(elmnt, textelmnt) {
   instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });

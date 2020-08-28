@@ -7,9 +7,11 @@
 html, body{
   margin: 0; 
   overflow:hidden;
-  color: black;
+  color: white;
   background-color: #2e2c29;
   height: 100vh;
+  --scrollbarBG: #CFD8DC;
+  --thumbBG: #90A4AE;
 }
 
 header{
@@ -33,10 +35,10 @@ header{
 .content{
   display: flex;
   position: relative;
+  height: 100%;
 }
 
 .a{
-  display: flex;
   width: 100%;
 }
 
@@ -44,18 +46,37 @@ header{
   background-color: rgb(32, 32, 32);
   background-blend-mode: overlay;
   z-index: 10;
-  display: none;
+  display: block;
 }
 
 .gutter{
   height: 100vh;
   background: rgb(54, 54, 54);
   z-index: 9;
-  display: none;
+  display: block;
 }
 
 .gutter.gutter-horizontal {
   cursor: ew-resize;
+}
+
+#textcontainera{
+  height: 100%;
+  min-height: 100%;
+  overflow:hidden;
+}
+
+
+#texteditor{
+  resize: none;
+  margin: 5px;
+  height: calc(100% - 10px);
+  width: calc(100% - 10px);;
+  overflow-y: scroll;
+  overflow-x: scroll;
+  outline:none;
+  background-color: rgb(148,147,147);
+  color: black;
 }
 
 #node-icon{
@@ -101,12 +122,12 @@ header{
   padding: 10px;
   background-color: rgba(0, 0, 0, 0.185);
   background-blend-mode: overlay;
-  color: white;
   border-radius: 5px;
 }
 
 #backgroundBtn{
   background-color: rgba(0, 0, 0, 0.185);
+  color: white;
   background-blend-mode: overlay;
   border: none;
   outline:none;
