@@ -37,6 +37,7 @@ module.exports = {
     DELETE_NODE: 'delete-node',
     VERIFY_NODE: 'verify-node',
     TOGGLE_NODE: 'toggle-node',
+    TOGGLE_TEXT_EDITOR: 'toggle-text-editor',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,

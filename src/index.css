@@ -7,7 +7,9 @@
 html, body{
   margin: 0; 
   overflow:hidden;
-  color: white;
+  color: black;
+  background-color: #2e2c29;
+  height: 100vh;
 }
 
 header{
@@ -30,19 +32,30 @@ header{
 
 .content{
   display: flex;
+  position: relative;
+}
+
+.a{
+  display: flex;
+  width: 100%;
 }
 
 .b{
   background-color: rgb(32, 32, 32);
   background-blend-mode: overlay;
   z-index: 10;
-  padding: 10px;
+  display: none;
 }
 
 .gutter{
   height: 100vh;
   background: rgb(54, 54, 54);
-  z-index: 11;
+  z-index: 9;
+  display: none;
+}
+
+.gutter.gutter-horizontal {
+  cursor: ew-resize;
 }
 
 #node-icon{
@@ -77,6 +90,7 @@ header{
 
 #no-map-info {
   margin-top: 10vh;
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -89,4 +103,11 @@ header{
   background-blend-mode: overlay;
   color: white;
   border-radius: 5px;
+}
+
+#backgroundBtn{
+  background-color: rgba(0, 0, 0, 0.185);
+  background-blend-mode: overlay;
+  border: none;
+  outline:none;
 }

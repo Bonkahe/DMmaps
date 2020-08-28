@@ -4,6 +4,7 @@ const {
    Menu, 
    ipcMain,
    dialog,
+   globalShortcut,
 } = require('electron')
 const url = require('url')
 const path = require('path')
@@ -21,6 +22,7 @@ const {
    DELETE_NODE,
    VERIFY_NODE,
    TOGGLE_NODE,
+   TOGGLE_TEXT_EDITOR,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry
@@ -487,6 +489,8 @@ function updaterenderer()
    win.webContents.send(PROJECT_INITIALIZED , {CurrentContent});
 }
 
+
+
 ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) =>
 {
    CurrentContent.backgroundurl = mappath;
@@ -544,5 +548,16 @@ Databasetemplate.fromjson = function(json)
 app.on('ready', () => {
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
+
+  const ret = globalShortcut.register('CommandOrControl+D', () => {
+   win.webContents.send(TOGGLE_TEXT_EDITOR , {});
+   })
+
+   if (!ret) {
+      console.log('registration failed')
+   }
+
+   // Check whether a shortcut is registered.
+   console.log(globalShortcut.isRegistered('CommandOrControl+D'))
 })
 app.on('ready', createWindow)

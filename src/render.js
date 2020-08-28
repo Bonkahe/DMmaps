@@ -4,7 +4,17 @@ const { dialog, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs'); // Load the File System to execute our common tasks (CRUD)
 const {ipcRenderer} = require('electron');
 const { renderer } = require('./renderer');
+window.$ = window.jQuery = require('jquery');
+
+
+
 const Split = require('split.js')
+var splitinstance = Split(['.a','.b'], {
+  sizes: [100, 0],
+  minSize: [100, 0],
+})
+document.getElementsByClassName('gutter')[0].style.display = "block";
+document.getElementById('textbox').style.display = "block";
 const {
   SAVE_MAP_TO_STORAGE,
   CHANGE_MAP,
@@ -15,15 +25,13 @@ const {
   DELETE_NODE,
   VERIFY_NODE,
   TOGGLE_NODE,
+  TOGGLE_TEXT_EDITOR,
 }  = require('../utils/constants');
 
 let rightClickPosition = null;
 var zoom = 1;
 var instance;
 var node;
-
-Split(['.a','.b']);
-
 
 //contextmenuonnodes
 window.addEventListener('contextmenu', (e) => {
@@ -34,6 +42,8 @@ window.addEventListener('contextmenu', (e) => {
     ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("Db-Path"));
   }
 }, false)
+
+
 
 const backgroundload = document.getElementById('backgroundBtn');
 backgroundload.onclick = e => {
@@ -110,6 +120,8 @@ function switchtonomap()
 
 
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
+
+
   document.querySelectorAll('.node').forEach(function(a) {
     a.remove()
   })
@@ -265,6 +277,17 @@ ipcRenderer.on(DELETE_NODE, (event, message) => {
 
 var deactivatepanning = false;
 
+ipcRenderer.on(TOGGLE_TEXT_EDITOR, (event, message) => {
+  if (splitinstance.getSizes()[1] > 10)
+  {
+    splitinstance.setSizes([100, 0]);
+  }
+  else
+  {
+    splitinstance.setSizes([50, 50]);
+  }
+})
+
 ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
   mousecreatenode(rightClickPosition.x,rightClickPosition.y,message);
 })
@@ -367,9 +390,9 @@ function dragNode(buttonelmnt, parentelmnt){
   }
 }
 
-dragElement(document.getElementById("mapdiv"));
+dragElement(document.getElementById("mapdiv"), document.getElementById("textbox"));
 
-function dragElement(elmnt) {
+function dragElement(elmnt, textelmnt) {
   instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
   resetmap();
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -381,12 +404,15 @@ function dragElement(elmnt) {
     elmnt.onmousedown = dragMouseDown;
   }
 
-
   var supportsWheel = false;
 
   // The function that will run when the events are triggered. 
   function DoSomething (e) {
-    //if (deactivatepanning) {return;}
+
+    if (e.pageX > textelmnt.getBoundingClientRect().left)
+    {
+      return;
+    }
 
     if (e.type == "wheel") supportsWheel = true;
     else if (supportsWheel) return;
