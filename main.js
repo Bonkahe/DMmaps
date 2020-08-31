@@ -18,15 +18,23 @@ const {
    CREATE_NEW_NODE,
    PROJECT_INITIALIZED,
    RESET_MAP,
+   REFRESH_DATABASE,
+   REFRESH_DATABASE_COMPLETE,
    REFRESH_PAGE,
+   REFRESH_HIREARCHY,
    REQUEST_NODE_CONTEXT,
    DELETE_NODE,
    VERIFY_NODE,
+   REQUEST_DOCUMENT_BYNODE,
+   REQUEST_DOCUMENT_BYDOC,
+   SAVE_DOCUMENT,
+   NEW_DOCUMENT,
    TOGGLE_NODE,
    TOGGLE_TEXT_EDITOR,
+   TOGGLE_HIREARCHY,
    Databasetemplate,
    DatabaseNodeentry,
-   DatabaseTextentry
+   DatabaseTextentry,
 } = require('./utils/constants');
 
 const dbpath = "";
@@ -76,6 +84,33 @@ contextMenu({
             }
 
             newnode.id = r;
+            
+            /**TEST DOCUMENT CREATOR */
+            var newdoc = new DatabaseTextentry();
+            loop = true;
+            var newr = 0;
+            
+            while(loop){
+               newr = Math.random() * 10000;
+
+               var ownerData = CurrentContent.content.textEntries.filter(function(doc) {
+                  return doc.id === newr;
+               })[0];
+               //console.log(ownerData);
+               if(ownerData == null)
+               {
+                  loop = false;
+               }
+            }
+
+            newdoc.id = newr;
+
+            /**Handles keeping the doc reference in the node */
+            newnode.documentref = newr;
+
+            CurrentContent.content.textEntries.push(newdoc);
+
+            /** end region */
 
             CurrentContent.content.nodes.push(newnode);
 
@@ -107,12 +142,35 @@ contextMenu({
                   {
                      if (CurrentContent.content.nodes[i].id == nodepath)
                      {
+                        for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
+                        {
+                           if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
+                           {
+                              if (CurrentContent.content.textEntries[j].childdocuments.length > 0)
+                              {
+                                 for (var k = 0; k < CurrentContent.content.textEntries[j].childdocuments.length; k++)
+                                 {
+                                    for (var l = 0; l < CurrentContent.content.textEntries.length; l++)
+                                    {
+                                       if (CurrentContent.content.textEntries[l].id == CurrentContent.content.textEntries[j].childdocuments[k])
+                                       {
+                                          CurrentContent.content.textEntries[l].parentid = null;
+                                       }
+                                    }
+                                 }
+                              }
+                              CurrentContent.content.textEntries.splice(j, 1);
+                           }
+                        }
+
                         CurrentContent.content.nodes.splice(i, 1);
                         break;
                      }
                   }
 
                   win.webContents.send(DELETE_NODE, nodepath);
+
+                  win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
                   dirtyproject = true;
                }
              });
@@ -171,6 +229,8 @@ function createWindow() {
       protocol: 'file:',
       slashes: true,
    }))
+
+   win.webContents.openDevTools();
 }
 
 const template = [
@@ -282,7 +342,7 @@ const newproject = async () => {
       dialog.showMessageBox(null, deleteoptions).then( (data) => {
          if (data.response == 0)
          {
-            saveasproject(false, true);
+            saveproject(false, true);
          }
          else
          {
@@ -296,56 +356,6 @@ const newproject = async () => {
       CurrentContent = new Databasetemplate();
       updaterenderer();
    }
-   
-
-   /*
-   let options = {
-      title : "Choose new file path", 
-
-      defaultPath : ".",
-      
-      buttonLabel : "Create Project",
-      filters: [
-         { name: 'DungeonMaster Database', extensions: ['dmdb'] }
-       ],
-      properties: ['openFile']
-   }
-   // Triggers the OS' Open File Dialog box. We also pass it as a Javascript
-   // object of different configuration arguments to the function
- 
-   //This operation is asynchronous and needs to be awaited
-   const filename = await dialog.showSaveDialog(win, options, {
-       // The Configuration object sets different properties on the Open File Dialog 
-       //properties: ['openDirectory']
-   });
- 
-   // If we don't have any files, return early from the function
-   if (!filename) {
-       return;
-   }
-   CurrentContent.name = basename(filename.filePath, '.dmdb');
-   CurrentContent.projecturl = filename.filePath;
-
-   let data = JSON.stringify(DefaultContent, null, 2);
-
-   fs.writeFile(filename.filePath, data, (err) => {
-      if(err){
-          console.log("An error ocurred creating the file "+ err.message)
-      }
-                  
-      console.log("The file has been succesfully saved");
-
-      fs.readFile(filename.filePath, 'utf-8', (err, data) => {
-         if(err){
-            console.log("An error ocurred reading the file :" + err.message);
-             return;
-         }
-
-         
-         updaterenderer();
-      }); 
-   });
-   */
 }
 
 function loadproject()
@@ -359,7 +369,7 @@ function loadproject()
       dialog.showMessageBox(null, deleteoptions).then( (data) => {
          if (data.response == 0)
          {
-            saveasproject(true, false);
+            saveproject();
             return;
          }
          else
@@ -411,7 +421,12 @@ const deeploadproject = async () => {
    }); 
 }
 
-const saveasproject = async (load, newfile) => {
+function saveproject()
+{
+   win.webContents.send(REFRESH_DATABASE);
+}
+
+const saveasproject = async () => {
    let options = {
       title : "Save as", 
 
@@ -455,21 +470,20 @@ const saveasproject = async (load, newfile) => {
          }
 
          dirtyproject = false;
-
-         if (load == true)
-         {
-            deeploadproject();
-         }
-         if (newfile == true)
-         {
-            newproject();
-         }
+         win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
       }); 
    });
 }
 
-function saveproject()
+
+function updaterenderer()
 {
+   win.webContents.send(PROJECT_INITIALIZED , {CurrentContent});
+}
+
+ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
+   console.log("test");
+
    if (CurrentContent.projecturl == "")
    {
       saveasproject();
@@ -486,16 +500,100 @@ function saveproject()
           console.log("An error ocurred creating the file "+ err.message)
       }
       dirtyproject = false;
+      win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
       console.log("The file has been succesfully saved");
    });
-}
+});
 
-function updaterenderer()
+
+ipcMain.handle(REQUEST_DOCUMENT_BYDOC, async (event, docid) =>
 {
-   win.webContents.send(PROJECT_INITIALIZED , {CurrentContent});
-}
+   var documentData;
 
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == docid)
+      {
+         documentData = CurrentContent.content.textEntries[i];
+         break;
+      }
+   }
 
+   if (documentData == null)
+   {
+      return null;
+   }
+   else
+   {
+      return documentData;
+   }
+})
+
+ipcMain.handle(REQUEST_DOCUMENT_BYNODE, async (event, nodeid) =>
+{
+   var ownerData;
+   var documentData;
+  
+   for (var i =0; i < CurrentContent.content.nodes.length; i++)
+   {
+      if (CurrentContent.content.nodes[i].id == nodeid)
+      {
+         ownerData = CurrentContent.content.nodes[i];
+         break;
+      }
+   }
+
+   if (ownerData == null)
+   {
+      return null;
+   }
+
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == ownerData.documentref)
+      {
+         documentData = CurrentContent.content.textEntries[i];
+         break;
+      }
+   }
+
+   if (documentData == null)
+   {
+      return null;
+   }
+   else
+   {
+      return documentData;
+   }
+})
+
+ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
+{
+   //console.log(document);
+   //console.log(CurrentContent.content.textEntries);
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == document.id)
+      {
+         //console.log("found id " + document.id);
+         if (CurrentContent.content.textEntries[i].content != document.content 
+            || CurrentContent.content.textEntries[i].name != document.name 
+            || CurrentContent.content.textEntries[i].childdocuments != document.childdocuments)
+         {
+            CurrentContent.content.textEntries[i].name = document.name;
+            CurrentContent.content.textEntries[i].content = document.content;
+            CurrentContent.content.textEntries[i].childdocuments = document.childdocuments;
+
+            win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+            dirtyproject = true;
+            
+            return true;
+         }
+      }
+   }   
+
+   return false;
+})
 
 ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) =>
 {
@@ -508,6 +606,30 @@ ipcMain.on(REFRESH_PAGE, function(event) {
    updaterenderer();
 });
 
+ipcMain.on(NEW_DOCUMENT, function(event) {
+   var newdoc = new DatabaseTextentry();
+   loop = true;
+   var newr = 0;
+   
+   while(loop){
+      newr = Math.random() * 10000;
+
+      var ownerData = CurrentContent.content.textEntries.filter(function(doc) {
+         return doc.id === newr;
+      })[0];
+      //console.log(ownerData);
+      if(ownerData == null)
+      {
+         loop = false;
+      }
+   }
+   newdoc.id = newr;
+   console.log(newdoc);
+   CurrentContent.content.textEntries.push(newdoc);
+   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+   dirtyproject = true;
+});
+
 ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
    nodepath = message;
    nodemenu = true;
@@ -517,7 +639,7 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
    for (var i in CurrentContent.content.nodes) {
       if (CurrentContent.content.nodes[i].id == data.id) {
          CurrentContent.content.nodes[i].location = {x: data.x, y: data.y}
-         //console.log(CurrentContent.content.nodes[i].location);
+         win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
          dirtyproject = true;
          break; //Stop this loop, we found it!
       }
@@ -534,18 +656,21 @@ Databasetemplate.fromjson = function(json)
    db.backgroundurl = data.backgroundurl;
    db.name = data.name;
 
-   data.content.textEntires.forEach(jsondoc => {
+   data.content.textEntries.forEach(jsondoc => {
       var newdoc = new DatabaseTextentry();
+      newdoc.parentid = jsondoc.parentid;
       newdoc.id = jsondoc.id;
+      newdoc.name = jsondoc.name;
       newdoc.content = jsondoc.content;
-      db.content.textEntires.push(newdoc);
+      newdoc.childdocuments = jsondoc.childdocuments;
+      db.content.textEntries.push(newdoc);
    });
 
    data.content.nodes.forEach(jsonnode => {
       var newnode = new DatabaseNodeentry();
       newnode.id = jsonnode.id;
       newnode.location = jsonnode.location;
-      newnode.documentrefs = jsonnode.documentrefs;
+      newnode.documentref = jsonnode.documentref;
       newnode.locked = jsonnode.locked;
       db.content.nodes.push(newnode);
       //console.log(newnode);
@@ -556,15 +681,14 @@ Databasetemplate.fromjson = function(json)
 
 
 app.on('ready', () => {
-  const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
+   const menu = Menu.buildFromTemplate(template)
+   Menu.setApplicationMenu(menu)
 
-  const ret = globalShortcut.register('CommandOrControl+D', () => {
-   win.webContents.send(TOGGLE_TEXT_EDITOR , {});
+   globalShortcut.register('CommandOrControl+D', () => {
+      win.webContents.send(TOGGLE_TEXT_EDITOR , {});
    })
-
-   if (!ret) {
-      console.log('registration failed')
-   }
+   globalShortcut.register('CommandOrControl+A', () => {
+      win.webContents.send(TOGGLE_HIREARCHY , {});
+   })
 })
 app.on('ready', createWindow)

@@ -24,6 +24,7 @@
     "froala-editor": "^3.2.1",
     "jquery": "^3.5.1",
     "jsdom": "^16.4.0",
+    "sortablejs": "^1.10.2",
     "split.js": "^1.6.2",
     "summernote": "^0.8.18"
   },

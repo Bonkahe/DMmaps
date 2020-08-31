@@ -12,7 +12,16 @@
   <body>
 
     <div class="content">
-      <div class="cell a">
+      <div id="hirearchycontainer" class="cell a">
+        <div id="hirearchycontent">
+          <div class="btn-group">
+            <button id="btn-newdoc"><strong>+</strong></button>
+          </div>
+          <ul id="hirearchylist">
+          </ul>
+        </div>
+      </div>
+      <div class="cell b">
         <div id="nodecontainer"></div>
         <div id="mapdiv" style="transform-origin: 0 0;">
           <h1 id="project-title"></h1>
@@ -27,9 +36,20 @@
           </div>
         </div>
       </div>
-      <div id="textcontainera" class="cell b">
-        <div id="texteditor" contenteditable="true">
+      <div id="textcontainer" class="cell c">
+        <div id="texteditor-title-holder" db-path="">
+          <div id="texteditor-title" contenteditable="true"></div>          
         </div>
+        <div id="texteditor-menu">
+          <div class="btn-group">
+            <button id="btn-bold"><strong>B</strong></button>
+            <button><i>I</i></button>
+            <button><u>U</u></button>
+            <button>Clear</button>
+            <button id="btn-save" >Save</button>
+          </div>
+        </div>
+        <div  id="texteditor" contenteditable="true"></div>
         
       </div>
     </div>

@@ -12,6 +12,7 @@ html, body{
   height: 100vh;
   --scrollbarBG: #CFD8DC;
   --thumbBG: #90A4AE;
+  user-select: none;
 }
 
 header{
@@ -19,6 +20,18 @@ header{
   flex-direction:row;
   justify-content: flex-start;
   -webkit-app-region: drag;
+}
+
+ul{
+  list-style-type: none;
+}
+
+ul > li {
+  margin-left: 10px;
+}
+
+#highlight {
+  background: green;
 }
 
 .option {
@@ -39,10 +52,24 @@ header{
 }
 
 .a{
-  width: 100%;
+  background-color: rgb(32, 32, 32);
+  background-blend-mode: overlay;
+  z-index: 10;
+  display: block;
+}
+
+.a #hirearchycontent{
+  width: calc(100% - 10px);
+  height: calc(100% - 10px);
+  overflow: hidden;
+  margin: 10px;
 }
 
 .b{
+  width: 100%;
+}
+
+.c{
   background-color: rgb(32, 32, 32);
   background-blend-mode: overlay;
   z-index: 10;
@@ -50,33 +77,108 @@ header{
 }
 
 .gutter{
+  width: 10px;
   height: 100vh;
   background: rgb(54, 54, 54);
   z-index: 9;
   display: block;
+  border-left: 1px solid rgb(36, 36, 36);
+  border-right: 1px solid rgb(36, 36, 36);
 }
 
 .gutter.gutter-horizontal {
   cursor: ew-resize;
 }
+/*
+#hirearchycontent .btn-group{
+}
+*/
 
-#textcontainera{
+#hirearchycontent .btn-group button {
+  outline:none;
+  background-color: #4CAF50; /* Green background */
+  border: 1px solid green; /* Green border */
+  color: white; /* White text */
+  padding: 0px 5px;
+  cursor: pointer; /* Pointer/hand icon */
+  float: left; /* Float the buttons side by side */
+}
+
+#hirearchycontent .btn-group button:not(:last-child) {
+  border-right: none; /* Prevent double borders */
+}
+
+/* Clear floats (clearfix hack) */
+#hirearchycontent .btn-group:after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+/* Add a background color on hover */
+#hirearchycontent .btn-group button:hover {
+  background-color: #3e8e41;
+}
+
+#texteditor-menu .btn-group{
+  margin: 5px;
+}
+
+#texteditor-menu .btn-group button {
+  outline:none;
+  background-color: #4CAF50; /* Green background */
+  border: 1px solid green; /* Green border */
+  color: white; /* White text */
+  padding: 0px 5px;
+  cursor: pointer; /* Pointer/hand icon */
+  float: left; /* Float the buttons side by side */
+}
+
+#texteditor-menu .btn-group button:not(:last-child) {
+  border-right: none; /* Prevent double borders */
+}
+
+/* Clear floats (clearfix hack) */
+#texteditor-menu .btn-group:after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+/* Add a background color on hover */
+#texteditor-menu .btn-group button:hover {
+  background-color: #3e8e41;
+}
+
+#textcontainer{
   height: 100%;
   min-height: 100%;
   overflow:hidden;
 }
 
+#texteditor-title-holder{
+  width: calc(100% - 10px);
+  padding: 5px;
+}
+
+#texteditor-title{
+  border: none;
+  outline:none;
+}
+
 
 #texteditor{
+  user-select: auto;
   resize: none;
   margin: 5px;
-  height: calc(100% - 10px);
+  height: calc(100% - 55px);
   width: calc(100% - 10px);;
   overflow-y: scroll;
-  overflow-x: scroll;
+  overflow-x: hidden;
   outline:none;
   background-color: rgb(148,147,147);
   color: black;
+  font-size: 7;
 }
 
 #node-icon{
@@ -93,8 +195,6 @@ header{
 }
 
 #mapdiv{
-  
-  user-select: none;
   transform-origin: 0 0;
   -webkit-transform-origin: 0 0;
   display: none;
