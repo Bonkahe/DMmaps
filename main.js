@@ -29,6 +29,10 @@ const {
    REQUEST_DOCUMENT_BYDOC,
    SAVE_DOCUMENT,
    NEW_DOCUMENT,
+   CHILD_DOCUMENT,
+   REMOVE_PARENT_DOCUMENT,
+   DELETE_DOCUMENT,
+   COMPLETE_DOCUMENT_DELETE,
    TOGGLE_NODE,
    TOGGLE_TEXT_EDITOR,
    TOGGLE_HIREARCHY,
@@ -48,7 +52,7 @@ let CurrentContent = new Databasetemplate();
 
 
 let deleteoptions  = {
-   buttons: ["Yes","No","Cancel"],
+   buttons: ["Yes","No"],
    message: "Do you really want to delete?"
   }
 
@@ -230,7 +234,7 @@ function createWindow() {
       slashes: true,
    }))
 
-   win.webContents.openDevTools();
+   //win.webContents.openDevTools();
 }
 
 const template = [
@@ -461,7 +465,7 @@ const saveasproject = async () => {
           console.log("An error ocurred creating the file "+ err.message)
       }
                   
-      console.log("The file has been succesfully saved");
+      //console.log("The file has been succesfully saved");
 
       fs.readFile(filename.filePath, 'utf-8', (err, data) => {
          if(err){
@@ -482,7 +486,7 @@ function updaterenderer()
 }
 
 ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
-   console.log("test");
+   //console.log("test");
 
    if (CurrentContent.projecturl == "")
    {
@@ -577,12 +581,10 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
       {
          //console.log("found id " + document.id);
          if (CurrentContent.content.textEntries[i].content != document.content 
-            || CurrentContent.content.textEntries[i].name != document.name 
-            || CurrentContent.content.textEntries[i].childdocuments != document.childdocuments)
+            || CurrentContent.content.textEntries[i].name != document.name )
          {
             CurrentContent.content.textEntries[i].name = document.name;
             CurrentContent.content.textEntries[i].content = document.content;
-            CurrentContent.content.textEntries[i].childdocuments = document.childdocuments;
 
             win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
             dirtyproject = true;
@@ -624,11 +626,130 @@ ipcMain.on(NEW_DOCUMENT, function(event) {
       }
    }
    newdoc.id = newr;
-   console.log(newdoc);
+   //console.log(newdoc);
    CurrentContent.content.textEntries.push(newdoc);
    win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
    dirtyproject = true;
 });
+
+ipcMain.on(CHILD_DOCUMENT, function(event, data) 
+{
+   //console.log(data);
+   var done = 0;
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == data.child)
+      {
+         if (CurrentContent.content.textEntries[i].parentid != null)
+         {
+            var huntdata = {
+               child: data.child,
+               parent: CurrentContent.content.textEntries[i].parentid
+            }
+
+            removechild(huntdata);
+         }
+
+         CurrentContent.content.textEntries[i].parentid = data.parent;
+         done = done + 1;
+      }
+
+      if (CurrentContent.content.textEntries[i].id == data.parent)
+      {
+         CurrentContent.content.textEntries[i].childdocuments.push(data.child);
+         done = done + 1;
+      }
+
+      if (done > 2)
+      {
+         break;
+      }
+   }   
+
+   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+   dirtyproject = true;
+});
+
+ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
+
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == data)
+      {
+         if (CurrentContent.content.textEntries[i].parentid != null)
+         {
+            var huntdata = {
+               child: data,
+               parent: CurrentContent.content.textEntries[i].parentid
+            }
+
+            removechild(huntdata);
+         }
+
+         CurrentContent.content.textEntries[i].parentid = "";
+         break;
+      }
+   }   
+
+   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+   dirtyproject = true;
+});
+
+ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
+   dialog.showMessageBox(null, deleteoptions).then( (data) => {
+      if (data.response == 0)
+      {
+         for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+         {
+            if (CurrentContent.content.textEntries[i].id == docid)
+            {
+               if (CurrentContent.content.textEntries[i].childdocuments != null)
+               {
+                  for (var j = 0; j < CurrentContent.content.textEntries[i].childdocuments.length; j++)
+                  {
+                     for (var k = 0; k < CurrentContent.content.textEntries.length; k++)
+                     {
+                        if (CurrentContent.content.textEntries[i].childdocuments[j] == CurrentContent.content.textEntries[k].id)
+                        {
+                           CurrentContent.content.textEntries[k].parentid = "";
+                        }
+                     }
+                  }
+               }
+               CurrentContent.content.textEntries.splice(i, 1);
+               win.webContents.send(COMPLETE_DOCUMENT_DELETE);
+               win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+
+               return;
+            }
+         }
+      }
+   });
+   
+});
+
+/** ---------------------------   Document editor functions   ----------------------------- */
+
+function removechild(data)
+{
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == data.parent)
+      {
+         for (var k = 0; k < CurrentContent.content.textEntries[i].childdocuments.length; k++)
+         {
+            if (CurrentContent.content.textEntries[i].childdocuments[k] == data.child)
+            {
+               CurrentContent.content.textEntries[i].childdocuments.splice(k, 1);
+               return;
+            }
+         }   
+      }
+   }   
+}
+
+/** ---------------------------   END -- Document editor functions   ----------------------------- */
+
 
 ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
    nodepath = message;

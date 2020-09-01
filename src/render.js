@@ -5,6 +5,9 @@ const fs = require('fs');
 const { renderer } = require('./renderer');
 window.$ = window.jQuery = require('jquery');
 const Split = require('split.js');
+//const Quill = require('quill');
+//const ImageResize = require('quill-image-resize-module');
+
 const {
   SAVE_MAP_TO_STORAGE,
   CHANGE_MAP,
@@ -22,6 +25,10 @@ const {
   REQUEST_DOCUMENT_BYDOC,
   SAVE_DOCUMENT,
   NEW_DOCUMENT,
+  CHILD_DOCUMENT,
+  REMOVE_PARENT_DOCUMENT,
+  DELETE_DOCUMENT,
+  COMPLETE_DOCUMENT_DELETE,
   TOGGLE_NODE,
   TOGGLE_TEXT_EDITOR,
   TOGGLE_HIREARCHY,
@@ -39,11 +46,52 @@ var deactivatepanning = false;
 
 var hirearchylist = document.getElementById('hirearchylist');
 var selecteddocid;
-var founddocs;
+var depth;
 var newhtml;
 
-var texteditorwindow = document.getElementById('texteditor');
+//var texteditorwindow = document.getElementById('texteditor');
 var texteditortitle = document.getElementById('texteditor-title');
+ 
+//Quill.register('modules/imageResize', ImageResize);
+var resize = Quill.import('modules/imageResize');
+Quill.register(resize, true);
+//var drop = Quill.import('modules/imageDrop');
+//Quill.register(drop, true);
+
+var Size = Quill.import('attributors/style/size');
+Size.whitelist = ['14px', '16px', '18px'];
+Quill.register(Size, true);
+
+var toolbarOptions = [
+  ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+  ['blockquote', 'code-block'],
+
+  //[{ 'header': 1 }, { 'header': 2 }],               // custom button values
+  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+  //[{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+  //[{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+  //[{ 'direction': 'rtl' }],                         // text direction
+
+  [{ 'size': ['14px', '16px', '18px'] }],  // custom dropdown
+  //[{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+
+  [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+  [{ 'font': [] }],
+  [{ 'align': [] }],
+  ['image' ],
+
+  ['clean']                                         // remove formatting button
+];
+
+var editor = new Quill('#editor', {
+  modules: {
+    toolbar: toolbarOptions,
+    imageResize: {modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]}
+    //imageDrop: true
+  },
+  theme: 'snow'
+});
+
 
 //May need to swap out later to allow hirearchy
 var splitinstance = Split(['.a','.b', '.c'], {
@@ -60,7 +108,7 @@ ipcRenderer.send(REFRESH_PAGE);
 window.addEventListener('contextmenu', (e) => {
   rightClickPosition = {x: e.x, y: e.y}
   node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
-  if (node.id == "node-icon")
+  if (node.className == "node-icon")
   {
     ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("Db-Path"));
   }
@@ -76,6 +124,11 @@ newdocbtn.onclick = e => {
   createdocument();
 };
 
+const deletdocbtn = document.getElementById('btn-deletedoc');
+deletdocbtn.onclick = e => {
+  deletedocument(completedelete);
+};
+
 document.getElementById("texteditor-title").addEventListener("input", function() {
   titlechanged = true;
 }, false);
@@ -86,6 +139,8 @@ document.getElementById("texteditor-title").addEventListener("input", function()
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   selecteddocid = null;
   titlechanged = false;
+
+  //console.log(message.CurrentContent.content.textEntries);
 
   document.querySelectorAll('.node').forEach(function(a) {
     a.remove()
@@ -147,6 +202,10 @@ ipcRenderer.on(DELETE_NODE, (event, message) => {
   document.getElementById("mapdiv").style.pointerEvents = 'auto';
 })
 
+ipcRenderer.on(COMPLETE_DOCUMENT_DELETE, (event, message) => {
+  completedelete();
+})
+
 ipcRenderer.on(TOGGLE_NODE, (event, message) => {
   togglenode(message.id, message.locked);
 })
@@ -173,23 +232,106 @@ function replaceSelectedText(text) {
 }
 */
 
-const savebtn = document.getElementById('btn-save');
-savebtn.onclick = e => {
+/*
+document.getElementById('btn-save').onclick = e => {
   btnsave();
 };
 
-const boldbtn = document.getElementById('btn-bold');
-boldbtn.onclick = e => {
-  btnbold();
+
+document.getElementById('btn-bold').onclick = e => {
+  btnweight();
 };
 
+
+document.getElementById('btn-italic').onclick = e => {
+  btnitalics();
+};
+
+
+document.getElementById('btn-under').onclick = e => {
+  btnvariable('u');
+};
+
+
+document.getElementById('btn-strike').onclick = e => {
+  btnvariable('s');
+};
+*/
 function btnsave ()
 {
   savetext();
 }
 
-function btnbold ()
+function btnweight ()
 {
+  var string = getSelectionHtml();
+
+  var stick = false;
+  var arrayOfStrings = string.split('<br>')
+
+  if (arrayOfStrings[0].fontweight == "normal")
+  {
+    stick = true;
+  }
+
+  string = "";
+  arrayOfStrings.forEach(element => {
+    if (stick)
+    {
+      element.fontweight = "bold"
+    }
+    else
+    {
+      element.fontweight = "normal"
+    }
+    string = string + element + '<br>';
+  });
+  //string = arrayOfStrings.join('<br>');
+  pasteHtmlAtCaret(string, false);
+}
+
+function btnitalics ()
+{
+  var string = getSelectionHtml();
+
+  var stick = false;
+  var arrayOfStrings = string.split('<br>')
+
+  if (arrayOfStrings[0].fontStyle == "normal")
+  {
+    stick = true;
+  }
+
+  string = "";
+  arrayOfStrings.forEach(element => {
+    if (stick)
+    {
+      element.fontStyle = "italic"
+    }
+    else
+    {
+      element.fontStyle = "normal"
+    }
+    string = string + element + '<br>';
+  });
+  //string = arrayOfStrings.join('<br>');
+  pasteHtmlAtCaret(string, false);
+}
+
+function btnvariable (styletype)
+{
+  var string = getSelectionHtml();
+
+  var arrayOfStrings = string.split('<br>')
+  string = "";
+  arrayOfStrings.forEach(element => {
+    element = element.fontStyle(styletype)
+    string = string + element + '<br>';
+  });
+  //string = arrayOfStrings.join('<br>');
+  pasteHtmlAtCaret(string, false);
+
+  /*
   var string = getSelectionHtml();
 
   var arrayOfStrings = string.split('<br>')
@@ -200,6 +342,7 @@ function btnbold ()
   });
   //string = arrayOfStrings.join('<br>');
   pasteHtmlAtCaret(string, false);
+  */
 }
 
 function pasteHtmlAtCaret(html, selectPastedContent) {
@@ -261,11 +404,6 @@ $('div[contenteditable]').keydown(function(e) {
   // trap the return key being pressed
   if (e.keyCode === 13) {
       // insert 2 br tags (if only one br tag is inserted the cursor won't go to the next line)
-      if (texteditorwindow.contains(window.getSelection().getRangeAt(0).commonAncestorContainer))
-      {
-        document.execCommand('insertHTML', false, '<br><br>');
-        return false;
-      }
       if (texteditortitle.contains(window.getSelection().getRangeAt(0).commonAncestorContainer))
       {
         savetext();
@@ -398,7 +536,8 @@ function closetexteditor()
 function cleartexteditor()
 {
   closetexteditor();
-  texteditorwindow.innerHTML = null;
+  editor.setText('')
+  //texteditorwindow.innerHTML = null;
   texteditortitle.innerText = null;
   texteditortitle.setAttribute('db-path',null);
 }
@@ -406,7 +545,8 @@ function cleartexteditor()
 function loadtext(document)
 {
   opentexteditor();
-  texteditorwindow.innerHTML = document.content;
+  editor.setContents(document.content);
+  //texteditorwindow.innerHTML = document.content;
   texteditortitle.innerText = document.name;
   texteditortitle.setAttribute('db-path',document.id);
   highlighttoggle(document.id);
@@ -457,29 +597,29 @@ function completerefresh ()
 
 function savetext (callback)
 {
-  if (texteditorwindow.innerHTML == "" && titlechanged == false)
+  if (editor.getContents() == null && titlechanged == false)
   {
     if (callback != null)
     {
       callback();
     }
 
-    //console.log("nothing to save")
+    console.log("nothing to save")
     return false;
   }
   var newdoc = new DatabaseTextentry();
   newdoc.id = texteditortitle.getAttribute('db-path');
   newdoc.name = texteditortitle.innerText;
-  newdoc.content = texteditorwindow.innerHTML;
+  newdoc.content = editor.getContents();
   titlechanged = false;
 
   ipcRenderer.invoke(SAVE_DOCUMENT, newdoc).then((result) => {
     if (result)
     {
-      console.log("Document saved successfully.")
+      //console.log("Document saved successfully.")
     }
     else{
-      console.log("Unable to save document due to not valid id")
+      //console.log("Unable to save document due to not valid id")
     }
     if (callback != null)
     {
@@ -549,8 +689,8 @@ function createnode(x,y, message,locked)
   };
 
   dragNode(img, elmnt);
-  img.id = "node-icon";
-  img.className = "node";
+  //img.id = "node-icon";
+  img.className = "node-icon";
   img.setAttribute("Db-Path", message)
   img.setAttribute("locked", locked)
 
@@ -574,6 +714,22 @@ function createdocument()
   ipcRenderer.send(NEW_DOCUMENT);
 }
 
+function deletedocument(callback)
+{
+  if (selecteddocid != null)
+  {
+    ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
+  }
+}
+
+function completedelete()
+{
+  texteditortitle.setAttribute('db-path', "");
+  texteditortitle.innerText = "";
+  editor.setText("");
+  selecteddocid = null;
+}
+
 function mousecreatenode(x,y, message)
 {
   var elmnt = document.getElementById("mapdiv")
@@ -591,10 +747,10 @@ function mousecreatenode(x,y, message)
   };
 
   dragNode(img, elmnt);
-  img.id = "node-icon";
+  //img.id = "node-icon";
   img.setAttribute("Db-Path", message)
   img.setAttribute("locked", "false")
-  img.className = "node";
+  img.className = "node-icon";
   var modifiedzoom = 1 / zoom;
 
   
@@ -665,11 +821,10 @@ function selectnode(buttonelmnt)
     }
     else
     {
-      console.log("No document attached to node.")
+      console.log("No document attached to node.");
     }
   })
 }
-
 
 function rebuildhirearchy(content)
 {
@@ -678,31 +833,36 @@ function rebuildhirearchy(content)
   var textEntries = [];
   textEntries = content.textEntries;
 
-  //console.log(textEntries);
-  founddocs = [];
+  console.log(textEntries);
 
   newhtml = '';
+  depth = 0;
 
   for(var i = 0; i < textEntries.length; i++)
   {
-    if ((founddocs.indexOf(textEntries[i].id) > -1))
+    if (textEntries[i].parentid != "")
     {
       continue;
     }
-
-    newhtml = newhtml + '<li Db-Path="' + textEntries[i].id + '" onclick="hirearchybuttonpressed(' + textEntries[i].id + ')">' + textEntries[i].name;
+    
+    newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[i].id + '" onclick="hirearchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + '</li>';
 
     if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
     {
-      newhtml = newhtml + '<ul>';
-      builddocs(textEntries, textEntries[i].childdocuments)
-      newhtml = newhtml + '</ul>';
+      builddocs(textEntries, textEntries[i].childdocuments, textEntries[i].id)
     }
-    newhtml = newhtml + '</li>'
-    founddocs.push(textEntries[i].id);
+
+    depth = 0;
+    //newhtml = newhtml + '</li>';
   }
 
+
   hirearchylist.innerHTML = newhtml;
+
+  var x = document.getElementsByClassName("hirearchylist-items");
+  for (var i = 0; i < x.length; i++) {
+    //sortList(x[i]);
+  }
 
   if (selecteddocid != null)
   {
@@ -712,12 +872,9 @@ function rebuildhirearchy(content)
 
 function builddocs(textEntries, childEntries)
 {
+  depth = depth + 10;
   for (var i = 0; i < childEntries.length; i++)
-  {
-    if ((founddocs.indexOf(childEntries[i].id) > -1))
-    {
-      continue;
-    }
+  {   
 
     for (var j = 0; j < textEntries.length; j++)
     {
@@ -725,25 +882,62 @@ function builddocs(textEntries, childEntries)
       {
         continue;
       }
-      newhtml = newhtml + '<li Db-Path="' + textEntries[j].id + '" onclick="hirearchybuttonpressed(' + textEntries[j].id + ')">' + textEntries[j].name;
+
+      newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[j].id + '" onclick="hirearchybuttonpressed(' + textEntries[j].id + ')" style="padding-left: ' + depth + 'px;">' +  textEntries[j].name + '</li>';
 
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
-        newhtml = newhtml + '<ul>';
-        builddocs(textEntries, textEntries[j].childdocuments)
-        newhtml = newhtml + '</ul>';
+        //newhtml = newhtml + '<ul class="hirearchylist-items">';
+        builddocs(textEntries, textEntries[j].childdocuments, textEntries[j].id)
+        //newhtml = newhtml + '</ul>';
       }
-      newhtml = newhtml + '</li>'
-      founddocs.push(textEntries[j].id);
+      //newhtml = newhtml + '</li>';
       break;
     }
   }
+  depth = depth - 10;
+}
+
+
+function sortList(ul) {
+  Array.from(ul.getElementsByTagName("li"))
+    .sort((a, b) => a.textContent.localeCompare(b.textContent))
+    .forEach(li => ul.appendChild(li));
 }
 
 function hirearchybuttonpressed(id)
 { 
+  //console.log(id);
   highlighttoggle(id);
   selectdoc(id);
+}
+
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+
+function drag(ev) {
+  ev.dataTransfer.setData("Db-Path", ev.target.getAttribute("Db-Path"));
+}
+
+function drop(ev) {
+  ev.preventDefault();
+  var data = {
+    child: ev.dataTransfer.getData("Db-Path"),
+    parent: ev.target.getAttribute("Db-Path")
+  }
+
+  if (data.child != data.parent)
+  {
+    ipcRenderer.send(CHILD_DOCUMENT, data);
+  }
+}
+
+function parentlessdrop(ev){
+  ev.preventDefault();
+  var data = ev.dataTransfer.getData("Db-Path");
+
+  ipcRenderer.send(REMOVE_PARENT_DOCUMENT, data);
 }
 
 function highlighttoggle(id)

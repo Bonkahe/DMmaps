@@ -5,8 +5,13 @@
     <meta charset="UTF-8">
     <title>Dungeon Master's Database</title>
 
+    <link href="./quill/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="index.css">
     
+    
+    <script src="./quill/quill.js"></script>
+    <script src="./quill/image-resize.min.js"></script>
+    <!--<script src="./quill/image-drop.min.js"></script>-->
     <script defer src="render.js"></script>
   </head>
   <body>
@@ -16,9 +21,13 @@
         <div id="hirearchycontent">
           <div class="btn-group">
             <button id="btn-newdoc"><strong>+</strong></button>
+            <button id="btn-deletedoc"><strong>-</strong></button>
           </div>
-          <ul id="hirearchylist">
-          </ul>
+          <div id="hirearchylist-container">
+            <div id="hirearchylist-removeparent" ondrop="parentlessdrop(event)" ondragover="allowDrop(event)"></div>
+            <ul class="hirearchylist-items" id="hirearchylist">
+            </ul>
+          </div>
         </div>
       </div>
       <div class="cell b">
@@ -40,16 +49,22 @@
         <div id="texteditor-title-holder" db-path="">
           <div id="texteditor-title" contenteditable="true"></div>          
         </div>
+        <!--
         <div id="texteditor-menu">
           <div class="btn-group">
             <button id="btn-bold"><strong>B</strong></button>
-            <button><i>I</i></button>
-            <button><u>U</u></button>
+            <button id="btn-italic"><i>I</i></button>
+            <button id="btn-under"><u>U</u></button>
+            <button id="btn-strike"><s>S</s></button>
             <button>Clear</button>
             <button id="btn-save" >Save</button>
           </div>
         </div>
-        <div  id="texteditor" contenteditable="true"></div>
+         <div  id="texteditor" contenteditable="true"></div> -->
+        <div id="editor">
+          <p>Hello World!</p>
+        </div>
+
         
       </div>
     </div>

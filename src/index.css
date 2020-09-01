@@ -30,10 +30,6 @@ ul > li {
   margin-left: 10px;
 }
 
-#highlight {
-  background: green;
-}
-
 .option {
   padding: 10px 25px;
   font-size: 40px;
@@ -62,7 +58,7 @@ ul > li {
   width: calc(100% - 10px);
   height: calc(100% - 10px);
   overflow: hidden;
-  margin: 10px;
+  margin: 5px;
 }
 
 .b{
@@ -94,6 +90,26 @@ ul > li {
 }
 */
 
+#highlight {
+  background-color: green;
+}
+
+.node-highlight{
+  background-color: white;
+  
+}
+
+#hirearchylist-container{
+  display: flex;
+}
+
+#hirearchylist-container #hirearchylist-removeparent{
+  width: 10px;
+  background-color: rgba(0, 0, 0, 0.185);
+  background-blend-mode: overlay;
+}
+
+
 #hirearchycontent .btn-group button {
   outline:none;
   background-color: #4CAF50; /* Green background */
@@ -102,6 +118,12 @@ ul > li {
   padding: 0px 5px;
   cursor: pointer; /* Pointer/hand icon */
   float: left; /* Float the buttons side by side */
+}
+
+
+#hirearchycontent .btn-group #btn-deletedoc {
+  background-color: #af5b4c; /* red background */
+  border: 1px solid rgb(128, 26, 0); /* red border */
 }
 
 #hirearchycontent .btn-group button:not(:last-child) {
@@ -113,6 +135,11 @@ ul > li {
   content: "";
   clear: both;
   display: table;
+}
+
+/* Add a background color on hover */
+#hirearchycontent .btn-group #btn-deletedoc:hover {
+  background-color: #da4f36;
 }
 
 /* Add a background color on hover */
@@ -181,7 +208,7 @@ ul > li {
   font-size: 7;
 }
 
-#node-icon{
+.node-icon{
   pointer-events: auto;
   width: 64px;
   height: 64px;
@@ -231,4 +258,32 @@ ul > li {
   background-blend-mode: overlay;
   border: none;
   outline:none;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label::before{
+  content: '14';
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="14px"]::before{
+  content: '14';
+}
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="14px"]::before {
+  content: '14';
+  font-size: 14px !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="16px"]::before{
+  content: '16';
+}
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="16px"]::before {
+  content: '16';
+  font-size: 16px !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="18px"]::before{
+  content: '18';
+}
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18px"]::before {
+  content: '18';
+  font-size: 18px !important;
 }
