@@ -14,6 +14,7 @@ const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
 
+
 const {
    SAVE_MAP_TO_STORAGE,
    CHANGE_MAP,
@@ -46,7 +47,10 @@ const {
 const dbpath = "";
 var nodepath = "";
 var nodemenu = false;
-var debugmode = false;
+//var debugmode = false;
+//var downloadcomplete = false;
+var downloadstatus = "version: " + app.getVersion();
+//var myItem;
 
 let dirtyproject = false;
 
@@ -67,13 +71,14 @@ let nodedeleteoptions  = {
 
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
+      /*
       {
          label: 'stresstest',
-         visible: debugmode != false,
          click: () => {
-            stresstest();
+            autoUpdater.checkForUpdates();
          }
       },
+      */
 		{
          label: 'Load Background Image',
          click: () => {
@@ -274,10 +279,7 @@ function createWindow() {
       protocol: 'file:',
       slashes: true,
    }))
-
-   win.once('ready-to-show', () => {
-      autoUpdater.checkForUpdatesAndNotify();
-    });
+   
 }
 
 function stresstest()
@@ -435,6 +437,122 @@ const template = [
             label: 'Learn More'
          }
       ]
+   },
+   {
+      label: '|'
+   },
+   {
+      label: downloadstatus
+   }
+]
+
+const updatedtemplate = [
+   {
+      label: 'File',
+      submenu: [
+         {
+            label: 'New Project',
+            click: () => { newproject() }
+         },
+         {
+            label: 'Load Project',
+            click: () => { loadproject(); }
+         },
+         {
+            label: 'Save Project',
+            click: () => { saveproject(); },
+            accelerator: 'CommandOrControl+S'
+         },
+         {
+            label: 'Save Project As',
+            click: () => { saveasproject(); },
+            accelerator: 'CommandOrControl+Shift+S'
+         },
+         {
+            type: 'separator'
+         },
+         {
+            role: 'close'
+         }
+      ]
+   },
+  {
+      label: 'Edit',
+      submenu: [
+         {
+            role: 'undo'
+         },
+         {
+            role: 'redo'
+         },
+         {
+            type: 'separator'
+         },
+         {
+            role: 'cut'
+         },
+         {
+            role: 'copy'
+         },
+         {
+            role: 'paste'
+         }
+      ]
+   },
+   
+   {
+      label: 'View',
+      submenu: [
+         {
+            label: 'Refresh',
+            click: () => {
+               win.reload();
+               updaterenderer();
+            },
+            accelerator: 'CommandOrControl+R'
+         },
+         {
+            role: 'toggledevtools'
+         },
+         {
+            type: 'separator'
+         },
+         {
+            role: 'resetzoom'
+         },
+         {
+            role: 'zoomin'
+         },
+         {
+            role: 'zoomout'
+         },
+         {
+            type: 'separator'
+         },
+         {
+            role: 'togglefullscreen'
+         }
+      ]
+   },
+   {
+      role: 'help',
+      submenu: [
+         {
+            label: 'Learn More'
+         }
+      ]
+   },
+   {
+      label: '|'
+   },
+   {
+      label: downloadstatus
+   },
+   {
+      label: 'Restart',
+      click: () => {
+         autoUpdater.quitAndInstall();
+      },
    }
 ]
 
@@ -909,22 +1027,23 @@ ipcMain.on('app_version', (event) => {
  });
 */
 
-autoUpdater.on('update-available', () => {
-   console.log('update availabale!');
-   
-   //mainWindow.webContents.send('update_available');
+ autoUpdater.on('update-available', () => {
+   downloadstatus = "Downloading Update..."
  });
-autoUpdater.on('update-downloaded', () => {
-   console.log('update downloaded!');
+ 
+ autoUpdater.on('update-downloaded', () => {
+   downloadstatus = "Download Complete."
+   const menu = Menu.buildFromTemplate(updatedtemplate)
+   Menu.setApplicationMenu(menu)
+ });
+ 
+ ipcMain.on('restart_app', () => {
    autoUpdater.quitAndInstall();
-
-   //mainWindow.webContents.send('update_downloaded');
-});
+ });
 
 app.on('ready', () => {
    const menu = Menu.buildFromTemplate(template)
    Menu.setApplicationMenu(menu)
-
    globalShortcut.register('CommandOrControl+E', () => {
       win.webContents.send(TOGGLE_TEXT_EDITOR , {});
    })
@@ -937,5 +1056,7 @@ app.on('ready', () => {
    globalShortcut.register('F2', () => {
       win.webContents.send(TOGGLE_TEXT_EDITOR , {});
    })
+
+   autoUpdater.checkForUpdatesAndNotify();
 })
 app.on('ready', createWindow)

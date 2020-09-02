@@ -31,6 +31,15 @@
         </div>
       </div>
       <div class="cell b">
+        <div id="notification" class="hidden">
+          <p id="message"></p>
+          <button id="close-button" onClick="closeNotification()">
+            Close
+          </button>
+          <button id="restart-button" onClick="restartApp()" class="hidden">
+            Restart
+          </button>
+        </div>
         <div id="nodecontainer"></div>
         <div id="mapdiv" style="transform-origin: 0 0;">
           <h1 id="project-title"></h1>
@@ -46,6 +55,7 @@
         </div>
       </div>
       <div id="textcontainer" class="cell c">
+        <p id="version"></p>
         <div id="texteditor-title-holder" db-path="">
           <div id="texteditor-title" contenteditable="true"></div>          
         </div>

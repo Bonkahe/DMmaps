@@ -90,6 +90,20 @@ ul > li {
 }
 */
 
+#notification {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 200px;
+  padding: 20px;
+  border-radius: 5px;
+  background-color: white;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+}
+.hidden {
+  display: none;
+}
+
 
 .node-highlight{
   background-color: white;
@@ -98,6 +112,11 @@ ul > li {
 
 .hirearchylist-items {
   width: 100%;
+}
+
+.ql-picker-options
+{
+  left: calc(-152px + 28px);
 }
 
 #highlight {
@@ -186,7 +205,7 @@ ul > li {
 #textcontainer{
   height: 100%;
   min-height: 100%;
-  overflow:hidden;
+  overflow:visible;
 }
 
 #texteditor-title-holder{

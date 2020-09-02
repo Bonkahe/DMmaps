@@ -1,4 +1,5 @@
 node_modules/
 dmmaps-win32-x64/
+dist/
 *.zip
 electron-builder.yml

@@ -4,9 +4,14 @@
   "description": "A DM's world building toolkit.",
   "main": "./main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "localbuild": "electron-builder build --win --publish never",
+    "deploy": "electron-builder build --win --publish always"
   },
-  "repository": "https://github.com/Bonkahe/DMmaps",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bonkahe/DMmaps.git"
+  },
   "keywords": [
     "Electron",
     "DnD"
@@ -15,6 +20,7 @@
   "license": "GNU",
   "devDependencies": {
     "electron": "^9.2.1",
+    "electron-builder": "^22.8.0",
     "electron-packager": "^15.1.0",
     "electron-rebuild": "^2.0.1"
   },
@@ -28,7 +34,8 @@
     "split.js": "^1.6.2",
     "update-electron-app": "^1.5.0"
   },
-  "directories": {
-    "output": "release/"
+  "build": {
+    "appId": "com.github.bonkahe.dmmaps",
+    "icon": "src/images/icon.ico"
   }
 }
