@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en" ng-app="app">
   <head>
     <meta charset="UTF-8">
@@ -31,15 +30,6 @@
         </div>
       </div>
       <div class="cell b">
-        <div id="notification" class="hidden">
-          <p id="message"></p>
-          <button id="close-button" onClick="closeNotification()">
-            Close
-          </button>
-          <button id="restart-button" onClick="restartApp()" class="hidden">
-            Restart
-          </button>
-        </div>
         <div id="nodecontainer"></div>
         <div id="mapdiv" style="transform-origin: 0 0;">
           <h1 id="project-title"></h1>
@@ -59,27 +49,10 @@
         <div id="texteditor-title-holder" db-path="">
           <div id="texteditor-title" contenteditable="true"></div>          
         </div>
-        <!--
-        <div id="texteditor-menu">
-          <div class="btn-group">
-            <button id="btn-bold"><strong>B</strong></button>
-            <button id="btn-italic"><i>I</i></button>
-            <button id="btn-under"><u>U</u></button>
-            <button id="btn-strike"><s>S</s></button>
-            <button>Clear</button>
-            <button id="btn-save" >Save</button>
-          </div>
-        </div>
-         <div  id="texteditor" contenteditable="true"></div> -->
         <div id="editor">
           <p>Hello World!</p>
         </div>
-
-        
       </div>
     </div>
-
-
-
   </body>
 </html>

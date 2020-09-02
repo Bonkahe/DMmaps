@@ -12,9 +12,6 @@ const {basename} = require('path')
 const contextMenu = require('electron-context-menu');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
-
-
-
 const {
    SAVE_MAP_TO_STORAGE,
    CHANGE_MAP,
@@ -44,19 +41,29 @@ const {
    DatabaseTextentry,
 } = require('./utils/constants');
 
-const dbpath = "";
 var nodepath = "";
 var nodemenu = false;
 //var debugmode = false;
-var downloadcomplete = false;
+//var downloadcomplete = false;
 //var downloadstatus = "version: " + app.getVersion();
 //var myItem;
 
 let dirtyproject = false;
-
-
 let CurrentContent = new Databasetemplate();
 
+// Your code that starts a new application
+let win;
+
+function createWindow() {
+   win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, webPreferences: {
+    nodeIntegration: true, enableRemoteModule: true
+    }})
+   win.loadURL(url.format ({
+      pathname: path.join(__dirname, './src/index.html'),
+      protocol: 'file:',
+      slashes: true,
+   }))   
+}
 
 
 let deleteoptions  = {
@@ -71,7 +78,7 @@ let nodedeleteoptions  = {
 
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
-      
+      /*
       {
          label: 'stresstest',
          click: () => {
@@ -79,7 +86,7 @@ contextMenu({
             Menu.setApplicationMenu(menu)
          }
       },
-      
+      */
 		{
          label: 'Load Background Image',
          click: () => {
@@ -265,83 +272,6 @@ contextMenu({
       }
 	]
 });
-
-
-
-// Your code that starts a new application
-let win;
-
-function createWindow() {
-   win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, webPreferences: {
-    nodeIntegration: true, enableRemoteModule: true
-    }})
-   win.loadURL(url.format ({
-      pathname: path.join(__dirname, './src/index.html'),
-      protocol: 'file:',
-      slashes: true,
-   }))
-   
-}
-
-function stresstest()
-{
-   win.webContents.openDevTools();
-
-   for (var i = 0; i < 100000; i++)
-   {
-      var newnode = new DatabaseNodeentry();
-      //console.log(CurrentContent);
-      var loop = true;
-      var r = 0;
-      
-      while(loop){
-         r = Math.random() * 10000;
-
-         var ownerData = CurrentContent.content.nodes.filter(function(node) {
-            return node.id === r;
-         })[0];
-         //console.log(ownerData);
-         if(ownerData == null)
-         {
-            loop = false;
-         }
-      }
-
-      newnode.id = r;
-      
-      /**TEST DOCUMENT CREATOR */
-      var newdoc = new DatabaseTextentry();
-      loop = true;
-      var newr = 0;
-      
-      while(loop){
-         newr = Math.random() * 10000;
-
-         var ownerData = CurrentContent.content.textEntries.filter(function(doc) {
-            return doc.id === newr;
-         })[0];
-         //console.log(ownerData);
-         if(ownerData == null)
-         {
-            loop = false;
-         }
-      }
-
-      newdoc.id = newr;
-      newdoc.content = Math.random() * 1000000;
-
-      /**Handles keeping the doc reference in the node */
-      newnode.documentref = newr;
-
-      CurrentContent.content.textEntries.push(newdoc);
-
-      /** end region */
-
-      CurrentContent.content.nodes.push(newnode);
-   }
-
-   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
-}
 
 const template = [
    {
@@ -558,6 +488,7 @@ const updatedtemplate = [
 ]
 
 
+
 const newproject = async () => {
    if (dirtyproject)
    {
@@ -707,31 +638,6 @@ function updaterenderer()
    win.webContents.send(PROJECT_INITIALIZED , {CurrentContent});
 }
 
-ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
-   //console.log("test");
-
-   if (CurrentContent.projecturl == "")
-   {
-      saveasproject();
-      return;
-   }
-
-   //CurrentContent.projectdata.name = "newname";
-
-   let data = JSON.stringify(CurrentContent, null, 2);
-   //console.log("output:" + data);
-
-   fs.writeFile(CurrentContent.projecturl, data, (err) => {
-      if(err){
-          console.log("An error ocurred creating the file "+ err.message)
-      }
-      dirtyproject = false;
-      win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
-      console.log("The file has been succesfully saved");
-   });
-});
-
-
 ipcMain.handle(REQUEST_DOCUMENT_BYDOC, async (event, docid) =>
 {
    var documentData;
@@ -826,6 +732,30 @@ ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) =>
    return true;
 })
 
+ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
+   //console.log("test");
+
+   if (CurrentContent.projecturl == "")
+   {
+      saveasproject();
+      return;
+   }
+
+   //CurrentContent.projectdata.name = "newname";
+
+   let data = JSON.stringify(CurrentContent, null, 2);
+   //console.log("output:" + data);
+
+   fs.writeFile(CurrentContent.projecturl, data, (err) => {
+      if(err){
+          console.log("An error ocurred creating the file "+ err.message)
+      }
+      dirtyproject = false;
+      win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+      console.log("The file has been succesfully saved");
+   });
+});
+
 ipcMain.on(REFRESH_PAGE, function(event) {
    updaterenderer();
 });
@@ -862,7 +792,7 @@ ipcMain.on(CHILD_DOCUMENT, function(event, data)
    {
       if (CurrentContent.content.textEntries[i].id == data.child)
       {
-         if (CurrentContent.content.textEntries[i].parentid != null)
+         if (CurrentContent.content.textEntries[i].parentid != "")
          {
             var huntdata = {
                child: data.child,
@@ -872,12 +802,29 @@ ipcMain.on(CHILD_DOCUMENT, function(event, data)
             removechild(huntdata);
          }
 
+
+         if (CurrentContent.content.textEntries[i].childdocuments.length > 0)
+         {
+            for (var j = 0; j < CurrentContent.content.textEntries[i].childdocuments.length; j++)
+            {
+               if (CurrentContent.content.textEntries[i].childdocuments[j] == data.parent)
+               {
+                  CurrentContent.content.textEntries[i].childdocuments.splice(j, 1);
+               }
+            }
+         }
+
          CurrentContent.content.textEntries[i].parentid = data.parent;
          done = done + 1;
       }
 
       if (CurrentContent.content.textEntries[i].id == data.parent)
       {
+         if (CurrentContent.content.textEntries[i].parentid == data.child)
+         {
+            CurrentContent.content.textEntries[i].parentid = "";
+         }
+
          CurrentContent.content.textEntries[i].childdocuments.push(data.child);
          done = done + 1;
       }
@@ -898,7 +845,7 @@ ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
    {
       if (CurrentContent.content.textEntries[i].id == data)
       {
-         if (CurrentContent.content.textEntries[i].parentid != null)
+         if (CurrentContent.content.textEntries[i].parentid != "")
          {
             var huntdata = {
                child: data,
@@ -950,6 +897,23 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
    
 });
 
+
+ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
+   nodepath = message;
+   nodemenu = true;
+});
+
+ipcMain.on(VERIFY_NODE, function(event, data) {
+   for (var i in CurrentContent.content.nodes) {
+      if (CurrentContent.content.nodes[i].id == data.id) {
+         CurrentContent.content.nodes[i].location = {x: data.x, y: data.y}
+         win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+         dirtyproject = true;
+         break; //Stop this loop, we found it!
+      }
+    }
+});
+
 /** ---------------------------   Document editor functions   ----------------------------- */
 
 function removechild(data)
@@ -970,24 +934,18 @@ function removechild(data)
    }   
 }
 
-/** ---------------------------   END -- Document editor functions   ----------------------------- */
-
-
-ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
-   nodepath = message;
-   nodemenu = true;
-});
-
-ipcMain.on(VERIFY_NODE, function(event, data) {
-   for (var i in CurrentContent.content.nodes) {
-      if (CurrentContent.content.nodes[i].id == data.id) {
-         CurrentContent.content.nodes[i].location = {x: data.x, y: data.y}
-         win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
-         dirtyproject = true;
-         break; //Stop this loop, we found it!
+function removeparent(data)
+{
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == data)
+      {
+         CurrentContent.content.textEntries[i].parentid = "";
       }
-    }
-});
+   } 
+}
+
+/** ---------------------------   END -- Document editor functions   ----------------------------- */
 
 Databasetemplate.fromjson = function(json)
 {
@@ -1021,6 +979,68 @@ Databasetemplate.fromjson = function(json)
 
    CurrentContent = db;
 }
+
+
+function stresstest()
+{
+   win.webContents.openDevTools();
+
+   for (var i = 0; i < 100000; i++)
+   {
+      var newnode = new DatabaseNodeentry();
+      //console.log(CurrentContent);
+      var loop = true;
+      var r = 0;
+      
+      while(loop){
+         r = Math.random() * 10000;
+
+         var ownerData = CurrentContent.content.nodes.filter(function(node) {
+            return node.id === r;
+         })[0];
+         //console.log(ownerData);
+         if(ownerData == null)
+         {
+            loop = false;
+         }
+      }
+
+      newnode.id = r;
+      
+      /**TEST DOCUMENT CREATOR */
+      var newdoc = new DatabaseTextentry();
+      loop = true;
+      var newr = 0;
+      
+      while(loop){
+         newr = Math.random() * 10000;
+
+         var ownerData = CurrentContent.content.textEntries.filter(function(doc) {
+            return doc.id === newr;
+         })[0];
+         //console.log(ownerData);
+         if(ownerData == null)
+         {
+            loop = false;
+         }
+      }
+
+      newdoc.id = newr;
+      newdoc.content = Math.random() * 1000000;
+
+      /**Handles keeping the doc reference in the node */
+      newnode.documentref = newr;
+
+      CurrentContent.content.textEntries.push(newdoc);
+
+      /** end region */
+
+      CurrentContent.content.nodes.push(newnode);
+   }
+
+   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+}
+
 
 /*
 ipcMain.on('app_version', (event) => {
