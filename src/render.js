@@ -38,6 +38,7 @@ const {
 /** -------------------- Variables --------------------- */
 
 let rightClickPosition;
+var caratindex;
 var zoom = 1;
 var textchanged = false;
 var instance;
@@ -213,9 +214,27 @@ deletdocbtn.onclick = e => {
   deletedocument(completedelete);
 };
 
-document.getElementById("texteditor-title").addEventListener("input", function() {
+texteditortitle.addEventListener("input", function() {
   textchanged = true;
 }, false);
+
+texteditortitle.addEventListener('focusout', (event) => {
+  savetext();   
+});
+
+editor.onblur = function(){
+  console.log(editor.getSelection());
+};
+
+editor.on('selection-change', function(range, oldRange, source) {
+  if (range === null && oldRange !== null) {
+    caratindex = oldRange;
+  } 
+  else if (range !== null && oldRange === null)
+  {
+    //console.log("focus");
+  }
+});
 
 
 /** -------------------- IPC BLOCK ---------------------  */
@@ -1023,10 +1042,22 @@ function textdrop(ev){
 
   //var range = editor.getSelection(true);
 
+  if (caratindex != null)
+  {
+    editor.setSelection(caratindex.index, 0);
+    editor.insertEmbed(caratindex.index, 'doclink', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
+  }
+  else
+  {
+    editor.insertEmbed(0, 'doclink', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
+  }
+
+  
+  /*
   editor.updateContents([
     { insert: { doclink: ev.dataTransfer.getData("Db-Path") } },
   ]);
-
+  */
   //editor.insertEmbed(range.index, 'variable', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
   //editor.insertHTML(html);
 }
