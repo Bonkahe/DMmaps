@@ -11,7 +11,8 @@ const path = require('path')
 const {basename} = require('path')
 const contextMenu = require('electron-context-menu');
 const fs = require('fs');
-require('update-electron-app')()
+const { autoUpdater } = require('electron-updater');
+
 
 const {
    SAVE_MAP_TO_STORAGE,
@@ -273,6 +274,10 @@ function createWindow() {
       protocol: 'file:',
       slashes: true,
    }))
+
+   win.once('ready-to-show', () => {
+      autoUpdater.checkForUpdatesAndNotify();
+    });
 }
 
 function stresstest()
@@ -898,6 +903,23 @@ Databasetemplate.fromjson = function(json)
    CurrentContent = db;
 }
 
+/*
+ipcMain.on('app_version', (event) => {
+   event.sender.send('app_version', { version: app.getVersion() });
+ });
+*/
+
+autoUpdater.on('update-available', () => {
+   console.log('update availabale!');
+   
+   //mainWindow.webContents.send('update_available');
+ });
+autoUpdater.on('update-downloaded', () => {
+   console.log('update downloaded!');
+   autoUpdater.quitAndInstall();
+
+   //mainWindow.webContents.send('update_downloaded');
+});
 
 app.on('ready', () => {
    const menu = Menu.buildFromTemplate(template)
