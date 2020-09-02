@@ -24,10 +24,10 @@
     "jsdom": "^16.4.0",
     "quill": "^2.0.0-dev.4",
     "quill-image-resize-module": "^3.0.0",
-    "split.js": "^1.6.2"
+    "split.js": "^1.6.2",
+    "update-electron-app": "^1.5.0"
   },
   "directories": {
     "output": "release/"
   }
-
 }

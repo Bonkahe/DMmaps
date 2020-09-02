@@ -39,7 +39,7 @@ const {
 
 let rightClickPosition;
 var zoom = 1;
-var titlechanged = false;
+var textchanged = false;
 var instance;
 var node;
 var deactivatepanning = false;
@@ -51,6 +51,34 @@ var newhtml;
 
 //var texteditorwindow = document.getElementById('texteditor');
 var texteditortitle = document.getElementById('texteditor-title');
+
+let Embed = Quill.import('blots/embed');
+
+Embed.whitelist = ['doclink', 'rt'];
+class QuillRuby extends Embed {
+    static create(value, top, body) {
+        var node = super.create(value);
+        node.setAttribute('contenteditable', false);
+        node.setAttribute('db-path', value);
+        node.setAttribute('onclick', 'hirearchybuttonpressed(' + value + ')')
+        node.innerHTML = retrievename(value);
+
+        return node;
+    }
+    static value(node){
+        return {
+            body: node.getAttribute('db-path'),
+        };
+    }
+}
+
+
+
+QuillRuby.blotName = 'doclink';
+QuillRuby.className = 'quill-doclink';
+QuillRuby.tagName = 'button';
+
+Quill.register({'formats/doclink': QuillRuby}, true);
  
 //Quill.register('modules/imageResize', ImageResize);
 var resize = Quill.import('modules/imageResize');
@@ -59,8 +87,9 @@ Quill.register(resize, true);
 //Quill.register(drop, true);
 
 var Size = Quill.import('attributors/style/size');
-Size.whitelist = ['14px', '16px', '18px'];
+Size.whitelist = ['14px', '16px', '18px', '20px', '26px', '32px'];
 Quill.register(Size, true);
+
 
 var toolbarOptions = [
   ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
@@ -72,7 +101,7 @@ var toolbarOptions = [
   //[{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
   //[{ 'direction': 'rtl' }],                         // text direction
 
-  [{ 'size': ['14px', '16px', '18px'] }],  // custom dropdown
+  [{ 'size': ['14px', '16px', '18px', '20px', '26px', '32px'] }],  // custom dropdown
   //[{ 'header': [1, 2, 3, 4, 5, 6, false] }],
 
   [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
@@ -90,7 +119,64 @@ var editor = new Quill('#editor', {
     //imageDrop: true
   },
   theme: 'snow'
+  //imageHandler: imageHandler
 });
+
+//console.log(editor.root);
+editor.root.setAttribute('ondrop', 'textdrop(event)');
+editor.root.setAttribute('ondragover', 'allowDrop(event)');
+editor.on('text-change', function(delta, source) {
+  textchanged = true;
+});
+
+editor.getModule("toolbar").addHandler("image", imageHandler);
+
+function imageHandler(image, callback) {
+  var input = document.createElement("input");
+  input.setAttribute("type", "file");
+  input.click();
+  // Listen upload local image and save to server
+  input.onchange = () => {
+      var file = input.files[0];
+      var path = file.path.replace(/\\/g,"/");
+
+      // file type is only image.
+      if (/^image\//.test(file.type)) {
+        insertToEditor(path);
+      } else {
+          console.warn("Only images can be uploaded here.");
+      }
+  };
+}
+
+
+
+function insertToEditor(url) {
+  // push image url to editor.
+  const range = editor.getSelection();
+  editor.insertEmbed(range.index, "image", url, Quill.sources.USER);
+}
+
+
+// set html content
+editor.setHTML = (html) => {
+  editor.root.innerHTML = html;
+};
+
+// get html content
+editor.getHTML = () => {
+  return editor.root.innerHTML;
+};
+
+editor.insertHTML = (html) => {
+  var range = editor.getSelection(true);
+  editor.insert
+
+  editor.insertEmbed(range.index, 'div', { id: date }, 'user');
+  editor.setSelection(range.index + 1, Quill.sources.SILENT);
+  $(html).insertAfter('#' + date);
+  $('#' + date).remove();
+};
 
 
 //May need to swap out later to allow hirearchy
@@ -130,7 +216,7 @@ deletdocbtn.onclick = e => {
 };
 
 document.getElementById("texteditor-title").addEventListener("input", function() {
-  titlechanged = true;
+  textchanged = true;
 }, false);
 
 
@@ -138,7 +224,7 @@ document.getElementById("texteditor-title").addEventListener("input", function()
 
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   selecteddocid = null;
-  titlechanged = false;
+  textchanged = false;
 
   //console.log(message.CurrentContent.content.textEntries);
 
@@ -535,69 +621,55 @@ function closetexteditor()
 
 function cleartexteditor()
 {
-  closetexteditor();
+  //closetexteditor();
   editor.setText('')
   //texteditorwindow.innerHTML = null;
   texteditortitle.innerText = null;
   texteditortitle.setAttribute('db-path',null);
 }
 
+
+
 function loadtext(document)
 {
+  lasttext = document.content;
   opentexteditor();
-  editor.setContents(document.content);
+  editor.setHTML(document.content);
+
+  var buttons = retrievebuttons();
+
+  //console.log(buttons);
+  for (var i = 0; i < buttons.length; i++)
+  {
+    buttons[i].innerHTML = retrievename(buttons[i].getAttribute('db-path'));
+    
+    buttons[i].setAttribute('onclick', 'hirearchybuttonpressed(' + buttons[i].getAttribute('db-path') + ')')
+  }
+
+  /*
+  buttons.forEach(element => {
+    element.innerHTML = retrievename(element.getAttribute('db-path'));
+  });
+  */
   //texteditorwindow.innerHTML = document.content;
   texteditortitle.innerText = document.name;
   texteditortitle.setAttribute('db-path',document.id);
   highlighttoggle(document.id);
 }
 
-/*
-const completerefresh = async () =>
+function retrievebuttons()
 {
-  var result = await savetext()
-  console.log(result);
-  //var test;
-  //ipcRenderer.send(REFRESH_DATABASE_COMPLETE);
+  return document.getElementsByClassName('quill-doclink');
 }
 
-
-
-const savetext = async () =>
-{
-  if (texteditorwindow.innerHTML == "" && titlechanged == false)
-  {
-    console.log("nothing to save")
-    return false;
-  }
-  var newdoc = new DatabaseTextentry();
-  newdoc.id = texteditortitle.getAttribute('db-path');
-  newdoc.name = texteditortitle.innerText;
-  newdoc.content = texteditorwindow.innerHTML;
-  titlechanged = false;
-
-  ipcRenderer.invoke(SAVE_DOCUMENT, newdoc).then((result) => {
-    if (result)
-    {
-      console.log("Document saved successfully.")
-    }
-    else{
-      console.log("Unable to save document due to not valid id")
-    }
-    return result;
-  })
-}
-*/
 function completerefresh ()
 {
   ipcRenderer.send(REFRESH_DATABASE_COMPLETE);
 }
 
-
-
 function savetext (callback)
 {
-  if (editor.getContents() == null && titlechanged == false)
+  if (textchanged == false)
   {
     if (callback != null)
     {
@@ -610,8 +682,9 @@ function savetext (callback)
   var newdoc = new DatabaseTextentry();
   newdoc.id = texteditortitle.getAttribute('db-path');
   newdoc.name = texteditortitle.innerText;
-  newdoc.content = editor.getContents();
-  titlechanged = false;
+  newdoc.content = editor.getHTML();
+  lasttext = newdoc.content;
+  textchanged = false;
 
   ipcRenderer.invoke(SAVE_DOCUMENT, newdoc).then((result) => {
     if (result)
@@ -661,6 +734,13 @@ function resetmap()
     }
   )
   zoom = test[0];
+    /*
+  instance.panTo({ 
+    originX: window.innerWidth / 2, 
+    originY: window.innerHeight / 2, 
+    zoom 
+  });
+  */
 }
 
 function importnodes(database)
@@ -833,7 +913,7 @@ function rebuildhirearchy(content)
   var textEntries = [];
   textEntries = content.textEntries;
 
-  console.log(textEntries);
+  //console.log(textEntries);
 
   newhtml = '';
   depth = 0;
@@ -866,7 +946,7 @@ function rebuildhirearchy(content)
 
   if (selecteddocid != null)
   {
-    document.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
+    hirearchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
   }
 }
 
@@ -940,6 +1020,30 @@ function parentlessdrop(ev){
   ipcRenderer.send(REMOVE_PARENT_DOCUMENT, data);
 }
 
+function textdrop(ev){
+  ev.preventDefault();
+
+  //var range = editor.getSelection(true);
+
+  editor.updateContents([
+    { insert: { doclink: ev.dataTransfer.getData("Db-Path") } },
+  ]);
+
+  //editor.insertEmbed(range.index, 'variable', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
+  //editor.insertHTML(html);
+}
+
+function retrievename(id)
+{
+  var doc = hirearchylist.querySelector('*[Db-Path="' + id + '"]');
+  if (doc != null)
+  {
+    return doc.innerText;
+  }
+  return "Document has no name...";
+}
+
+
 function highlighttoggle(id)
 {
   if (selecteddocid != null)
@@ -963,7 +1067,7 @@ const getFileFromUser = async () => {
     buttonLabel : "Import image",
     
     filters :[
-      {name: 'Images', extensions: ['jpg', 'png', 'gif']}
+      {name: 'Images', extensions: ['jpg', 'png', 'gif', 'svg']}
     ],
     properties: ['openFile']
   }

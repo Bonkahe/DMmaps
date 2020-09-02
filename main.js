@@ -11,6 +11,7 @@ const path = require('path')
 const {basename} = require('path')
 const contextMenu = require('electron-context-menu');
 const fs = require('fs');
+require('update-electron-app')()
 
 const {
    SAVE_MAP_TO_STORAGE,
@@ -44,8 +45,10 @@ const {
 const dbpath = "";
 var nodepath = "";
 var nodemenu = false;
+var debugmode = false;
 
 let dirtyproject = false;
+
 
 let CurrentContent = new Databasetemplate();
 
@@ -56,8 +59,20 @@ let deleteoptions  = {
    message: "Do you really want to delete?"
   }
 
+let nodedeleteoptions  = {
+   buttons: ["Yes","No", "Cancel"],
+   message: "Do you want to delete the attached document as well?"
+}
+
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
+      {
+         label: 'stresstest',
+         visible: debugmode != false,
+         click: () => {
+            stresstest();
+         }
+      },
 		{
          label: 'Load Background Image',
          click: () => {
@@ -139,13 +154,38 @@ contextMenu({
          label: 'Delete Node',
          visible: nodemenu === true,
          click: () => {
-            dialog.showMessageBox(null, deleteoptions).then( (data) => {
-               if (data.response == 0)
+            dialog.showMessageBox(null, nodedeleteoptions).then( (data) => {
+               if (data.response != 2)
                {
                   for (var i = 0; i < CurrentContent.content.nodes.length; i++)
                   {
                      if (CurrentContent.content.nodes[i].id == nodepath)
                      {
+                        if (data.response == 0 && CurrentContent.content.nodes[i].documentref != "")
+                        {
+                           for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
+                           {
+                              if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
+                              {
+                                 if (CurrentContent.content.textEntries[j].childdocuments.length > 0)
+                                 {
+                                    for (var k = 0; k < CurrentContent.content.textEntries[j].childdocuments.length; k++)
+                                    {
+                                       for (var l = 0; l < CurrentContent.content.textEntries.length; l++)
+                                       {
+                                          if (CurrentContent.content.textEntries[l].id == CurrentContent.content.textEntries[j].childdocuments[k])
+                                          {
+                                             CurrentContent.content.textEntries[l].parentid = "";
+                                          }
+                                       }
+                                    }
+                                 }
+                                 CurrentContent.content.textEntries.splice(j, 1);
+                              }
+                           }
+                        }
+
+                        /*
                         for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
                         {
                            if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
@@ -166,7 +206,7 @@ contextMenu({
                               CurrentContent.content.textEntries.splice(j, 1);
                            }
                         }
-
+                        */
                         CurrentContent.content.nodes.splice(i, 1);
                         break;
                      }
@@ -233,8 +273,66 @@ function createWindow() {
       protocol: 'file:',
       slashes: true,
    }))
+}
 
-   //win.webContents.openDevTools();
+function stresstest()
+{
+   win.webContents.openDevTools();
+
+   for (var i = 0; i < 100000; i++)
+   {
+      var newnode = new DatabaseNodeentry();
+      //console.log(CurrentContent);
+      var loop = true;
+      var r = 0;
+      
+      while(loop){
+         r = Math.random() * 10000;
+
+         var ownerData = CurrentContent.content.nodes.filter(function(node) {
+            return node.id === r;
+         })[0];
+         //console.log(ownerData);
+         if(ownerData == null)
+         {
+            loop = false;
+         }
+      }
+
+      newnode.id = r;
+      
+      /**TEST DOCUMENT CREATOR */
+      var newdoc = new DatabaseTextentry();
+      loop = true;
+      var newr = 0;
+      
+      while(loop){
+         newr = Math.random() * 10000;
+
+         var ownerData = CurrentContent.content.textEntries.filter(function(doc) {
+            return doc.id === newr;
+         })[0];
+         //console.log(ownerData);
+         if(ownerData == null)
+         {
+            loop = false;
+         }
+      }
+
+      newdoc.id = newr;
+      newdoc.content = Math.random() * 1000000;
+
+      /**Handles keeping the doc reference in the node */
+      newnode.documentref = newr;
+
+      CurrentContent.content.textEntries.push(newdoc);
+
+      /** end region */
+
+      CurrentContent.content.nodes.push(newnode);
+   }
+
+   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
 }
 
 const template = [
@@ -805,11 +903,17 @@ app.on('ready', () => {
    const menu = Menu.buildFromTemplate(template)
    Menu.setApplicationMenu(menu)
 
-   globalShortcut.register('CommandOrControl+D', () => {
+   globalShortcut.register('CommandOrControl+E', () => {
       win.webContents.send(TOGGLE_TEXT_EDITOR , {});
    })
-   globalShortcut.register('CommandOrControl+A', () => {
+   globalShortcut.register('CommandOrControl+B', () => {
       win.webContents.send(TOGGLE_HIREARCHY , {});
+   })
+   globalShortcut.register('F1', () => {
+      win.webContents.send(TOGGLE_HIREARCHY , {});
+   })
+   globalShortcut.register('F2', () => {
+      win.webContents.send(TOGGLE_TEXT_EDITOR , {});
    })
 })
 app.on('ready', createWindow)

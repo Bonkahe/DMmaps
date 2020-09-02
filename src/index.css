@@ -57,7 +57,7 @@ ul > li {
 .a #hirearchycontent{
   width: calc(100% - 10px);
   height: calc(100% - 10px);
-  overflow: hidden;
+  overflow: auto;
   margin: 5px;
 }
 
@@ -90,13 +90,18 @@ ul > li {
 }
 */
 
-#highlight {
-  background-color: green;
-}
 
 .node-highlight{
   background-color: white;
   
+}
+
+.hirearchylist-items {
+  width: 100%;
+}
+
+#highlight {
+  background-color: green;
 }
 
 #hirearchylist-container{
@@ -111,6 +116,7 @@ ul > li {
 
 
 #hirearchycontent .btn-group button {
+  overflow: auto;
   outline:none;
   background-color: #4CAF50; /* Green background */
   border: 1px solid green; /* Green border */
@@ -286,4 +292,28 @@ ul > li {
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18px"]::before {
   content: '18';
   font-size: 18px !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="20px"]::before{
+  content: '20';
+}
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="20px"]::before {
+  content: '20';
+  font-size: 20px !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="26px"]::before{
+  content: '26';
+}
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="26px"]::before {
+  content: '26';
+  font-size: 26px !important;
+}
+
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="32px"]::before{
+  content: '32';
+}
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="32px"]::before {
+  content: '32';
+  font-size: 32px !important;
 }

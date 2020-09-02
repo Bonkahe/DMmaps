@@ -2136,11 +2136,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    key: 'insertEmbed',
 	    value: function insertEmbed(index, embed, value) {
 	      var source = arguments.length <= 3 || arguments[3] === undefined ? Quill.sources.API : arguments[3];
-
 	      var range = this.getSelection();
 	      var change = this.editor.insertEmbed(index, embed, value, source);
 	      range = shiftRange(range, change, source);
-	      this.setSelection(range, _emitter2.default.sources.SILENT);
+		  this.setSelection(range, _emitter2.default.sources.SILENT);
+		  
 	      return change;
 	    }
 	  }, {
@@ -3947,7 +3947,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    key: 'insertEmbed',
 	    value: function insertEmbed(index, embed, value) {
 	      var source = arguments.length <= 3 || arguments[3] === undefined ? _emitter4.default.sources.API : arguments[3];
-
 	      this.scroll.insertAt(index, embed, value);
 	      return this.update(new _delta2.default().retain(index).insert(_defineProperty({}, embed, value)), source);
 	    }
@@ -4623,7 +4622,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var _descendant4 = _slicedToArray(_descendant3, 2);
 
 	      var text = _descendant4[0];
-	      var offset = _descendant4[1];
+		  var offset = _descendant4[1];
 
 	      text.insertAt(offset, value);
 	    }
@@ -8170,7 +8169,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'sanitize',
 	    value: function sanitize(url) {
-	      return (0, _link.sanitize)(url, ['http', 'https', 'data']) ? url : '//:0';
+		  //return (0, _link.sanitize)(url, ['http', 'https', 'data']) ? url : '//:0';
+		  return url;
 	    }
 	  }, {
 	    key: 'value',

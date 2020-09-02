@@ -1,5 +1,6 @@
 class Databasetemplate {
     constructor() {
+        this.versionnumber = 0.1;
         this.__type = "Databasetemplate";
         this.projecturl = "";
         this.name = "Default Database";
