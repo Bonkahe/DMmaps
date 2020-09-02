@@ -48,8 +48,8 @@ const dbpath = "";
 var nodepath = "";
 var nodemenu = false;
 //var debugmode = false;
-//var downloadcomplete = false;
-var downloadstatus = "version: " + app.getVersion();
+var downloadcomplete = false;
+//var downloadstatus = "version: " + app.getVersion();
 //var myItem;
 
 let dirtyproject = false;
@@ -71,14 +71,15 @@ let nodedeleteoptions  = {
 
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
-      /*
+      
       {
          label: 'stresstest',
          click: () => {
-            autoUpdater.checkForUpdates();
+            const menu = Menu.buildFromTemplate(updatedtemplate)
+            Menu.setApplicationMenu(menu)
          }
       },
-      */
+      
 		{
          label: 'Load Background Image',
          click: () => {
@@ -442,7 +443,7 @@ const template = [
       label: '|'
    },
    {
-      label: downloadstatus
+      label: "version: " + app.getVersion()
    }
 ]
 
@@ -546,7 +547,7 @@ const updatedtemplate = [
       label: '|'
    },
    {
-      label: downloadstatus
+      label: "Update Ready:"
    },
    {
       label: 'Restart',
@@ -1032,14 +1033,11 @@ ipcMain.on('app_version', (event) => {
  });
  
  autoUpdater.on('update-downloaded', () => {
-   downloadstatus = "Download Complete."
    const menu = Menu.buildFromTemplate(updatedtemplate)
    Menu.setApplicationMenu(menu)
  });
- 
- ipcMain.on('restart_app', () => {
-   autoUpdater.quitAndInstall();
- });
+
+
 
 app.on('ready', () => {
    const menu = Menu.buildFromTemplate(template)
