@@ -58,13 +58,36 @@ const canGetZoom = (state) => ({
 });
 
 const canForceZoom = (state) => ({
-    forcezoom: ({}) => {
+    forcezoom: ({widthx, widthy}) => {
+
+        //console.log(x + " -- " + y);
+
+
+        //console.log(blockRect.left + " ---- " + blockRect.top + " ---- " + x + " ---- " + y);
+        //console.log(leftcenter);
+        /*
+        let 
+        originX = (10 * (blockRect.left/x * 100)) / 9,
+        originY =  (10 * (blockRect.top/y * 100)) / 9;
+        */
+    
+        //state.element.style.transformOrigin = `${originX}% ${originY}%`;
 
         state.element.style.transformOrigin = `0px 0px`;
-        state.element.style.transform = getMatrix({ scale: 0.1, translateX: 0, translateY: 0 });
-        state.element.style.left = '0px';
-        state.element.style.top = '0px';
-        state.transformation = { originX: 0, originY: 0, translateX: 0, translateY: 0, scale: 0.1 };
+        state.element.style.transform = getMatrix({ scale: 1.0, translateX: 0, translateY: 0 });
+
+        let blockRect = state.element.getBoundingClientRect();
+        let newscale = (widthx * 2) / blockRect.width;
+        state.element.style.transform = getMatrix({ scale: newscale, translateX: 0, translateY: 0 });
+        
+        blockRect = state.element.getBoundingClientRect();
+
+        let leftcenter = widthx - (blockRect.width / 2);
+        let topcenter = widthy - (blockRect.height / 2);
+
+        state.element.style.left = `${leftcenter}px`;
+        state.element.style.top = `${topcenter}px`;
+        state.transformation = { originX: 0, originY: 0, translateX: 0, translateY: 0, scale: newscale };
     }
 });
 

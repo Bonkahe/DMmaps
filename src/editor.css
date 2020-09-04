@@ -1,0 +1,23 @@
+body{
+    width: 100%;
+    color: white;
+}
+
+.titlebar{
+    height: 12px; 
+}
+
+.container{
+    padding: 20px;
+    border-bottom: 1px solid rgb(141, 141, 141);
+    width: calc(100% - 44px);
+}
+
+#editor-container{
+    width: 100%;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+

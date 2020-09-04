@@ -2,6 +2,7 @@ const {
    app, 
    BrowserWindow, 
    Menu, 
+   MenuItem,
    ipcMain,
    dialog,
    globalShortcut,
@@ -12,6 +13,7 @@ const {basename} = require('path')
 const contextMenu = require('electron-context-menu');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
+//require('@treverix/remote/main').initialize()
 const {
    SAVE_MAP_TO_STORAGE,
    CHANGE_MAP,
@@ -34,8 +36,20 @@ const {
    DELETE_DOCUMENT,
    COMPLETE_DOCUMENT_DELETE,
    TOGGLE_NODE,
-   TOGGLE_TEXT_EDITOR,
-   TOGGLE_HIREARCHY,
+   TITLEBAR_NEWPROJECT,
+   TITLEBAR_LOADPROJECT,
+   TITLEBAR_SAVEPROJECT,
+   TITLEBAR_SAVEASPROJECT,
+   TITLEBAR_CLOSE,
+   TITLEBAR_CHECKFORUPDATES,
+   TITLEBAR_OPENWINDOW,
+   RETRIEVE_VERSION,
+   NOTIFY_UPDATEDOWNLOADING,
+   NOTIFY_UPDATECOMPLETE,
+   NOTIFY_RESTART,
+   NOTIFY_CURRENTVERSION,
+   EDITOR_DOCSELECTED,
+   EDITOR_DESELECT,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry,
@@ -52,17 +66,71 @@ let dirtyproject = false;
 let CurrentContent = new Databasetemplate();
 
 // Your code that starts a new application
-let win;
+
+global.win = null;
+global.editorwindow = null;
 
 function createWindow() {
-   win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, webPreferences: {
+   win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, frame: false, webPreferences: {
     nodeIntegration: true, enableRemoteModule: true
     }})
    win.loadURL(url.format ({
       pathname: path.join(__dirname, './src/index.html'),
       protocol: 'file:',
       slashes: true,
-   }))   
+   }))
+
+   global.textwindow = win;
+   //const menu = Menu.buildFromTemplate(template)
+   //win.setMenu(menu)
+   /*
+   let child = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxHeight: 1000, maxWidth: 500, parent: win, frame: false, webPreferences: {
+      nodeIntegration: true, enableRemoteModule: true
+      }})
+   */
+   //child.show()
+
+   win.on('close', function(e) 
+   {
+      if (dirtyproject)
+      {
+         const choice = require('electron').dialog.showMessageBoxSync(this,
+         {
+            type: 'question',
+            buttons: ['Yes', 'No'],
+            title: 'Confirm',
+            message: 'You have unsaved data, Are you sure you want to quit?'
+         });
+         if (choice === 1) {
+         e.preventDefault();
+         }
+      }
+   });
+}
+
+function opentoolbarwindow()
+{
+   if (editorwindow == null)
+   {
+      editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  maxWidth: 400, parent: win, frame: false, webPreferences: {
+         nodeIntegration: true, enableRemoteModule: true
+      }});
+      editorwindow.loadURL(url.format ({
+         pathname: path.join(__dirname, './src/editor.html'),
+         protocol: 'file:',
+         slashes: true,
+      }));
+      editorwindow.show()
+
+      editorwindow.on('close', function(e)
+      {
+         editorwindow = null;
+      });
+   }
+   else
+   {
+      editorwindow.close();
+   }
 }
 
 
@@ -82,8 +150,7 @@ contextMenu({
       {
          label: 'stresstest',
          click: () => {
-            const menu = Menu.buildFromTemplate(updatedtemplate)
-            Menu.setApplicationMenu(menu)
+            win.webContents.send(NOTIFY_UPDATEDOWNLOADING , );
          }
       },
       */
@@ -149,7 +216,7 @@ contextMenu({
 
             //console.log(newnode);
 
-            win.webContents.send(CREATE_NEW_NODE , r);
+            win.webContents.send(CREATE_NEW_NODE , newnode);
             dirtyproject = true;
          }
       },
@@ -199,28 +266,6 @@ contextMenu({
                            }
                         }
 
-                        /*
-                        for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
-                        {
-                           if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
-                           {
-                              if (CurrentContent.content.textEntries[j].childdocuments.length > 0)
-                              {
-                                 for (var k = 0; k < CurrentContent.content.textEntries[j].childdocuments.length; k++)
-                                 {
-                                    for (var l = 0; l < CurrentContent.content.textEntries.length; l++)
-                                    {
-                                       if (CurrentContent.content.textEntries[l].id == CurrentContent.content.textEntries[j].childdocuments[k])
-                                       {
-                                          CurrentContent.content.textEntries[l].parentid = null;
-                                       }
-                                    }
-                                 }
-                              }
-                              CurrentContent.content.textEntries.splice(j, 1);
-                           }
-                        }
-                        */
                         CurrentContent.content.nodes.splice(i, 1);
                         break;
                      }
@@ -272,221 +317,6 @@ contextMenu({
       }
 	]
 });
-
-const template = [
-   {
-      label: 'File',
-      submenu: [
-         {
-            label: 'New Project',
-            click: () => { newproject() }
-         },
-         {
-            label: 'Load Project',
-            click: () => { loadproject(); }
-         },
-         {
-            label: 'Save Project',
-            click: () => { saveproject(); },
-            accelerator: 'CommandOrControl+S'
-         },
-         {
-            label: 'Save Project As',
-            click: () => { saveasproject(); },
-            accelerator: 'CommandOrControl+Shift+S'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'close'
-         }
-      ]
-   },
-  {
-      label: 'Edit',
-      submenu: [
-         {
-            role: 'undo'
-         },
-         {
-            role: 'redo'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'cut'
-         },
-         {
-            role: 'copy'
-         },
-         {
-            role: 'paste'
-         }
-      ]
-   },
-   
-   {
-      label: 'View',
-      submenu: [
-         {
-            label: 'Refresh',
-            click: () => {
-               win.reload();
-               updaterenderer();
-            },
-            accelerator: 'CommandOrControl+R'
-         },
-         {
-            role: 'toggledevtools'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'resetzoom'
-         },
-         {
-            role: 'zoomin'
-         },
-         {
-            role: 'zoomout'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'togglefullscreen'
-         }
-      ]
-   },
-   {
-      role: 'help',
-      submenu: [
-         {
-            label: 'Learn More'
-         }
-      ]
-   },
-   {
-      label: '|'
-   },
-   {
-      label: "version: " + app.getVersion()
-   }
-]
-
-const updatedtemplate = [
-   {
-      label: 'File',
-      submenu: [
-         {
-            label: 'New Project',
-            click: () => { newproject() }
-         },
-         {
-            label: 'Load Project',
-            click: () => { loadproject(); }
-         },
-         {
-            label: 'Save Project',
-            click: () => { saveproject(); },
-            accelerator: 'CommandOrControl+S'
-         },
-         {
-            label: 'Save Project As',
-            click: () => { saveasproject(); },
-            accelerator: 'CommandOrControl+Shift+S'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'close'
-         }
-      ]
-   },
-  {
-      label: 'Edit',
-      submenu: [
-         {
-            role: 'undo'
-         },
-         {
-            role: 'redo'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'cut'
-         },
-         {
-            role: 'copy'
-         },
-         {
-            role: 'paste'
-         }
-      ]
-   },
-   
-   {
-      label: 'View',
-      submenu: [
-         {
-            label: 'Refresh',
-            click: () => {
-               win.reload();
-               updaterenderer();
-            },
-            accelerator: 'CommandOrControl+R'
-         },
-         {
-            role: 'toggledevtools'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'resetzoom'
-         },
-         {
-            role: 'zoomin'
-         },
-         {
-            role: 'zoomout'
-         },
-         {
-            type: 'separator'
-         },
-         {
-            role: 'togglefullscreen'
-         }
-      ]
-   },
-   {
-      role: 'help',
-      submenu: [
-         {
-            label: 'Learn More'
-         }
-      ]
-   },
-   {
-      label: '|'
-   },
-   {
-      label: "Update Ready:"
-   },
-   {
-      label: 'Restart',
-      click: () => {
-         autoUpdater.quitAndInstall();
-      },
-   }
-]
-
 
 
 const newproject = async () => {
@@ -695,6 +525,7 @@ ipcMain.handle(REQUEST_DOCUMENT_BYNODE, async (event, nodeid) =>
    }
    else
    {
+      //global.editorwin.webContents.send(EDITOR_DOCSELECTED, documentData);
       return documentData;
    }
 })
@@ -760,7 +591,7 @@ ipcMain.on(REFRESH_PAGE, function(event) {
    updaterenderer();
 });
 
-ipcMain.on(NEW_DOCUMENT, function(event) {
+ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
    var newdoc = new DatabaseTextentry();
    loop = true;
    var newr = 0;
@@ -779,6 +610,17 @@ ipcMain.on(NEW_DOCUMENT, function(event) {
    }
    newdoc.id = newr;
    //console.log(newdoc);
+   if (selectedid != "" && selectedid != null)
+   {
+      newdoc.parentid = selectedid;
+   }
+   var huntdata = {
+      child: newr,
+      parent: selectedid
+   }
+
+   addchild(huntdata);
+
    CurrentContent.content.textEntries.push(newdoc);
    win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
    dirtyproject = true;
@@ -914,7 +756,70 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
     }
 });
 
+/** ---------------------------   TITLE BAR IPCS   ----------------------------- */
+
+ipcMain.on(TITLEBAR_NEWPROJECT, function(event) {
+   newproject()
+});
+
+ipcMain.on(TITLEBAR_LOADPROJECT, function(event) {
+   loadproject();
+});
+
+ipcMain.on(TITLEBAR_SAVEPROJECT, function(event) {
+   saveproject();
+});
+
+ipcMain.on(TITLEBAR_SAVEASPROJECT, function(event) {
+   saveasproject();
+});
+
+ipcMain.on(TITLEBAR_CLOSE, function(event) {
+   win.close();
+});
+
+ipcMain.on(TITLEBAR_CHECKFORUPDATES, function(event) {
+  autoUpdater.checkForUpdates(RETRIEVE_VERSION).then((result) => {
+   win.webContents.send(NOTIFY_CURRENTVERSION);
+ })
+});
+
+ipcMain.on(TITLEBAR_OPENWINDOW, function(event) {
+   opentoolbarwindow();
+});
+
+ipcMain.handle(RETRIEVE_VERSION, async (event) =>
+{
+   return app.getVersion();
+})
+
+autoUpdater.on('update-available', () => {
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING);
+});
+ 
+autoUpdater.on('update-downloaded', () => {
+   win.webContents.send(NOTIFY_UPDATECOMPLETE);
+});
+
+ipcMain.on(NOTIFY_RESTART, function(event) {
+   autoUpdater.quitAndInstall()
+});
+
+
+
+
 /** ---------------------------   Document editor functions   ----------------------------- */
+
+function addchild(data)
+{
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == data.parent)
+      {
+         CurrentContent.content.textEntries[i].childdocuments.push(data.child); 
+      }
+   }  
+}
 
 function removechild(data)
 {
@@ -1048,33 +953,9 @@ ipcMain.on('app_version', (event) => {
  });
 */
 
- autoUpdater.on('update-available', () => {
-   downloadstatus = "Downloading Update..."
- });
- 
- autoUpdater.on('update-downloaded', () => {
-   const menu = Menu.buildFromTemplate(updatedtemplate)
-   Menu.setApplicationMenu(menu)
- });
-
 
 
 app.on('ready', () => {
-   const menu = Menu.buildFromTemplate(template)
-   Menu.setApplicationMenu(menu)
-   globalShortcut.register('CommandOrControl+E', () => {
-      win.webContents.send(TOGGLE_TEXT_EDITOR , {});
-   })
-   globalShortcut.register('CommandOrControl+B', () => {
-      win.webContents.send(TOGGLE_HIREARCHY , {});
-   })
-   globalShortcut.register('F1', () => {
-      win.webContents.send(TOGGLE_HIREARCHY , {});
-   })
-   globalShortcut.register('F2', () => {
-      win.webContents.send(TOGGLE_TEXT_EDITOR , {});
-   })
-
    autoUpdater.checkForUpdatesAndNotify();
 })
 app.on('ready', createWindow)

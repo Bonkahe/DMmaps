@@ -1,10 +1,48 @@
 const {remote, ipcRenderer} = require('electron');
-const { Menu} = remote;
-const { dialog, BrowserWindow, screen } = require('electron').remote
+const { Menu, MenuItem} = remote;
+const { dialog, getCurrentWindow, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs');
 const { renderer } = require('./renderer');
 window.$ = window.jQuery = require('jquery');
 const Split = require('split.js');
+const customTitlebar = require('custom-electron-titlebar');
+const Mousetrap = require('mousetrap');
+
+window.addEventListener('DOMContentLoaded', () => {
+  const titlebar = new customTitlebar.Titlebar({
+      backgroundColor: customTitlebar.Color.fromHex('#1a1918'),
+      overflow: "hidden"
+  });
+
+  menu = Menu.buildFromTemplate(template)
+
+  titlebar.updateMenu(menu);
+  titlebar.updateTitle(' ');
+
+  var aTags = document.getElementsByClassName("menubar-menu-title");
+  //document.getElementsByClassName("window-title")[0].style.margin = "0 0 0 auto";
+  for (var i = 0; i < aTags.length; i++) {
+    if (aTags[i].textContent == "output") {
+      infodisplay = aTags[i];
+      break;
+    }
+  }
+
+  for (var i = 0; i < aTags.length; i++) {
+    if (aTags[i].textContent == "animation") {
+      downloaddisplay = aTags[i];
+      break;
+    }
+  }
+
+  infodisplay.innerHTML = "version:";
+  downloaddisplay.innerHTML = "";
+
+  downloaddisplay.className += " loader";
+  //getversion();
+})
+
+
 //const Quill = require('quill');
 //const ImageResize = require('quill-image-resize-module');
 
@@ -30,10 +68,23 @@ const {
   DELETE_DOCUMENT,
   COMPLETE_DOCUMENT_DELETE,
   TOGGLE_NODE,
-  TOGGLE_TEXT_EDITOR,
-  TOGGLE_HIREARCHY,
-  DatabaseTextentry,  
+  TITLEBAR_NEWPROJECT,
+  TITLEBAR_LOADPROJECT,
+  TITLEBAR_SAVEPROJECT,
+  TITLEBAR_SAVEASPROJECT,
+  TITLEBAR_CLOSE,
+  TITLEBAR_CHECKFORUPDATES,
+  TITLEBAR_OPENWINDOW,
+  RETRIEVE_VERSION,
+  NOTIFY_UPDATEDOWNLOADING,
+  NOTIFY_UPDATECOMPLETE,
+  NOTIFY_RESTART,
+  NOTIFY_CURRENTVERSION,
+  DatabaseTextentry,
+  EDITOR_SELECTION,
+  EDITOR_INITIALIZED,  
 }  = require('../utils/constants');
+//const { map } = require('jquery');
 
 /** -------------------- Variables --------------------- */
 
@@ -44,11 +95,110 @@ var textchanged = false;
 var instance;
 var node;
 var deactivatepanning = false;
+var newdoc = false;
+var previoustexteditorsize = 30;
+var previoushirearchysize = 15;
 
+var texteditortoolbar = document.getElementById('toolbar');
+var toolbarheight;
+var editorcontainer = document.getElementById('editor');
+var texteditorcontainer = document.getElementById('textcontainer');
+
+//console.log(editorcontainer);
+
+var nodelist = [];
 var hirearchylist = document.getElementById('hirearchylist');
 var selecteddocid;
+var selectednodeid;
 var depth;
 var newhtml;
+var mapdiv = document.getElementById('mapdiv');
+var map = document.getElementById('map');
+map.onload = function () {
+  resetmap();
+}
+
+var menu;
+var infodisplay;
+var downloaddisplay;
+const template = [
+  {
+     label: 'File',
+     submenu: [
+        {
+           label: 'New Project',
+           click: () => { ipcRenderer.send(TITLEBAR_NEWPROJECT); }
+        },
+        {
+           label: 'Load Project',
+           click: () => { ipcRenderer.send(TITLEBAR_LOADPROJECT); }
+        },
+        {
+           label: 'Save Project',
+           click: () => { ipcRenderer.send(TITLEBAR_SAVEPROJECT); },
+           accelerator: 'CommandOrControl+S'
+        },
+        {
+           label: 'Save Project As',
+           click: () => { ipcRenderer.send(TITLEBAR_SAVEASPROJECT); },
+           accelerator: 'CommandOrControl+Shift+S'
+        },
+        {
+           type: 'separator'
+        },
+        {
+           role: 'Close',
+           click: () => { ipcRenderer.send(TITLEBAR_CLOSE); },
+        }
+     ]
+  },
+  {
+    label: 'Window',
+    submenu: [
+       {
+          label: 'Editor window',
+          click: () => { ipcRenderer.send(TITLEBAR_OPENWINDOW); }
+       }
+    ]
+  },
+  {
+     role: 'Help',
+     submenu: [
+        {
+           label: 'Check for updates',
+           click: () => { 
+             ipcRenderer.send(TITLEBAR_CHECKFORUPDATES); 
+             infodisplay.innerHTML = "Checking for updates... ";
+             downloaddisplay.style.display = "block";
+            }
+        }
+     ]
+  },
+  {
+     label: '|',
+     enabled: false
+  },
+  {
+    label: "output",
+    enabled: false
+  },
+  {
+    label: "animation",
+    enabled: false
+  }
+]
+
+
+
+ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
+  if (result)
+  {
+    infodisplay.innerHTML = "version: " + result;
+  }
+  else{
+    infodisplay.innerHTML = "no version number";
+  }
+})
 
 //var texteditorwindow = document.getElementById('texteditor');
 var texteditortitle = document.getElementById('texteditor-title');
@@ -115,13 +265,15 @@ var toolbarOptions = [
 
 var editor = new Quill('#editor', {
   modules: {
-    toolbar: toolbarOptions,
-    imageResize: {modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]}
+    toolbar: '#toolbar',
+    imageResize: {modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]},
     //imageDrop: true
   },
   theme: 'snow'
   //imageHandler: imageHandler
 });
+
+
 
 //console.log(editor.root);
 editor.root.setAttribute('ondrop', 'textdrop(event)');
@@ -182,11 +334,20 @@ editor.insertHTML = (html) => {
 var splitinstance = Split(['.a','.b', '.c'], {
   sizes: [0, 100, 0],
   minSize: [0, 0 ,0],
-  gutterSize: 10,
+  gutterSize: 20,
   snapOffset: 100,
+  onDrag: function(sizes) {
+    resizetextwindow();
+  }
 })
 
-dragElement(document.getElementById("mapdiv"), document.getElementById("textcontainer"));
+function resizetextwindow()
+{
+  toolbarheight = texteditortoolbar.getBoundingClientRect().height + texteditortitle.getBoundingClientRect().height;
+  editorcontainer.style.height = (texteditorcontainer.getBoundingClientRect().height  - (toolbarheight + 10)) + 'px';
+}
+
+dragElement(mapdiv, document.getElementById("textcontainer"), document.getElementById("hirearchycontainer"));
 
 ipcRenderer.send(REFRESH_PAGE);
 
@@ -195,9 +356,49 @@ window.addEventListener('contextmenu', (e) => {
   node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
   if (node.className == "node-icon")
   {
-    ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("Db-Path"));
+    ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("node-db-path"));
   }
 }, false)
+
+/** -------------------------------- HOTKEYS ----------------------------- */
+
+Mousetrap.bind(['command+s', 'ctrl+s'], function() {
+  ipcRenderer.send(TITLEBAR_SAVEPROJECT);
+  return false;
+});
+
+Mousetrap.bind(['command+shift+s', 'ctrl+shift+s'], function() {
+  ipcRenderer.send(TITLEBAR_SAVEASPROJECT);
+  return false;
+});
+
+Mousetrap.bind(['command+e', 'ctrl+e', 'f2'], function() {
+  toggletexteditor();
+  return false;
+});
+
+Mousetrap.bind(['command+b', 'ctrl+b', 'f1'], function() {
+  togglehirearchy();
+  return false;
+});
+
+Mousetrap.bind(['command+d', 'ctrl+d'], function() {
+  highlightdecider(null, null);
+  return false;
+});
+
+Mousetrap.bind(['command+w', 'ctrl+w'], function() {
+  ipcRenderer.send(TITLEBAR_OPENWINDOW); 
+  return false;
+});
+
+
+Mousetrap.prototype.stopCallback = function(e, element, combo) {
+  return false;
+}
+
+
+/** ------------------------------ END HOTKEYS --------------------------- */
 
 const backgroundload = document.getElementById('backgroundBtn');
 backgroundload.onclick = e => {
@@ -207,11 +408,12 @@ backgroundload.onclick = e => {
 const newdocbtn = document.getElementById('btn-newdoc');
 newdocbtn.onclick = e => {
   createdocument();
+  newdoc = true;
 };
 
 const deletdocbtn = document.getElementById('btn-deletedoc');
 deletdocbtn.onclick = e => {
-  deletedocument(completedelete);
+  deletedocument();
 };
 
 texteditortitle.addEventListener("input", function() {
@@ -237,15 +439,83 @@ editor.on('selection-change', function(range, oldRange, source) {
 });
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /** -------------------- IPC BLOCK ---------------------  */
+/*
+ipcRenderer.on(TEST_NODES, (event, message) => {
+  if (nodelist.length > 0)
+  {
+    nodelist.forEach(element => {
+      element.style.width = (64 * message) + "px";
+      element.style.height = (64 * message) + "px";
+    });
+  }
+})
+*/
+
+ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
+  infodisplay.innerHTML = "Downloading... ";
+  downloaddisplay.style.display = "block";
+})
+
+ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
+  downloaddisplay.style.display = "none";
+  infodisplay.innerHTML = "Download Complete!"
+  menu = Menu.buildFromTemplate(template)
+
+  menu.append(new MenuItem({
+    label: 'Restart',
+    click: () => { 
+      clearInterval(animation);
+      ipcRenderer.send(NOTIFY_RESTART); }
+  }));
+  titlebar.updateMenu(menu);
+})
+
+
+ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
+  ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
+    downloaddisplay.style.display = "none";
+    if (result)
+    {
+      infodisplay.innerHTML = "version: " + result;
+    }
+    else{
+      infodisplay.innerHTML = "no version number";
+    }
+  })
+})
+
+/** -------------------- END TITLEBAR --------------------- */
+
+ipcRenderer.on(EDITOR_INITIALIZED, (event) => {
+  selectionchanged(selecteddocid, selectednodeid);
+})
 
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   selecteddocid = null;
+  selectednodeid = null;
   textchanged = false;
 
   //console.log(message.CurrentContent.content.textEntries);
 
-  document.querySelectorAll('.node').forEach(function(a) {
+  document.querySelectorAll('.node-icon').forEach(function(a) {
     a.remove()
   })
   
@@ -262,6 +532,8 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   {
     map.src = message.CurrentContent.backgroundurl;
     resetmap();
+    
+    
     switchtomap();
     importnodes(message);
   }
@@ -277,32 +549,25 @@ ipcRenderer.on(RESET_MAP, (event, message) => {
   resetmap(); 
 })
 
-ipcRenderer.on(REFRESH_HIREARCHY, (event, message) =>
-{
+ipcRenderer.on(REFRESH_HIREARCHY, (event, message) =>{
   rebuildhirearchy(message);
 })
 
 ipcRenderer.on(CHANGE_MAP, (event, message) => {
-  
   getFileFromUser();
 })
 
-ipcRenderer.on(TOGGLE_TEXT_EDITOR, (event, message) => {
-  toggletexteditor();
-})
-
-ipcRenderer.on(TOGGLE_HIREARCHY, (event, message) => {
-  togglehirearchy();
-})
-
-
 ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
-  mousecreatenode(rightClickPosition.x,rightClickPosition.y,message);
+  mousecreatenode(rightClickPosition.x,rightClickPosition.y,message.id, message.documentref);
 })
 
 ipcRenderer.on(DELETE_NODE, (event, message) => {
+  if (selectednodeid == node.getAttribute('node-db-path'))
+  {
+    selectednodeid = null;
+  }
   node.parentNode.removeChild(node);
-  document.getElementById("mapdiv").style.pointerEvents = 'auto';
+  mapdiv.style.pointerEvents = 'auto';
 })
 
 ipcRenderer.on(COMPLETE_DOCUMENT_DELETE, (event, message) => {
@@ -313,53 +578,51 @@ ipcRenderer.on(TOGGLE_NODE, (event, message) => {
   togglenode(message.id, message.locked);
 })
 
+
+
+
 /** -------------------- End region ---------------------  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 //** -------------------- Text editor button handlers. --------------------- */
 
-/*
-// Unused atm may use later.
-
-function replaceSelectedText(text) {
-	var txtArea = document.getElementById('myTextArea');
-  if (txtArea.selectionStart != undefined) {
-  	var startPos = txtArea.selectionStart;
-    var endPos = txtArea.selectionEnd;
-    selectedText = txtArea.value.substring(startPos, endPos);
-    txtArea.value = txtArea.value.slice(0, startPos) + text + txtArea.value.slice(endPos);
-    console.log('Moz ', selectedText);
-  }
-}
-*/
-
-/*
-document.getElementById('btn-save').onclick = e => {
-  btnsave();
-};
-
-
-document.getElementById('btn-bold').onclick = e => {
-  btnweight();
-};
-
-
-document.getElementById('btn-italic').onclick = e => {
-  btnitalics();
-};
-
-
-document.getElementById('btn-under').onclick = e => {
-  btnvariable('u');
-};
-
-
-document.getElementById('btn-strike').onclick = e => {
-  btnvariable('s');
-};
-*/
 function btnsave ()
 {
   savetext();
@@ -562,7 +825,7 @@ function open(sizes, index)
   if (index == 0)
   {
     if (sizes[0] > 10) {return;}
-    sizes = [30, (70 - sizes[2]), sizes[2]];
+    sizes = [previoushirearchysize, ((100 - previoushirearchysize) - sizes[2]), sizes[2]];
   }
   else if(index == 1)
   {
@@ -571,15 +834,17 @@ function open(sizes, index)
   else if (index == 2)
   {
     if (sizes[2] > 10) {return;}
-    sizes = [sizes[0], (70 - sizes[0]), 30];
+    sizes = [sizes[0], ((100 - previoustexteditorsize) - sizes[0]), previoustexteditorsize];
   }
 
   splitinstance.setSizes(sizes);
+  resizetextwindow();
 }
 
 function close(sizes, index)
 {
   splitinstance.collapse(index);
+  resizetextwindow();
   /*
 
   if (index == 0)
@@ -604,6 +869,7 @@ function togglehirearchy()
   var sizes = splitinstance.getSizes();
   if (sizes[0] > 10)
   {
+    previoushirearchysize = sizes[0];
     close(sizes, 0);
   }
   else
@@ -617,6 +883,7 @@ function toggletexteditor()
   var sizes = splitinstance.getSizes();
   if (sizes[2] > 10)
   {
+    previoustexteditorsize = sizes[2];
     close(sizes, 2);
   }
   else
@@ -671,7 +938,7 @@ function loadtext(document)
   //texteditorwindow.innerHTML = document.content;
   texteditortitle.innerText = document.name;
   texteditortitle.setAttribute('db-path',document.id);
-  highlighttoggle(document.id);
+  highlightdecider(document.id, null);
 }
 
 function retrievebuttons()
@@ -693,7 +960,7 @@ function savetext (callback)
       callback();
     }
 
-    console.log("nothing to save")
+    //console.log("nothing to save")
     return false;
   }
   var newdoc = new DatabaseTextentry();
@@ -723,8 +990,8 @@ function switchtomap()
   const nomapinfo = document.getElementById('no-map-info');
   nomapinfo.style.display = 'none';
 
-  const map = document.getElementById('mapdiv');
-  map.style.display = 'block';
+  
+  mapdiv.style.display = 'block';
 }
 
 function switchtonomap()
@@ -732,8 +999,8 @@ function switchtonomap()
   const nomapinfo = document.getElementById('no-map-info');
   nomapinfo.style.display = 'flex';
 
-  const map = document.getElementById('mapdiv');
-  map.style.display = 'none';
+
+  mapdiv.style.display = 'none';
 }
 
 function resetmap()
@@ -743,8 +1010,11 @@ function resetmap()
     return;
   }
 
-  instance.forcezoom({})  
-
+  instance.forcezoom({
+    widthx:window.innerWidth / 2,
+    widthy:window.innerHeight / 2
+  })
+  
   var test = instance.getzoom(
     {
       deltaScale: -1
@@ -764,15 +1034,13 @@ function importnodes(database)
 {
   //console.log(database.CurrentContent);
   database.CurrentContent.content.nodes.forEach(element => {
-    createnode(element.location.x,element.location.y,element.id, element.locked);
+    createnode(element.location.x, element.location.y, element.id, element.documentref, element.locked);
   });
   //createnode(rightClickPosition.x,rightClickPosition.y,message);
 }
 
-function createnode(x,y, message,locked)
+function createnode(x,y, nodeid, docid, locked)
 {
-  var elmnt = document.getElementById("mapdiv")
-  
   var img = document.createElement('button');
   img.onmouseenter = function(event){
     if (event.target.getAttribute("locked") == "true")
@@ -785,13 +1053,14 @@ function createnode(x,y, message,locked)
     deactivatepanning = false
   };
 
-  dragNode(img, elmnt);
+  dragNode(img, mapdiv);
   //img.id = "node-icon";
   img.className = "node-icon";
-  img.setAttribute("Db-Path", message)
+  img.setAttribute("node-db-path", nodeid)
+  img.setAttribute("doc-db-path", docid)
   img.setAttribute("locked", locked)
 
-  elmnt.appendChild(img); 
+  mapdiv.appendChild(img); 
     
   img.style.left = (x  + "px");
   img.style.top = (y  + "px");
@@ -804,14 +1073,16 @@ function createnode(x,y, message,locked)
   {
     img.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
   }
+
+  nodelist.push(img);
 }
 
 function createdocument()
 {
-  ipcRenderer.send(NEW_DOCUMENT);
+  ipcRenderer.send(NEW_DOCUMENT, selecteddocid);
 }
 
-function deletedocument(callback)
+function deletedocument()
 {
   if (selecteddocid != null)
   {
@@ -824,12 +1095,12 @@ function completedelete()
   texteditortitle.setAttribute('db-path', "");
   texteditortitle.innerText = "";
   editor.setText("");
+
   selecteddocid = null;
 }
 
-function mousecreatenode(x,y, message)
+function mousecreatenode(x,y, nodeid, docid)
 {
-  var elmnt = document.getElementById("mapdiv")
   
   var img = document.createElement('button');
   img.onmouseenter = function(event){
@@ -843,16 +1114,17 @@ function mousecreatenode(x,y, message)
     deactivatepanning = false
   };
 
-  dragNode(img, elmnt);
+  dragNode(img, mapdiv);
   //img.id = "node-icon";
-  img.setAttribute("Db-Path", message)
+  img.setAttribute("node-db-path", nodeid)
+  img.setAttribute("doc-db-path", docid)
   img.setAttribute("locked", "false")
   img.className = "node-icon";
   var modifiedzoom = 1 / zoom;
 
   
-  var originx = elmnt.getBoundingClientRect().left;
-  var originy = elmnt.getBoundingClientRect().top;
+  var originx = mapdiv.getBoundingClientRect().left;
+  var originy = mapdiv.getBoundingClientRect().top;
   
 
   var normalizedx = (x - originx);
@@ -861,7 +1133,7 @@ function mousecreatenode(x,y, message)
   var normalizedy = (y - originy);
   var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
 
-  elmnt.appendChild(img); 
+  mapdiv.appendChild(img); 
     
   img.style.left = (multipliednormalizedx  + "px");
   img.style.top = (multipliednormalizedy  + "px");
@@ -870,15 +1142,17 @@ function mousecreatenode(x,y, message)
   data = {
     x:multipliednormalizedx,
     y:multipliednormalizedy,
-    id:message
+    id:nodeid
   };
   ipcRenderer.send(VERIFY_NODE, data);
+
+  nodelist.push(img);
 }
 
 function togglenode(id, locked)
 {
   //console.log(id + "----" + locked);
-  var nodetotoggle = document.querySelector('[Db-Path="' + id +'"]');
+  var nodetotoggle = document.querySelector('[node-db-path="' + id +'"]');
   nodetotoggle.setAttribute("locked", locked)
 
   if (locked)
@@ -893,12 +1167,24 @@ function togglenode(id, locked)
 
 function selectdoc(docpath)
 {
+  if (docpath == null)
+  {
+    //ipcRenderer.send(EDITOR_DESELECT,);
+    return;
+  }
+
   ipcRenderer.invoke(REQUEST_DOCUMENT_BYDOC,docpath).then((result) => {
     if (result != null)
     {
       //console.log(result.content);
       savetext();
       loadtext(result);
+
+      if (newdoc)
+      {
+        selectElementContents(texteditortitle);
+        newdoc = false;
+      }
     }
     else
     {
@@ -909,7 +1195,7 @@ function selectdoc(docpath)
 
 function selectnode(buttonelmnt)
 {
-  ipcRenderer.invoke(REQUEST_DOCUMENT_BYNODE, buttonelmnt.getAttribute("Db-Path")).then((result) => {
+  ipcRenderer.invoke(REQUEST_DOCUMENT_BYNODE, buttonelmnt.getAttribute("node-db-path")).then((result) => {
     if (result != null)
     {
       //console.log(result.content);
@@ -918,13 +1204,14 @@ function selectnode(buttonelmnt)
     }
     else
     {
-      console.log("No document attached to node.");
+      highlightdecider(null, buttonelmnt.getAttribute("node-db-path"));
     }
   })
 }
 
 function rebuildhirearchy(content)
 {
+  highlightdecider(selecteddocid, selectednodeid);
   hirearchylist.innerHTML = null;
 
   var textEntries = [];
@@ -965,6 +1252,19 @@ function rebuildhirearchy(content)
   {
     hirearchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
   }
+
+  if (newdoc)
+  {
+    hirearchybuttonpressed(textEntries[textEntries.length - 1].id);
+  }
+}
+
+function selectElementContents(el) {
+  var range = document.createRange();
+  range.selectNodeContents(el);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
 
 function builddocs(textEntries, childEntries)
@@ -1005,7 +1305,7 @@ function sortList(ul) {
 function hirearchybuttonpressed(id)
 { 
   //console.log(id);
-  highlighttoggle(id);
+  //dochighlighttoggle(id);
   selectdoc(id);
 }
 
@@ -1038,18 +1338,21 @@ function parentlessdrop(ev){
 }
 
 function textdrop(ev){
-  ev.preventDefault();
-
-  //var range = editor.getSelection(true);
-
-  if (caratindex != null)
+  if (ev.dataTransfer.getData("Db-Path") != "")
   {
-    editor.setSelection(caratindex.index, 0);
-    editor.insertEmbed(caratindex.index, 'doclink', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
-  }
-  else
-  {
-    editor.insertEmbed(0, 'doclink', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
+    ev.preventDefault();
+  
+    //var range = editor.getSelection(true);
+  
+    if (caratindex != null)
+    {
+      editor.setSelection(caratindex.index, 0);
+      editor.insertEmbed(caratindex.index, 'doclink', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
+    }
+    else
+    {
+      editor.insertEmbed(0, 'doclink', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
+    }
   }
 
   
@@ -1072,18 +1375,93 @@ function retrievename(id)
   return "Document has no name...";
 }
 
-
-function highlighttoggle(id)
+function highlightdecider(docid, nodeid)
 {
+  if (selectednodeid != null)
+  {
+    // -- UNHIGHLIGHT --//var oldnode = mapdiv.querySelector('*[node-db-path="' + selectednodeid + '"]');
+  }
   if (selecteddocid != null)
   {
-    document.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';
+    hirearchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';
   }
-  selecteddocid = id;
-  document.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
+
+  selectednodeid = nodeid;
+  selecteddocid = docid;
+
+  if (nodeid != null)
+  {
+    highlightnode(nodeid);
+    return;
+  }
+  if (docid != null)
+  {
+    highlightdoc(docid);
+    return;
+  }
+
+  selectionchanged(null,null);
 }
 
+function highlightdoc(docid)
+{
+  var doc = hirearchylist.querySelector('*[Db-Path="' + docid + '"]');
+  doc.id = 'highlight';
 
+  var foundnode = mapdiv.querySelector('*[doc-db-path="' + docid + '"]');
+  if(foundnode){
+
+    // HIGHLIGHT NODE ----
+    
+    selectionchanged(docid,foundnode.getAttribute('node-db-path'));
+    return;    
+  }
+
+  selectionchanged(docid,null);
+}
+
+function highlightnode(nodeid)
+{
+  var node = mapdiv.querySelector('*[node-db-path="' + nodeid + '"]');
+  // HIGHLIGHT NODE ----
+
+  var docid = node.getAttribute('doc-db-path');
+  if (docid){
+    var founddoc = hirearchylist.querySelector('*[Db-Path="' + docid + '"]');
+    
+    if (founddoc){
+      founddoc.id = 'highlight';
+      selectionchanged(docid,nodeid);
+      return;
+    }
+    else
+    {
+      node.setAttribute('doc-db-path','');
+    }
+  }
+
+  selectionchanged(null,nodeid);
+}
+
+function selectionchanged(docid, nodeid)
+{
+  var data = {
+    docid: docid,
+    nodeid: nodeid
+  }
+
+  //console.log(data)
+  //selecteddocid
+
+  var editorwindow = remote.getGlobal ('editorwindow');
+  var teststring = "test";
+
+  //console.log(editorwindow);
+  
+  if (editorwindow){
+    editorwindow.webContents.send(EDITOR_SELECTION, data);
+  }  
+}
 
 /** Maybe remove later and move to main.js */
 
@@ -1115,9 +1493,9 @@ const getFileFromUser = async () => {
   ipcRenderer.invoke(SAVE_MAP_TO_STORAGE, files.filePaths[0]).then((result) => {
     if (result)
     {
-      const map = document.getElementById('map');
-  
-      map.src = files.filePaths[0];
+      map.src = files.filePaths[0];      
+      resetmap();
+
       switchtomap();
     }
     else
@@ -1181,7 +1559,7 @@ function dragNode(buttonelmnt, parentelmnt){
       || (e.clientY - 32) - mouseorigin.y > softlockdistance 
       || (e.clientY - 32) - mouseorigin.y < -softlockdistance)
       {
-        console.log(mouseorigin.x + " -- " + mouseorigin.y + " ----- x:" + (e.clientX - 32) + " -- y:" + (e.clientY - 32));
+        //console.log(mouseorigin.x + " -- " + mouseorigin.y + " ----- x:" + (e.clientX - 32) + " -- y:" + (e.clientY - 32));
         nodelocked = false;
 
         
@@ -1240,13 +1618,13 @@ function dragNode(buttonelmnt, parentelmnt){
     data = {
       x:multipliednormalizedx,
       y:multipliednormalizedy,
-      id:buttonelmnt.getAttribute("Db-Path"),
+      id:buttonelmnt.getAttribute("node-db-path"),
     };
     ipcRenderer.send(VERIFY_NODE, data);
   }
 }
 
-function dragElement(elmnt, textelmnt) {
+function dragElement(elmnt, textelmnt, hirearchyelmnt) {
   instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
   resetmap();
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -1263,7 +1641,7 @@ function dragElement(elmnt, textelmnt) {
   // The function that will run when the events are triggered. 
   function DoSomething (e) {
 
-    if (e.pageX > textelmnt.getBoundingClientRect().left)
+    if (e.pageX > textelmnt.getBoundingClientRect().left ||e.pageX < hirearchyelmnt.getBoundingClientRect().right)
     {
       return;
     }

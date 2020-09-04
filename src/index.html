@@ -14,6 +14,9 @@
     <script defer src="render.js"></script>
   </head>
   <body>
+  <div id="titlebar">
+
+  </div>
 
     <div class="content">
       <div id="hirearchycontainer" class="cell a">
@@ -49,6 +52,42 @@
         <div id="texteditor-title-holder" db-path="">
           <div id="texteditor-title" contenteditable="true"></div>          
         </div>
+        <div id="toolbar">
+          <div id="innertoolbar" class="ql-toolbar ql-snow">
+             <span class="ql-formats">
+                <select class="ql-size">
+                   <option selected></option><!-- Note a missing, thus falsy value, is used to reset to default -->
+                   <option value="16px"></option>
+                   <option value="18px"></option>
+                   <option value="20px"></option>
+                   <option value="26px"></option>
+                   <option value="32px"></option>
+               </select>
+                <button type="button" class="ql-bold"></button>
+                <button type="button" class="ql-italic"></button>
+                <button type="button" class="ql-underline"></button>
+                <button type="button" class="ql-strike"></button>
+                <select class="ql-color"></select>
+                
+                <select class="ql-background"></select>
+             <span class="ql-formats">
+                <button type="button" class="ql-indent" value="-1"></button>
+                <button type="button" class="ql-indent" value="+1"></button>
+                <select class="ql-align">
+                   <option selected="selected"></option>
+                   <option value="center"></option>
+                   <option value="right"></option>
+                   <option value="justify"></option>
+                </select>
+                <button type="button" class="ql-list" value="ordered"></button>
+                <button type="button" class="ql-list" value="bullet"></button>
+             </span>
+             <span class="ql-formats">
+                <button type="button" class="ql-image"></button>
+                <button type="button" class="ql-clean"></button>
+             </span>
+          </div>
+       </div>
         <div id="editor">
           <p>Hello World!</p>
         </div>
