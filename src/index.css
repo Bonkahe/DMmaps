@@ -90,9 +90,17 @@
   .node-highlight {
   background-color:#FFF;
   }
+
+  #nodecontainers {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
   
   #highlight {
-  background-color:green;
+  background-color:var(--main-button-color);
+  color: #000;
   }
   
   #hirearchylist-container {
@@ -114,7 +122,7 @@
   height: 100%;
   overflow:auto;
   outline:none;
-  background-color:#4CAF50;
+  background-color:var(--main-button-color);;
   border:1px solid black;
   color:#FFF;
   cursor:pointer;
@@ -123,17 +131,17 @@
   }
 
   #hirearchycontent .btn-group #btn-newdoc:hover {
-  background-color:#41c045;
+  background-color:var(--main-button-highlight);;
   }
 
 
   #hirearchycontent .btn-group #btn-deletedoc {
-  background-color:#af5b4c;
+  background-color:var(--neg-button-color);
   border:1px solid black;
   }
   
   #hirearchycontent .btn-group #btn-deletedoc:hover {
-  background-color:#da4f36;
+  background-color:var(--neg-button-highlight);
   }
   
   #texteditor-menu .btn-group {
@@ -142,7 +150,7 @@
   
   #texteditor-menu .btn-group button {
   outline:none;
-  background-color:#4CAF50;
+  background-color:var(--main-button-color);;
   border:1px solid green;
   color:#FFF;
   cursor:pointer;
@@ -212,12 +220,22 @@
   position:absolute;
   }
   
+  #canvaswindow{
+    position: absolute;
+    z-index:2;
+    top: 0;
+    left: 0;
+  }
+  
+
   #map {
-  position:relative;
+  position: relative;
   overflow:hidden;
   margin-left:auto;
   margin-right:auto;
   z-index:1;
+  top: 0;
+  left: 0;
   }
   
   #no-map-info {
@@ -325,7 +343,7 @@
   }
   
   #hirearchycontent .btn-group button:hover,#texteditor-menu .btn-group button:hover {
-  background-color:#3e8e41;
+  background-color:var(--neg-button-highlight);
   }
   
   .ql-snow .ql-picker.ql-size .ql-picker-label::before,.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="14px"]::before {

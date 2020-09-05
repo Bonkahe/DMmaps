@@ -112,7 +112,7 @@ function opentoolbarwindow()
 {
    if (editorwindow == null)
    {
-      editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  maxWidth: 400, parent: win, frame: false, webPreferences: {
+      editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  parent: win, frame: false, webPreferences: {
          nodeIntegration: true, enableRemoteModule: true
       }});
       editorwindow.loadURL(url.format ({
@@ -163,7 +163,6 @@ contextMenu({
       {
          label: 'Create Node',
          visible: CurrentContent.backgroundurl != "",
-         visible: params.mediaType === 'image',
          click: () => {
             var newnode = new DatabaseNodeentry();
             //console.log(CurrentContent);
@@ -544,6 +543,7 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
          {
             CurrentContent.content.textEntries[i].name = document.name;
             CurrentContent.content.textEntries[i].content = document.content;
+            CurrentContent.content.textEntries[i].drawing = document.drawing;
 
             win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
             dirtyproject = true;
@@ -869,6 +869,7 @@ Databasetemplate.fromjson = function(json)
       newdoc.name = jsondoc.name;
       newdoc.content = jsondoc.content;
       newdoc.childdocuments = jsondoc.childdocuments;
+      newdoc.drawing = jsondoc.drawing;
       db.content.textEntries.push(newdoc);
    });
 

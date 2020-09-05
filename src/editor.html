@@ -4,23 +4,77 @@
     <meta charset="UTF-8">
     <title>Document</title>
 
-    <link rel="stylesheet" href="editor.css">
+    <link rel="stylesheet" href="roottheme.css">
+    <link rel="stylesheet" href="editor.css">    
+
+    <script src="./colorpicker/jscolor.js"></script>
     <script defer src="editor.js"></script>
+    
 </head>
 <body>
+    
     <div id="editor-container">
         <div class="container">
-            <h1>Database tools</h1>
-            <p id="test"> test</p>
-            <input type="range" id="myRange">
+            <h1>Node Controls</h1>
+            <p>Default size:</p>
+            <input type="range" id="basenodeRange" step="5">
+
+            <div class="holder">
+                <span class="tooltiptext" id="node-display-tooltip">Please select a node.</span>
+                <div class="greyout" id="node-display">
+                    <p id="currentnodedef" >Current Node size:</p>
+                    <div id="rangeinput">
+                        <input type="range" id="currentnodeRange" >
+                        <button class="basebtn" id="clearbtn">Clear</button>                        
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="container" id="node-display" style="display: none;">
-            <h1>Node tools</h1>
-            <p id="node-id-display"></p>
-        </div>
-        <div class="container" id="document-display" style="display: none;">
-            <h1>Document tools</h1>
-            <p id="doc-id-display"></p>
+        <div class="container">
+            <div class="holder">
+                <span class="tooltiptext" id="zone-display-tooltip">Please select a document.</span>
+                <div class="greyout" id="zone-display">
+                    <h1>Zone Controls:</h1>
+                    <div class="flexcontainer">
+                        <div id="zonesplinelist">
+                            Splines:
+                            <ul id="drawinglist">
+                            </ul>
+                        </div>
+                        <div id="zonetoolbar">
+                            <div class="toolbarline">
+                                <input type="checkbox" id="allowdrawingbtn" name="allowdrawingbtn" value="allowdrawing">
+                                    <label for="allowdrawingbtn"> Enable drawing of splines.</label><br><br>
+                            </div>
+
+                            <div class="toolbarline">
+                                Spline Width:
+                                <input type="range" id="Splinewidth" step="5">
+                            </div>
+                            <div class="toolbarline">
+                                Spline:
+                                <input class="basebtn" id="splinecolorbtn" data-jscolor="{value:'#000000', alpha:1}">
+                            </div>
+                            <div class="toolbarline">
+                                <input type="checkbox" id="enablefillbtn" name="enablefillbtn" value="enablefill">
+                                <label for="enablefillbtn"> Enable fill of region.</label><br><br>
+                            </div>
+                            <div class="toolbarline">
+                                Fill:
+                                <input class="basebtn" id="bgcolorbtn" data-jscolor="{value:'rgba(255,255,255,0)'}">
+                            </div>
+                            <script>
+                                jscolor.presets.default = {
+                                    format:'rgba', backgroundColor:'rgba(89,89,89,1)', 
+                                    borderColor:'rgba(110,110,110,1)', mode:'HVS', 
+                                    controlBorderColor:'rgba(128,128,128,1)', sliderSize:10
+                                };
+                                jscolor.trigger('input change');
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </body>

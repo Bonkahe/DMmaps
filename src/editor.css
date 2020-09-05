@@ -8,9 +8,62 @@ body{
 }
 
 .container{
-    padding: 20px;
-    border-bottom: 1px solid rgb(141, 141, 141);
-    width: calc(100% - 44px);
+    padding: 5px;
+    border: 1px solid rgb(141, 141, 141);
+    width: calc(100% - 20px);
+}
+
+.container h1{
+    margin: 15px 0;
+    font-size: 20px;
+}
+.container p{
+    margin: 2px 0;
+}
+
+.flexcontainer{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.toolbarline{
+    display: flex; 
+    align-items: center;
+}
+
+#zonesplinelist{
+    width: 40%;
+    margin: 0 5px 0 0;
+    
+    max-height: 200px;
+}
+
+#drawinglist{
+    overflow: auto;
+    height: calc(100% - 30px);
+    margin: 5px;
+    background-color: #292727;
+    border: 2px solid rgb(54, 54, 54);
+}
+
+#zonetoolbar{
+    border-left: 2px solid rgb(54, 54, 54);
+    padding: 0 5px 0 0;
+    width: 60%;
+    max-height: 200px;
+    min-height: 200px;
+    overflow: hidden;
+}
+
+#splinecolorbtn{
+    width: 100%;
+    margin: 5px;
+}
+
+#bgcolorbtn{
+    width: 100%;
+    margin: 5px;
 }
 
 #editor-container{
@@ -21,3 +74,221 @@ body{
     overflow-y: auto;
 }
 
+#rangeinput{
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+}
+
+#zone-display{
+    width: 100%;
+}
+
+#node-display{
+    width: 100%;
+}
+
+.basebtn{
+    width: 50px;
+    height: 20px;
+    margin: 0 0 0 20px;
+    background-color: var(--main-button-color);
+}
+
+.container input[type=range] {
+  height: 38px;
+  -webkit-appearance: none;
+  background-color: transparent;
+  margin: 0 0;
+  width: 100%;
+}
+.container input[type=range]:focus {
+  outline: none;
+}
+.container input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 10px;
+  cursor: pointer;
+  box-shadow: 1px 1px 1px #000000;
+  background: var(--main-button-color);
+  border-radius: 5px;
+  border: 1px solid #000000;
+}
+.container input[type=range]::-webkit-slider-thumb {
+  box-shadow: 1px 1px 1px #000000;
+  border: 1px solid #000000;
+  height: 30px;
+  width: 15px;
+  border-radius: 5px;
+  background: #FFFFFF;
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -11px;
+}
+.container input[type=range]:focus::-webkit-slider-runnable-track {
+  background: var(--main-button-color);
+}
+.container input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 10px;
+  cursor: pointer;
+  box-shadow: 1px 1px 1px #000000;
+  background: var(--main-button-color);
+  border-radius: 1px;
+  border: 1px solid #000000;
+}
+.container input[type=range]::-moz-range-thumb {
+  box-shadow: 1px 1px 1px #000000;
+  border: 1px solid #000000;
+  height: 30px;
+  width: 15px;
+  border-radius: 1px;
+  background: #FFFFFF;
+  cursor: pointer;
+}
+.container input[type=range]::-ms-track {
+  width: 100%;
+  height: 10px;
+  cursor: pointer;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+.container input[type=range]::-ms-fill-lower {
+  background: var(--main-button-color);
+  border: 1px solid #000000;
+  border-radius: 2px;
+  box-shadow: 1px 1px 1px #000000;
+}
+.container input[type=range]::-ms-fill-upper {
+  background: var(--main-button-color);
+  border: 1px solid #000000;
+  border-radius: 2px;
+  box-shadow: 1px 1px 1px #000000;
+}
+.container input[type=range]::-ms-thumb {
+  margin-top: 1px;
+  box-shadow: 1px 1px 1px #000000;
+  border: 1px solid #000000;
+  height: 30px;
+  width: 15px;
+  border-radius: 5px;
+  background: #FFFFFF;
+  cursor: pointer;
+}
+.container input[type=range]:focus::-ms-fill-lower {
+  background: var(--main-button-color);
+}
+.container input[type=range]:focus::-ms-fill-upper {
+  background: var(--main-button-color);
+}
+
+/* width */
+.container ::-webkit-scrollbar {
+    width: 10px;
+}
+
+/* Track */
+.container ::-webkit-scrollbar-track {
+    background: #4d4d4d;
+}
+
+/* Handle */
+.container ::-webkit-scrollbar-thumb {
+    background: var(--main-button-color);
+}
+
+/* Handle on hover */
+.container ::-webkit-scrollbar-thumb:hover {
+    background: var(--main-button-highlight);
+}
+
+.greyout{
+    pointer-events: none;
+    background-color: #292727;
+    color: #8b8b8b;
+    user-select: none;
+}
+
+.greyout .basebtn{
+    background-color: #535353;
+}
+
+.greyout input[type=range]::-webkit-slider-runnable-track {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-webkit-slider-thumb {
+  background: #616161;
+}
+.greyout input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-moz-range-track {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-moz-range-thumb {
+  background: #616161;
+}
+
+.greyout input[type=range]::-ms-fill-lower {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-ms-fill-upper {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-ms-thumb {
+  background: #616161;
+}
+.greyout input[type=range]:focus::-ms-fill-lower {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]:focus::-ms-fill-upper {
+  background: #4e4b4d4b;
+}
+
+/* Handle */
+.greyout ::-webkit-scrollbar-thumb {
+    background: rgb(94, 94, 94);
+}
+
+
+
+.holder{
+    display: flex;
+}
+  
+.holder .tooltiptext {
+visibility: hidden;
+background-color: rgb(49, 49, 49);
+color: #fff;
+text-align: center;
+border-radius: 6px;
+padding: 5px 0;
+
+/* Position the tooltip */
+position: absolute;
+z-index: 1;
+width: 200px;
+left: 50%;
+margin-left: -100px; /* Use half of the width (120/2 = 60), to center the tooltip */
+}
+
+.holder:hover .tooltiptext {
+visibility: visible;
+}
+
+
+
+
+.sp-container{
+    background-color: #141413;
+    color: white;
+}
+
+.sp-original-.container input-container{
+    display: flex;
+}
+
+.sp-colorize-container{
+    width: 60px;
+}

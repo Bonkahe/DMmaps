@@ -83,9 +83,9 @@ const {
   DatabaseTextentry,
   EDITOR_SELECTION,
   EDITOR_INITIALIZED,  
+  EDITOR_DRAWINGSETTINGS,
 }  = require('../utils/constants');
 //const { map } = require('jquery');
-
 /** -------------------- Variables --------------------- */
 
 let rightClickPosition;
@@ -112,6 +112,20 @@ var selecteddocid;
 var selectednodeid;
 var depth;
 var newhtml;
+
+const canvas = document.getElementById('canvaswindow');
+const canvascontext = canvas.getContext('2d');
+var drawings = [];
+let freedrawing = false;
+let isDrawing = false;
+let currentdrawing = 0;
+let basedistance = 10;
+let currentcolor = "#fff";
+let currentwidth = 5;
+let currentisfill = true;
+let currentfillstyle = "rgba(32, 45, 21, 0.2)";
+
+
 var mapdiv = document.getElementById('mapdiv');
 var map = document.getElementById('map');
 map.onload = function () {
@@ -275,6 +289,190 @@ var editor = new Quill('#editor', {
 
 
 
+
+
+
+
+/** ---------------- Canvas Prototyping --------------------- */
+
+function drawing(points, color, width, fillstyle, isfill)
+{
+  this.points = [points];
+  this.color = color;
+  this.width = width;
+  this.isfill = isfill;
+  this.fillstyle = fillstyle;
+  var x = 0;
+  var y = 0;
+
+  this.draw = function(){
+    if (points.length > 1)
+    {
+      x = points[0].x;
+      y = points[0].y;
+      if (isfill)
+      {
+        canvascontext.moveTo(x, y);
+        canvascontext.strokeStyle = color;
+        canvascontext.lineWidth = width;
+        canvascontext.fillStyle = fillstyle;
+        canvascontext.beginPath();
+        for(var i = 0; i < points.length; i++)
+        {
+          drawpolygon( points[i].x, points[i].y);
+        }
+        canvascontext.stroke();
+        canvascontext.closePath();
+        canvascontext.fill();
+      }
+      else
+      {
+        for(var i = 1; i < points.length; i++)
+        {
+          drawLine( x, y, points[i].x, points[i].y);
+          x = points[i].x;
+          y = points[i].y;
+        }
+      }
+    }
+  }
+
+  function drawpolygon(x1,y1)
+  {
+    canvascontext.lineTo(x1, y1);
+  }
+
+  function drawLine( x1, y1, x2, y2) {
+    console.log(x1, y1, x2, y2 );
+    canvascontext.beginPath();
+    canvascontext.strokeStyle = color;
+    canvascontext.lineWidth = width;
+    canvascontext.moveTo(x1, y1);
+    canvascontext.lineTo(x2, y2);
+    canvascontext.stroke();
+    canvascontext.closePath();
+  }
+
+  this.drag = function(mousex,mousey){
+    if (points.length > 0)
+    {
+      drawLine( points[points.length - 1].x, points[points.length - 1].y, mousex, mousey,);
+    }
+  }
+
+  this.addpoint = function(newx,newy){
+    var newpoint = {
+      x:newx,
+      y:newy
+    }
+    points.push(newpoint);
+  }
+
+  this.getDistanceFrom = function(x, y){
+    if (points.length > 0)
+    {
+      return getDistance(x,y,points[points.length - 1].x, points[points.length - 1].y);
+    }
+  }
+
+  function getDistance(xA, yA, xB, yB) { 
+    var xDiff = xA - xB; 
+    var yDiff = yA - yB;
+    return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
+  }
+
+  this.exportsaveable = function()
+  {
+    var newdrawing = {
+      points: points,
+      color: color,
+      width: width,
+      isfill: isfill,
+      fillstyle: fillstyle
+    }
+
+    return newdrawing;
+  }
+}
+
+function finishdrawing(e)
+{
+  canvascontext.clearRect(0,0, canvas.width, canvas.height);
+  for(var i = 0; i < drawings.length; i++)
+  {
+    drawings[i].draw();
+  }
+
+  currentdrawing += 1;
+  isDrawing = false;  
+  textchanged = true;
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (e.which != 1 || selecteddocid === null) { return;}
+
+  var coords = convertworldtodoccords(e.pageX,e.pageY);
+
+  if (!isDrawing)
+  {
+    drawings.push(new drawing([], currentcolor, currentwidth, currentfillstyle, currentisfill));
+    isDrawing = true;
+  }
+  
+
+  drawings[currentdrawing].addpoint(coords.x, coords.y)
+  freedrawing = true;
+});
+
+canvas.addEventListener('mouseup', e => {
+  freedrawing = false;
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (freedrawing === true){
+    var coords = convertworldtodoccords(e.pageX,e.pageY);
+
+    if (drawings[currentdrawing].getDistanceFrom(coords.x, coords.y) > basedistance)
+    {
+      drawings[currentdrawing].addpoint(coords.x, coords.y)
+      
+      canvascontext.clearRect(0,0, canvas.width, canvas.height);
+      for(var i = 0; i < drawings.length; i++)
+      {
+        drawings[i].draw();
+      }
+
+      return;
+    }
+  }
+
+  if (isDrawing === true) {
+    var coords = convertworldtodoccords(e.pageX,e.pageY);
+    
+    canvascontext.clearRect(0,0, canvas.width, canvas.height);
+    for(var i = 0; i < drawings.length; i++)
+    {
+      drawings[i].draw();
+    }
+
+    drawings[currentdrawing].drag(coords.x, coords.y)
+    return;
+  }
+});
+
+/** ------------------  END DRAWING ---------------------  */
+
+
+
+
+
+
+
+
+
+
+
+
 //console.log(editor.root);
 editor.root.setAttribute('ondrop', 'textdrop(event)');
 editor.root.setAttribute('ondragover', 'allowDrop(event)');
@@ -352,6 +550,12 @@ dragElement(mapdiv, document.getElementById("textcontainer"), document.getElemen
 ipcRenderer.send(REFRESH_PAGE);
 
 window.addEventListener('contextmenu', (e) => {
+  if(isDrawing){
+    e.preventDefault();
+    finishdrawing(e);
+    console.log(isDrawing);
+    return;
+  }
   rightClickPosition = {x: e.x, y: e.y}
   node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
   if (node.className == "node-icon")
@@ -443,19 +647,6 @@ editor.on('selection-change', function(range, oldRange, source) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 /** -------------------- IPC BLOCK ---------------------  */
 /*
 ipcRenderer.on(TEST_NODES, (event, message) => {
@@ -468,6 +659,13 @@ ipcRenderer.on(TEST_NODES, (event, message) => {
   }
 })
 */
+
+ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
+  if (data.currentcolor != null){currentcolor = data.currentcolor;}
+  if (data.currentwidth != null){currentwidth = data.currentwidth;}
+  if (data.currentisfill != null){currentisfill = data.currentisfill;}
+  if (data.currentfillstyle != null){currentfillstyle = data.currentfillstyle;}
+})
 
 ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
   infodisplay.innerHTML = "Downloading... ";
@@ -532,7 +730,6 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   {
     map.src = message.CurrentContent.backgroundurl;
     resetmap();
-    
     
     switchtomap();
     importnodes(message);
@@ -920,6 +1117,37 @@ function loadtext(document)
   opentexteditor();
   editor.setHTML(document.content);
 
+  drawings = [];
+  freedrawing = false;
+  isDrawing = false;
+  currentdrawing = 0;
+
+  if (document.drawing.length > 0)
+  {
+    for (var i = 0; i < document.drawing.length; i++)
+    {
+      drawings.push(new drawing(document.drawing[i].points, 
+        document.drawing[i].color, 
+        document.drawing[i].width, 
+        document.drawing[i].fillstyle, 
+        document.drawing[i].isfill));
+    }
+  }
+  console.log(drawings);
+
+
+  canvascontext.clearRect(0,0, canvas.width, canvas.height);
+  if (drawings.length > 0)
+  {
+    for(var i = 0; i < drawings.length; i++)
+    {
+      drawings[i].draw();
+    }
+
+    currentdrawing = drawings.length;
+  }
+
+
   var buttons = retrievebuttons();
 
   //console.log(buttons);
@@ -967,6 +1195,20 @@ function savetext (callback)
   newdoc.id = texteditortitle.getAttribute('db-path');
   newdoc.name = texteditortitle.innerText;
   newdoc.content = editor.getHTML();
+  newdoc.drawing = drawings;
+
+  var newdrawings = [];
+
+  if (drawings.length > 0)
+  {
+    for (var i = 0; i < drawings.length; i++)
+    {
+      newdrawings.push(drawings[i].exportsaveable());      
+    }
+  }
+
+  newdoc.drawing = newdrawings;
+  
   lasttext = newdoc.content;
   textchanged = false;
 
@@ -1021,6 +1263,8 @@ function resetmap()
     }
   )
   zoom = test[0];
+  canvas.width = map.width;
+  canvas.height = map.height;
     /*
   instance.panTo({ 
     originX: window.innerWidth / 2, 
@@ -1036,6 +1280,7 @@ function importnodes(database)
   database.CurrentContent.content.nodes.forEach(element => {
     createnode(element.location.x, element.location.y, element.id, element.documentref, element.locked);
   });
+
   //createnode(rightClickPosition.x,rightClickPosition.y,message);
 }
 
@@ -1099,6 +1344,27 @@ function completedelete()
   selecteddocid = null;
 }
 
+function convertworldtodoccords(x,y)
+{
+  var modifiedzoom = 1 / zoom;
+
+  
+  var originx = mapdiv.getBoundingClientRect().left;
+  var originy = mapdiv.getBoundingClientRect().top;
+  
+  var normalizedx = x - originx;
+  var multipliednormalizedx = normalizedx * modifiedzoom;
+
+  var normalizedy = y - originy;
+  var multipliednormalizedy = normalizedy * modifiedzoom;
+  
+  var coords = {
+    x: multipliednormalizedx ,
+    y: multipliednormalizedy
+  }
+  return coords;
+}
+
 function mousecreatenode(x,y, nodeid, docid)
 {
   
@@ -1120,6 +1386,7 @@ function mousecreatenode(x,y, nodeid, docid)
   img.setAttribute("doc-db-path", docid)
   img.setAttribute("locked", "false")
   img.className = "node-icon";
+  /*
   var modifiedzoom = 1 / zoom;
 
   
@@ -1132,16 +1399,18 @@ function mousecreatenode(x,y, nodeid, docid)
 
   var normalizedy = (y - originy);
   var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
-
+  */
+  var coords = convertworldtodoccords(x,y);
+  console.log(coords);
   mapdiv.appendChild(img); 
     
-  img.style.left = (multipliednormalizedx  + "px");
-  img.style.top = (multipliednormalizedy  + "px");
+  img.style.left = ((coords.x - 32)  + "px");
+  img.style.top = ((coords.y - 32)  + "px");
   img.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
 
   data = {
-    x:multipliednormalizedx,
-    y:multipliednormalizedy,
+    x:coords.x,
+    y:coords.y,
     id:nodeid
   };
   ipcRenderer.send(VERIFY_NODE, data);
@@ -1640,8 +1909,7 @@ function dragElement(elmnt, textelmnt, hirearchyelmnt) {
 
   // The function that will run when the events are triggered. 
   function DoSomething (e) {
-
-    if (e.pageX > textelmnt.getBoundingClientRect().left ||e.pageX < hirearchyelmnt.getBoundingClientRect().right)
+    if (e.pageX > textelmnt.getBoundingClientRect().left ||e.pageX < hirearchyelmnt.getBoundingClientRect().right || e.which === 1 || e.which === 3)
     {
       return;
     }
@@ -1669,7 +1937,8 @@ function dragElement(elmnt, textelmnt, hirearchyelmnt) {
   document.addEventListener('DOMMouseScroll', DoSomething);
 
   function dragMouseDown(e) {
-    if (deactivatepanning) {return;}
+
+    if (deactivatepanning || e.which === 1 || e.which === 3) {return;}
     e = e || window.event;
     e.preventDefault();
     // get the mouse cursor position at startup:

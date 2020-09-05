@@ -27,6 +27,7 @@ class DatabaseTextentry {
         this.name = "NewDocument";
         this.content = "";
         this.childdocuments = [];
+        this.drawing = [];
     }
 }
 
@@ -66,6 +67,7 @@ module.exports = {
     NOTIFY_CURRENTVERSION: 'notify-currentversion',
     EDITOR_SELECTION: 'editor-docselected',
     EDITOR_INITIALIZED: 'editor-initialized',
+    EDITOR_DRAWINGSETTINGS: 'editor-drawingsettings',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,

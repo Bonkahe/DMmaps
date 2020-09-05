@@ -29,6 +29,7 @@
     "electron-context-menu": "^2.3.0",
     "electron-updater": "^4.3.4",
     "jquery": "^3.5.1",
+    "js-spline": "^1.0.1",
     "jsdom": "^16.4.0",
     "mousetrap": "^1.6.5",
     "quill": "^2.0.0-dev.4",
