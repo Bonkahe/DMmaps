@@ -18,8 +18,17 @@
   <div id="titlebar">
 
   </div>
-
+  <div id="overlay">
+    <div id="popup">
+       <div id="close">X</div>
+       <h2>Donate to the Creator.</h2>
+       <p>If you want to support me with financial donations that's cool,</p>
+       <p>if not that's cool too, either way, enjoy the program!</p>
+       <img id="donatebtn" src="./images/PP_logo_h_100x26.png" alt="PayPal" />
+    </div>
+ </div>
     <div class="content">
+      
       <div id="hirearchycontainer" class="cell a">
         <div id="hirearchycontent">
           <div class="btn-group">
@@ -27,7 +36,7 @@
             <button id="btn-deletedoc"><strong>-</strong></button>
           </div>
           <div id="hirearchylist-container">
-            <div id="hirearchylist-removeparent" ondrop="parentlessdrop(event)" ondragover="allowDrop(event)"></div>
+            <div id="hirearchylist-removeparent" class="hirearchylist-bar" ondrop="parentlessdrop(event)" ondragover="allowDrop(event)"></div>
             <ul class="hirearchylist-items" id="hirearchylist">
             </ul>
           </div>

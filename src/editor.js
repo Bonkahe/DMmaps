@@ -7,7 +7,7 @@ window.$ = window.jQuery = require('jquery');
 const Split = require('split.js');
 const customTitlebar = require('custom-electron-titlebar');
 const Mousetrap = require('mousetrap');
-//const jscolor = require('./colorpicker/jscolor.js');
+const jscolor = require('./colorpicker/jscolor');
 
 window.addEventListener('DOMContentLoaded', () => {
     const titlebar = new customTitlebar.Titlebar({
@@ -26,16 +26,19 @@ const {
     EDITOR_SELECTION,  
     EDITOR_INITIALIZED,
     EDITOR_DRAWINGSETTINGS,
+    EDITOR_NODESETTINGS,
+    EDITOR_IMPORTSPLINES,
+    EDITOR_SET_OVERRIDEINDEX,
+    EDITOR_DELETE_SPLINE,
 }  = require('../utils/constants');
-/*
-jscolor.presets.default = {
-	format:'rgba', backgroundColor:'rgba(89,89,89,1)', 
-	borderColor:'rgba(110,110,110,1)', mode:'HVS', 
-	controlBorderColor:'rgba(128,128,128,1)', sliderSize:10
-};
-*/
+
 /** -------------------- Variables --------------------- */
+
 const primarywindow = remote.getGlobal ('textwindow');
+
+var currentsplines = [];
+var selectedspline = false;
+var selectedindex;
 
 var nodedisplay = document.getElementById('node-display');
 var nodedisplaytooltip = document.getElementById('node-display-tooltip');
@@ -59,8 +62,43 @@ var splinewidthRange = document.getElementById('Splinewidth');
 var splinecolorSelector = document.getElementById('splinecolorbtn');
 var enablefillBtn = document.getElementById('enablefillbtn');
 var fillcolorSelector = document.getElementById('bgcolorbtn');
+var deletesplineBtn = document.getElementById('deletebtn');
+
+var initialdata = {
+    alloweddrawing: allowdrawingBtn.checked,
+    currentcolor: splinecolorSelector.value,
+    currentwidth: splinewidthRange.value,
+    currentisfill: enablefillBtn.checked,
+    currentfillstyle: fillcolorSelector.value
+}
 
 /**Event Listeners */
+Mousetrap.bind(['command+d', 'ctrl+d'], function() {
+    primarywindow.webContents.send (EDITOR_SET_OVERRIDEINDEX, null);
+    sethighlight(null);
+
+    splinewidthRange.value = initialdata.currentwidth;
+    splinecolorSelector.jscolor.fromString(initialdata.currentcolor);
+    enablefillBtn.checked = initialdata.currentisfill;
+    fillcolorSelector.jscolor.fromString(initialdata.currentfillstyle);
+    return false;
+});
+
+Mousetrap.bind(['pageup', 'pagedown'], function(){
+    return false;
+})
+
+Mousetrap.bind(['del'], function() {
+    deletesplinebtnPressed();
+    return false;
+});
+
+Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
+    ipcRenderer.send(TITLEBAR_OPENWINDOW); 
+    return false;
+  });
+
+
 defaultnodesizeRange.addEventListener(
     'input',
     function() { defaultnodesizeChange(this.value); },
@@ -102,60 +140,189 @@ fillcolorSelector.addEventListener(
     false
 );
 
+deletesplineBtn.addEventListener(
+    'click',
+    function() {deletesplinebtnPressed(); },
+    false
+);
+
 /**Event implementation */
 
 function defaultnodesizeChange(e)
 {
+    if (e === 0){e = 1;}
     console.log(e);
 }
 
 function currentnodesizeChange(e)
 {
+    if (e === 0){e = 1;}
     console.log(e);
 }
 
 function allowdrawingChange(e)
 {
-    console.log(e.checked);
+    var data = {
+        alloweddrawing: e.checked
+    }
+    senddata(data);
 }
 function splinewidthChange(e)
 {
-    console.log(e);
+    if (e === 0){e = 1;}
+
+    var data = {
+        currentwidth: e,
+    }
+    senddata(data);
 }
 function splinecolorChange(e)
 {
-    console.log(e);
+    var data = {
+        currentcolor: e,
+    }
+    senddata(data);
 }
 function enablefillChange(e)
 {
-    console.log(e.checked);
+    var data = {
+        currentisfill: e.checked,
+    }
+    senddata(data);
 }
 function fillcolorChange(e)
 {
-    console.log(e);
+    var data = {
+        currentfillstyle: e,
+    }
+    senddata(data);
+}
+
+function deletesplinebtnPressed()
+{
+    primarywindow.webContents.send (EDITOR_DELETE_SPLINE, );
 }
 
 
-//const nodeiddisplay = document.getElementById('node-id-display');
-//const dociddisplay = document.getElementById('doc-id-display');
+function senddata(data)
+{
+    primarywindow.webContents.send (EDITOR_DRAWINGSETTINGS, data);
+}
 
-//nodedisplay.style.display = "none";
-//docdisplay.style.display = "none";
-
-/** -------------------- IPC BLOCK --------------------- */
 primarywindow.webContents.send (EDITOR_INITIALIZED, );
 
 
-/*
-let range = document.getElementById("myRange");
+
+primarywindow.webContents.send (EDITOR_DRAWINGSETTINGS, initialdata);
 
 
-range.addEventListener('input', function() {
-    if (window1) window1.webContents.send (TEST_NODES, range.value / 50);
+/** -------------------- IPC BLOCK --------------------- */
+
+ipcRenderer.on(EDITOR_IMPORTSPLINES, (event, data) => {
+    currentsplines = data.drawings;
+    rebuildsplinelist(data.drawings);
+    selectedindex = data.index;
 })
-*/
 
-/** */
+
+
+
+ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
+    allowdrawingBtn.checked = false;
+    if (data.docid != null)
+    {
+        setzoneisplayactive();
+    }
+    else
+    {
+        setzoneisplayinactive();
+    }
+
+    if (data.nodeid != null)
+    {
+        setnodedisplayactive();
+    }
+    else
+    {
+        setnodedisplayinactive();
+    }
+})
+
+/** ---------------- HELPER FUNCTIONS --------------------- */
+
+function rebuildsplinelist(splineentries){
+    splinelist.innerHTML = null;
+
+    if (splineentries.length === 0)
+    {
+        return; //stops if theres no splines
+    }
+
+    var newhtml = '';
+    for(var i = 0; i < splineentries.length; i++)
+    {
+        newhtml = newhtml + '<li Db-Path="' + i + '" onclick="splinebuttonpressed(' + i + ')">Spline #' + i + '</li>';
+    }
+
+    splinelist.innerHTML = newhtml;
+
+    if (selectedindex != null)
+    {
+        sethighlight(selectedindex);
+    }
+}
+
+function splinebuttonpressed(index)
+{
+    splinewidthRange.value = currentsplines[index].width;
+    splinecolorSelector.jscolor.fromString(currentsplines[index].color);
+    enablefillBtn.checked = currentsplines[index].isfill;
+    fillcolorSelector.jscolor.fromString(currentsplines[index].fillstyle);
+
+    //console.log(currentsplines);
+    sethighlight(index);
+
+    //currentsplines[i]
+
+    primarywindow.webContents.send (EDITOR_SET_OVERRIDEINDEX, index);
+
+    var newdata = {
+        alloweddrawing: allowdrawingBtn.checked,
+        currentcolor: splinecolorSelector.value,
+        currentwidth: splinewidthRange.value,
+        currentisfill: enablefillBtn.checked,
+        currentfillstyle: fillcolorSelector.value
+    }
+
+    senddata(newdata);
+/*
+    var data = {
+        alloweddrawing: allowdrawingBtn.checked,
+        currentwidth: splinewidthRange.value,
+        currentcolor: splinecolorSelector.value,
+        currentisfill: enablefillBtn.checked,
+        currentfillstyle: fillcolorSelector.value,
+    }
+    senddata(data);
+    */
+}
+
+
+function sethighlight(index)
+{
+    if (selectedindex != null)
+    {
+        document.querySelector('*[Db-Path="' + selectedindex + '"]').id = '';
+    }
+
+    selectedindex = index
+
+    if (selectedindex != null)
+    {
+        document.querySelector('*[Db-Path="' + index + '"]').id = 'highlight';
+    }
+}
+
 
 function setnodedisplayactive()
 {
@@ -180,28 +347,3 @@ function setzoneisplayinactive()
     zonedisplaytooltip.style.display = "block";
     zonedisplay.classList.add('greyout');
 }
-
-
-
-
-ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
-    if (data.docid != null)
-    {
-        setzoneisplayactive();
-    }
-    else
-    {
-        setzoneisplayinactive();
-    }
-
-    if (data.nodeid != null)
-    {
-        setnodedisplayactive();
-    }
-    else
-    {
-        setnodedisplayinactive();
-    }
-})
-
-/** ---------------- HELPER FUNCTIONS --------------------- */

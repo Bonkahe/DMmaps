@@ -36,23 +36,31 @@ body{
     width: 40%;
     margin: 0 5px 0 0;
     
-    max-height: 200px;
+    max-height: 300px;
+}
+
+#highlight {
+  background-color:var(--main-button-color);
+  color: #000;
 }
 
 #drawinglist{
+    list-style-type: none;
+    white-space: nowrap;
     overflow: auto;
     height: calc(100% - 30px);
     margin: 5px;
     background-color: #292727;
     border: 2px solid rgb(54, 54, 54);
+    padding-inline-start: 20px;
 }
 
 #zonetoolbar{
     border-left: 2px solid rgb(54, 54, 54);
     padding: 0 5px 0 0;
     width: 60%;
-    max-height: 200px;
-    min-height: 200px;
+    max-height: 300px;
+    min-height: 300px;
     overflow: hidden;
 }
 
@@ -64,6 +72,11 @@ body{
 #bgcolorbtn{
     width: 100%;
     margin: 5px;
+}
+
+#deletebtn{
+  width: 100%;
+  margin: 5px;
 }
 
 #editor-container{

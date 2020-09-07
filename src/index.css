@@ -26,12 +26,14 @@
   -webkit-app-region:drag;
   }
   
-  ul {
+  .a ul {
   list-style-type:none;
   }
   
-  ul > li {
+  .a ul > li {
   margin-left:10px;
+  height: 20px;
+  z-index: 12;
   }
   
   .option {
@@ -54,8 +56,19 @@
   .a #hirearchycontent {
   width:calc(100% - 10px);
   height:calc(100% - 10px);
-  overflow:auto;
+  overflow: hidden;
   margin:5px;
+  }
+
+  .a #hirearchylist-container{
+    width:calc(100% - 10px);
+    height:calc(100% - 40px);
+    overflow:auto;
+    margin:5px;
+  }
+
+  #hirearchycontentinner{
+    height: calc(100% - 30px);
   }
   
   .gutter {
@@ -97,6 +110,62 @@
     height: 100%;
   }
 
+/* overlay*/
+
+button {
+  background: #000;
+  color: #fff;
+  text-align: center;
+  font-weight: bold;
+  padding: 10px 30px;
+  border-radius: 3px;
+}
+
+#donatebtn{
+  padding: 10px;
+  width: 100px;
+}
+#donatebtn:hover{
+  background-color: rgba(0, 0, 0, 0.13);
+  border-radius: 5px;
+}
+
+#overlay {
+  position: fixed;
+  height: 100%; 
+  width: 100%;
+  right: 0;  
+  bottom: 0;
+  left: 0;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  z-index: 15;
+  text-align: center;
+}
+
+#popup {
+  top: 100px;
+  max-width: 600px;
+  width: 80%;
+  max-height: 300px;
+  padding: 20px;
+  position: relative;
+  background: rgb(94, 94, 94);
+  margin: 20px auto;
+  border-radius: 5px;
+  
+}
+
+#close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  color: #000;
+}
+
+/* end overlay*/
+
   
   #highlight {
   background-color:var(--main-button-color);
@@ -105,12 +174,18 @@
   
   #hirearchylist-container {
   display:flex;
+  position: relative;
   }
   
-  #hirearchylist-container #hirearchylist-removeparent {
-  width:10px;
-  background-color:rgba(0,0,0,0.185);
-  background-blend-mode:overlay;
+  #hirearchylist-container .hirearchylist-bar {
+    position: absolute;
+    background-image: url(./images/Hirearchybar.png);
+    background-repeat: repeat-y;
+    width: 16px;
+    left: -4px;
+    top: 0;
+    background-blend-mode:overlay;
+    z-index: 11;
   }
 
   #hirearchycontent .btn-group {
@@ -189,8 +264,9 @@
   }
 
   .quill-doclink{
-    background-color: rgba(58, 58, 58, 0.719);
-    border-radius: 3px;
+    padding: 2px;
+    background-color: rgba(88, 88, 88, 0.719);
+    border-radius: 2px;
     background-blend-mode: overlay;
     color: white;
     border: none;
@@ -210,7 +286,7 @@
   border:none;
   outline:none;
   position:absolute;
-  z-index:2;
+  z-index:3;
   }
   
   #mapdiv {

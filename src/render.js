@@ -7,11 +7,13 @@ window.$ = window.jQuery = require('jquery');
 const Split = require('split.js');
 const customTitlebar = require('custom-electron-titlebar');
 const Mousetrap = require('mousetrap');
+const { shell } = require('electron')
 
 window.addEventListener('DOMContentLoaded', () => {
   const titlebar = new customTitlebar.Titlebar({
       backgroundColor: customTitlebar.Color.fromHex('#1a1918'),
-      overflow: "hidden"
+      overflow: "hidden",
+      titleHorizontalAlignment: "right"
   });
 
   menu = Menu.buildFromTemplate(template)
@@ -57,12 +59,14 @@ const {
   REFRESH_PAGE,
   REFRESH_HIREARCHY,
   REQUEST_NODE_CONTEXT,
+  REQUEST_EXTENDED_NODE_CONTEXT,
   DELETE_NODE,
   VERIFY_NODE,
   REQUEST_DOCUMENT_BYNODE,
   REQUEST_DOCUMENT_BYDOC,
   SAVE_DOCUMENT,
   NEW_DOCUMENT,
+  MAIN_TO_RENDER_SETFOCUS,
   CHILD_DOCUMENT,
   REMOVE_PARENT_DOCUMENT,
   DELETE_DOCUMENT,
@@ -84,7 +88,13 @@ const {
   EDITOR_SELECTION,
   EDITOR_INITIALIZED,  
   EDITOR_DRAWINGSETTINGS,
+  EDITOR_NODESETTINGS,
+  EDITOR_IMPORTSPLINES,
+  EDITOR_SET_OVERRIDEINDEX,
+  EDITOR_DELETE_SPLINE,
 }  = require('../utils/constants');
+const { start } = require('repl');
+const { Titlebar } = require('custom-electron-titlebar');
 //const { map } = require('jquery');
 /** -------------------- Variables --------------------- */
 
@@ -108,14 +118,21 @@ var texteditorcontainer = document.getElementById('textcontainer');
 
 var nodelist = [];
 var hirearchylist = document.getElementById('hirearchylist');
+var barsparent = document.getElementById('hirearchylist-container');
+var firstbar = document.getElementById('hirearchylist-removeparent');
+var columnwidth = 10;
+var rowheight = 20;
 var selecteddocid;
 var selectednodeid;
-var depth;
+var column;
+var row;
 var newhtml;
 
+var editorwindow;
 const canvas = document.getElementById('canvaswindow');
 const canvascontext = canvas.getContext('2d');
 var drawings = [];
+let alloweddrawing = false;
 let freedrawing = false;
 let isDrawing = false;
 let currentdrawing = 0;
@@ -124,7 +141,7 @@ let currentcolor = "#fff";
 let currentwidth = 5;
 let currentisfill = true;
 let currentfillstyle = "rgba(32, 45, 21, 0.2)";
-
+let overrideindex = null;
 
 var mapdiv = document.getElementById('mapdiv');
 var map = document.getElementById('map');
@@ -132,8 +149,13 @@ map.onload = function () {
   resetmap();
 }
 
+
+
+
+
 var menu;
 var infodisplay;
+var restartavailable = false;
 var downloaddisplay;
 const template = [
   {
@@ -189,20 +211,46 @@ const template = [
      ]
   },
   {
+    label: 'Donate',
+    enabled: true,
+    click: () => {       
+      $('#overlay').fadeIn(500);
+    }
+ },
+  {
      label: '|',
      enabled: false
   },
   {
     label: "output",
-    enabled: false
+    enabled: restartavailable,
+    click: () => { 
+      ipcRenderer.send(NOTIFY_RESTART); }
   },
   {
     label: "animation",
     enabled: false
-  }
+  },
+  {
+    label: "test",
+    visible: restartavailable === true,
+    click: () => { 
+      ipcRenderer.send(NOTIFY_RESTART); }
+  },
 ]
 
+$('#donatebtn').click(function() {
+  shell.openExternal('https://www.paypal.com/paypalme/bonkahe?locale.x=en_US');
+});
 
+$('#close').click(function() {
+  $('#overlay').fadeOut(500);
+});
+/*
+$("body > div:not(#popup)").click(function(e) {
+  $('#overlay').fadeOut(500);
+});
+*/
 
 ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
   if (result)
@@ -288,16 +336,40 @@ var editor = new Quill('#editor', {
 });
 
 
+/** POPUP HANDLING */
 
 
+document.getElementById('overlay').addEventListener('mousedown', e => {
+  if (e.which != 1) { return;}
+  $('#overlay').fadeOut(500);
+});
 
 
 
 /** ---------------- Canvas Prototyping --------------------- */
 
+function getexportabledrawings()
+{
+  var newdrawings = [];
+
+  if (drawings.length > 0)
+  {
+    for (var i = 0; i < drawings.length; i++)
+    {
+      newdrawings.push(drawings[i].exportsaveable());      
+    }
+  }
+  var data = {
+    drawings: newdrawings,
+    index: overrideindex
+  }
+
+  return data;
+}
+
 function drawing(points, color, width, fillstyle, isfill)
 {
-  this.points = [points];
+  this.points = points;
   this.color = color;
   this.width = width;
   this.isfill = isfill;
@@ -306,33 +378,24 @@ function drawing(points, color, width, fillstyle, isfill)
   var y = 0;
 
   this.draw = function(){
-    if (points.length > 1)
+    if (this.points.length > 1)
     {
-      x = points[0].x;
-      y = points[0].y;
-      if (isfill)
+      this.x = this.points[0].x;
+      this.y = this.points[0].y;
+      canvascontext.moveTo(this.x, this.y);
+      canvascontext.strokeStyle = this.color;
+      canvascontext.lineWidth = this.width;
+      canvascontext.fillStyle = this.fillstyle;
+      canvascontext.beginPath();
+      for(var i = 0; i < this.points.length; i++)
       {
-        canvascontext.moveTo(x, y);
-        canvascontext.strokeStyle = color;
-        canvascontext.lineWidth = width;
-        canvascontext.fillStyle = fillstyle;
-        canvascontext.beginPath();
-        for(var i = 0; i < points.length; i++)
-        {
-          drawpolygon( points[i].x, points[i].y);
-        }
-        canvascontext.stroke();
-        canvascontext.closePath();
-        canvascontext.fill();
+        drawpolygon( this.points[i].x, this.points[i].y);
       }
-      else
+      canvascontext.stroke();
+      canvascontext.closePath();
+      if (this.isfill)
       {
-        for(var i = 1; i < points.length; i++)
-        {
-          drawLine( x, y, points[i].x, points[i].y);
-          x = points[i].x;
-          y = points[i].y;
-        }
+        canvascontext.fill();
       }
     }
   }
@@ -341,12 +404,11 @@ function drawing(points, color, width, fillstyle, isfill)
   {
     canvascontext.lineTo(x1, y1);
   }
-
+  
   function drawLine( x1, y1, x2, y2) {
-    console.log(x1, y1, x2, y2 );
     canvascontext.beginPath();
-    canvascontext.strokeStyle = color;
-    canvascontext.lineWidth = width;
+    canvascontext.strokeStyle = this.color;
+    canvascontext.lineWidth = this.width;
     canvascontext.moveTo(x1, y1);
     canvascontext.lineTo(x2, y2);
     canvascontext.stroke();
@@ -354,9 +416,9 @@ function drawing(points, color, width, fillstyle, isfill)
   }
 
   this.drag = function(mousex,mousey){
-    if (points.length > 0)
+    if (this.points.length > 0)
     {
-      drawLine( points[points.length - 1].x, points[points.length - 1].y, mousex, mousey,);
+      drawLine( this.points[this.points.length - 1].x, this.points[this.points.length - 1].y, mousex, mousey,);
     }
   }
 
@@ -365,13 +427,13 @@ function drawing(points, color, width, fillstyle, isfill)
       x:newx,
       y:newy
     }
-    points.push(newpoint);
+    this.points.push(newpoint);
   }
 
   this.getDistanceFrom = function(x, y){
-    if (points.length > 0)
+    if (this.points.length > 0)
     {
-      return getDistance(x,y,points[points.length - 1].x, points[points.length - 1].y);
+      return getDistance(x,y,this.points[this.points.length - 1].x, this.points[this.points.length - 1].y);
     }
   }
 
@@ -384,11 +446,11 @@ function drawing(points, color, width, fillstyle, isfill)
   this.exportsaveable = function()
   {
     var newdrawing = {
-      points: points,
-      color: color,
-      width: width,
-      isfill: isfill,
-      fillstyle: fillstyle
+      points: this.points,
+      color: this.color,
+      width: this.width,
+      isfill: this.isfill,
+      fillstyle: this.fillstyle
     }
 
     return newdrawing;
@@ -406,10 +468,11 @@ function finishdrawing(e)
   currentdrawing += 1;
   isDrawing = false;  
   textchanged = true;
+  editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
 }
 
 canvas.addEventListener('mousedown', e => {
-  if (e.which != 1 || selecteddocid === null) { return;}
+  if (e.which != 1 || selecteddocid === null || alloweddrawing === false || overrideindex != null) { return;}
 
   var coords = convertworldtodoccords(e.pageX,e.pageY);
 
@@ -422,6 +485,7 @@ canvas.addEventListener('mousedown', e => {
 
   drawings[currentdrawing].addpoint(coords.x, coords.y)
   freedrawing = true;
+  textchanged = true;
 });
 
 canvas.addEventListener('mouseup', e => {
@@ -430,17 +494,14 @@ canvas.addEventListener('mouseup', e => {
 
 canvas.addEventListener('mousemove', e => {
   if (freedrawing === true){
+    textchanged = true;
     var coords = convertworldtodoccords(e.pageX,e.pageY);
 
     if (drawings[currentdrawing].getDistanceFrom(coords.x, coords.y) > basedistance)
     {
       drawings[currentdrawing].addpoint(coords.x, coords.y)
       
-      canvascontext.clearRect(0,0, canvas.width, canvas.height);
-      for(var i = 0; i < drawings.length; i++)
-      {
-        drawings[i].draw();
-      }
+      canvasRender();
 
       return;
     }
@@ -448,17 +509,22 @@ canvas.addEventListener('mousemove', e => {
 
   if (isDrawing === true) {
     var coords = convertworldtodoccords(e.pageX,e.pageY);
-    
-    canvascontext.clearRect(0,0, canvas.width, canvas.height);
-    for(var i = 0; i < drawings.length; i++)
-    {
-      drawings[i].draw();
-    }
 
-    drawings[currentdrawing].drag(coords.x, coords.y)
+    canvasRender();
+
+    drawings[currentdrawing].drag(coords.x, coords.y)    
     return;
   }
 });
+
+function canvasRender()
+{
+  canvascontext.clearRect(0,0, canvas.width, canvas.height);
+  for(var i = 0; i < drawings.length; i++)
+  {
+    drawings[i].draw();
+  }
+}
 
 /** ------------------  END DRAWING ---------------------  */
 
@@ -530,7 +596,7 @@ editor.insertHTML = (html) => {
 
 //May need to swap out later to allow hirearchy
 var splitinstance = Split(['.a','.b', '.c'], {
-  sizes: [0, 100, 0],
+  sizes: [20, 55, 30],
   minSize: [0, 0 ,0],
   gutterSize: 20,
   snapOffset: 100,
@@ -553,18 +619,33 @@ window.addEventListener('contextmenu', (e) => {
   if(isDrawing){
     e.preventDefault();
     finishdrawing(e);
-    console.log(isDrawing);
     return;
   }
   rightClickPosition = {x: e.x, y: e.y}
   node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
   if (node.className == "node-icon")
   {
-    ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("node-db-path"));
+    if (selecteddocid != null)
+    {
+      var data = {
+        nodeid:node.getAttribute("node-db-path"),
+        docid:selecteddocid
+      }
+      
+      ipcRenderer.send(REQUEST_EXTENDED_NODE_CONTEXT, data);
+    }
+    else
+    {
+      ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("node-db-path"));
+    }
   }
 }, false)
 
 /** -------------------------------- HOTKEYS ----------------------------- */
+
+Mousetrap.bind(['pageup', 'pagedown'], function(){
+  return false;
+})
 
 Mousetrap.bind(['command+s', 'ctrl+s'], function() {
   ipcRenderer.send(TITLEBAR_SAVEPROJECT);
@@ -588,10 +669,18 @@ Mousetrap.bind(['command+b', 'ctrl+b', 'f1'], function() {
 
 Mousetrap.bind(['command+d', 'ctrl+d'], function() {
   highlightdecider(null, null);
+  savetext();
+  drawings = [];
+  freedrawing = false;
+  isDrawing = false;
+  currentdrawing = 0;
+  overrideindex = null;
+  canvasRender();
+  
   return false;
 });
 
-Mousetrap.bind(['command+w', 'ctrl+w'], function() {
+Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
   ipcRenderer.send(TITLEBAR_OPENWINDOW); 
   return false;
 });
@@ -603,6 +692,12 @@ Mousetrap.prototype.stopCallback = function(e, element, combo) {
 
 
 /** ------------------------------ END HOTKEYS --------------------------- */
+
+function paypallink()
+{
+  console.log("test");
+  shell.openExternal('https://paypal.me/bonkahe?locale.x=en_US');
+}
 
 const backgroundload = document.getElementById('backgroundBtn');
 backgroundload.onclick = e => {
@@ -648,24 +743,6 @@ editor.on('selection-change', function(range, oldRange, source) {
 
 
 /** -------------------- IPC BLOCK ---------------------  */
-/*
-ipcRenderer.on(TEST_NODES, (event, message) => {
-  if (nodelist.length > 0)
-  {
-    nodelist.forEach(element => {
-      element.style.width = (64 * message) + "px";
-      element.style.height = (64 * message) + "px";
-    });
-  }
-})
-*/
-
-ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
-  if (data.currentcolor != null){currentcolor = data.currentcolor;}
-  if (data.currentwidth != null){currentwidth = data.currentwidth;}
-  if (data.currentisfill != null){currentisfill = data.currentisfill;}
-  if (data.currentfillstyle != null){currentfillstyle = data.currentfillstyle;}
-})
 
 ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
   infodisplay.innerHTML = "Downloading... ";
@@ -674,15 +751,11 @@ ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
 
 ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
   downloaddisplay.style.display = "none";
-  infodisplay.innerHTML = "Download Complete!"
-  menu = Menu.buildFromTemplate(template)
+  infodisplay.innerHTML = "Download Complete, click to restart."
+  restartavailable = true;
 
-  menu.append(new MenuItem({
-    label: 'Restart',
-    click: () => { 
-      clearInterval(animation);
-      ipcRenderer.send(NOTIFY_RESTART); }
-  }));
+  menu = Menu.buildFromTemplate(template)
+  
   titlebar.updateMenu(menu);
 })
 
@@ -702,14 +775,86 @@ ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
 
 /** -------------------- END TITLEBAR --------------------- */
 
+ipcRenderer.on(EDITOR_NODESETTINGS, (event, data) => {
+  if (data.currentdefaultnodescale != null){ console.log("Scale of all nodes =" + data.currentdefaultnodescale) }
+  if (data.currentnodescale != null){console.log("Scale of selected node =" +data.currentnodescale)}
+})
+
+ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
+  if (data.alloweddrawing != null){ 
+    alloweddrawing = data.alloweddrawing;
+    if (!alloweddrawing && isDrawing){
+      finishdrawing();
+    }
+  }
+  if (data.currentcolor != null){currentcolor = data.currentcolor;}
+  if (data.currentwidth != null){currentwidth = (data.currentwidth);}
+  if (data.currentisfill != null){currentisfill = data.currentisfill;}
+  if (data.currentfillstyle != null){currentfillstyle = data.currentfillstyle;}
+
+  if (overrideindex != null)
+  {
+    textchanged = true;
+    drawings[overrideindex].color = currentcolor;
+    drawings[overrideindex].width = currentwidth;
+    drawings[overrideindex].isfill = currentisfill;
+    drawings[overrideindex].fillstyle = currentfillstyle;
+    canvasRender();
+  }
+
+  /*
+  if (isDrawing)
+  {
+    drawings[currentdrawing].color = currentcolor;
+    drawings[currentdrawing].width = currentwidth;
+    drawings[currentdrawing].isfill = currentisfill;
+    drawings[currentdrawing].fillstyle = currentfillstyle;
+
+    canvascontext.clearRect(0,0, canvas.width, canvas.height);
+    for(var i = 0; i < drawings.length; i++)
+    {
+      drawings[i].draw();
+    }
+  }
+  */
+})
+
+ipcRenderer.on(EDITOR_SET_OVERRIDEINDEX, (event, newoverride) => {
+  if (isDrawing)
+  {
+    finishdrawing();
+  }
+  overrideindex = newoverride;
+  editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
+})
+
+ipcRenderer.on(EDITOR_DELETE_SPLINE, (event, message) => {
+  if (drawings.length > 0 && overrideindex != null)
+  {
+    drawings.splice(overrideindex, 1);
+    overrideindex = null;
+    canvasRender();
+    currentdrawing = drawings.length;
+    editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
+  }
+})
+
 ipcRenderer.on(EDITOR_INITIALIZED, (event) => {
   selectionchanged(selecteddocid, selectednodeid);
+  editorwindow = remote.getGlobal ('editorwindow');
+
+  if (editorwindow)
+  {
+    overrideindex = null;
+    editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
+  }
 })
 
 ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
   selecteddocid = null;
   selectednodeid = null;
   textchanged = false;
+  overrideindex = null;
 
   //console.log(message.CurrentContent.content.textEntries);
 
@@ -769,6 +914,11 @@ ipcRenderer.on(DELETE_NODE, (event, message) => {
 
 ipcRenderer.on(COMPLETE_DOCUMENT_DELETE, (event, message) => {
   completedelete();
+})
+
+ipcRenderer.on(MAIN_TO_RENDER_SETFOCUS, (event, message) =>
+{
+  selectionchanged(message, null);
 })
 
 ipcRenderer.on(TOGGLE_NODE, (event, message) => {
@@ -1121,9 +1271,17 @@ function loadtext(document)
   freedrawing = false;
   isDrawing = false;
   currentdrawing = 0;
+  overrideindex = null;
+/*
+  console.log("----------- drawings initial import ------------");
+  console.log(document.drawing);
+  console.log("------------------------------------------------");
+  */
+  
 
-  if (document.drawing.length > 0)
+  if (document.drawing != null && document.drawing.length > 0)
   {
+    console.log(document.drawing[0]);
     for (var i = 0; i < document.drawing.length; i++)
     {
       drawings.push(new drawing(document.drawing[i].points, 
@@ -1133,20 +1291,21 @@ function loadtext(document)
         document.drawing[i].isfill));
     }
   }
-  console.log(drawings);
-
-
-  canvascontext.clearRect(0,0, canvas.width, canvas.height);
-  if (drawings.length > 0)
+  
+  if (editorwindow)
   {
-    for(var i = 0; i < drawings.length; i++)
-    {
-      drawings[i].draw();
-    }
-
-    currentdrawing = drawings.length;
+      editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
   }
 
+
+  canvasRender()
+  currentdrawing = drawings.length;
+  /*
+  console.log("----------- drawings final state ---------------");
+  console.log(drawings);
+  console.log("------------------------------------------------");
+
+*/
 
   var buttons = retrievebuttons();
 
@@ -1188,27 +1347,24 @@ function savetext (callback)
       callback();
     }
 
-    //console.log("nothing to save")
+    console.log("nothing to save")
     return false;
   }
   var newdoc = new DatabaseTextentry();
   newdoc.id = texteditortitle.getAttribute('db-path');
   newdoc.name = texteditortitle.innerText;
   newdoc.content = editor.getHTML();
-  newdoc.drawing = drawings;
 
-  var newdrawings = [];
+  newdoc.drawing = getexportabledrawings().drawings;
+  /*
+  console.log("----------- drawings initial export ------------");
+  console.log(newdoc.drawing);
+  console.log("------------------------------------------------");
 
-  if (drawings.length > 0)
-  {
-    for (var i = 0; i < drawings.length; i++)
-    {
-      newdrawings.push(drawings[i].exportsaveable());      
-    }
-  }
-
-  newdoc.drawing = newdrawings;
-  
+  console.log("----------- drawings initial state -------------");
+  console.log(drawings);
+  console.log("------------------------------------------------");
+  */
   lasttext = newdoc.content;
   textchanged = false;
 
@@ -1411,8 +1567,10 @@ function mousecreatenode(x,y, nodeid, docid)
   data = {
     x:coords.x,
     y:coords.y,
-    id:nodeid
+    id:nodeid,
+    parentid:selecteddocid
   };
+  
   ipcRenderer.send(VERIFY_NODE, data);
 
   nodelist.push(img);
@@ -1477,40 +1635,80 @@ function selectnode(buttonelmnt)
     }
   })
 }
-
+var columnrowcount;
+var test;
 function rebuildhirearchy(content)
 {
   highlightdecider(selecteddocid, selectednodeid);
   hirearchylist.innerHTML = null;
+  /*
+  var bars = document.getElementsByClassName("sub-bar");
+  if (bars.length > 0)
+  {
+    for (var i = 0; i < bars.length; i++)
+    {
+      bars[i].parentNode.removeChild(bars[i]);
+    }
+  }
+  */
 
+  $('.sub-bar').remove();
   var textEntries = [];
   textEntries = content.textEntries;
 
   //console.log(textEntries);
 
   newhtml = '';
-  depth = 0;
+  column = 0;
+  row = 0;
+  test = 0;
 
+  columnrowcount = [];
   for(var i = 0; i < textEntries.length; i++)
   {
     if (textEntries[i].parentid != "")
     {
       continue;
     }
+    test = test + 1;
+    row = row + 1;
     
     newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[i].id + '" onclick="hirearchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + '</li>';
+
+    
 
     if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
     {
       builddocs(textEntries, textEntries[i].childdocuments, textEntries[i].id)
     }
 
-    depth = 0;
+    column = 0;
     //newhtml = newhtml + '</li>';
   }
+  row = 0;
 
+    /**
+  first bar will just be set to 
+  (length * 20) - 10
+   
+
+
+  then an image of a line sweeping out and going right will be placed to the left of each li.
+
+  **/
+
+  if (textEntries.length > 0)
+  {
+    firstbar.style.height = (textEntries.length * rowheight) - (rowheight / 2) + "px";
+  }
+  else
+  {
+    firstbar.style.height = "0px";
+  }
 
   hirearchylist.innerHTML = newhtml;
+
+
 
   var x = document.getElementsByClassName("hirearchylist-items");
   for (var i = 0; i < x.length; i++) {
@@ -1538,7 +1736,10 @@ function selectElementContents(el) {
 
 function builddocs(textEntries, childEntries)
 {
-  depth = depth + 10;
+  column = column + 1;
+  test = test + 1;
+  columnrowcount.push(row);
+
   for (var i = 0; i < childEntries.length; i++)
   {   
 
@@ -1549,7 +1750,11 @@ function builddocs(textEntries, childEntries)
         continue;
       }
 
-      newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[j].id + '" onclick="hirearchybuttonpressed(' + textEntries[j].id + ')" style="padding-left: ' + depth + 'px;">' +  textEntries[j].name + '</li>';
+      row = row + 1;
+
+      newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[j].id + '" onclick="hirearchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + '</li>';
+
+
 
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
@@ -1561,9 +1766,33 @@ function builddocs(textEntries, childEntries)
       break;
     }
   }
-  depth = depth - 10;
+  console.log(childEntries.length);
+  column = column - 1;
+  columnrowcount.pop();
+
+  if (row > columnrowcount[columnrowcount.length - 1])
+  {
+    const newbar = document.createElement("div"); 
+    newbar.classList.add("hirearchylist-bar");
+    newbar.classList.add("sub-bar");
+    newbar.id = columnrowcount[columnrowcount.length - 1] + "--" + row;
+    
+    newbar.style.top = columnrowcount[columnrowcount.length - 1] * rowheight + "px";
+    newbar.style.left = (column * columnwidth - 4 + "px");
+    newbar.style.height = ((row - columnrowcount[columnrowcount.length - 1]) * rowheight) - (rowheight / 2) + "px";
+    barsparent.appendChild(newbar); 
+  }
 }
 
+/**
+ * 
+ *   each bar will need to be offset 
+  left: (-4 + (10 * column))
+  top: 20 * integer down the array we are.
+
+  it's height will match the number of children * 20
+  height = children count * 20 - 10 (to account for only going half way down to the last one)
+ */
 
 function sortList(ul) {
   Array.from(ul.getElementsByTagName("li"))
@@ -1722,10 +1951,8 @@ function selectionchanged(docid, nodeid)
   //console.log(data)
   //selecteddocid
 
-  var editorwindow = remote.getGlobal ('editorwindow');
-  var teststring = "test";
-
   //console.log(editorwindow);
+  editorwindow = remote.getGlobal ('editorwindow');
   
   if (editorwindow){
     editorwindow.webContents.send(EDITOR_SELECTION, data);
@@ -1887,7 +2114,7 @@ function dragNode(buttonelmnt, parentelmnt){
     data = {
       x:multipliednormalizedx,
       y:multipliednormalizedy,
-      id:buttonelmnt.getAttribute("node-db-path"),
+      id:buttonelmnt.getAttribute("node-db-path")
     };
     ipcRenderer.send(VERIFY_NODE, data);
   }

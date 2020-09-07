@@ -17,7 +17,7 @@
         <div class="container">
             <h1>Node Controls</h1>
             <p>Default size:</p>
-            <input type="range" id="basenodeRange" step="5">
+            <input type="range" id="basenodeRange" step="0.1" value="5">
 
             <div class="holder">
                 <span class="tooltiptext" id="node-display-tooltip">Please select a node.</span>
@@ -49,7 +49,7 @@
 
                             <div class="toolbarline">
                                 Spline Width:
-                                <input type="range" id="Splinewidth" step="5">
+                                <input type="range" id="Splinewidth" step="0.1" value="5">
                             </div>
                             <div class="toolbarline">
                                 Spline:
@@ -62,6 +62,9 @@
                             <div class="toolbarline">
                                 Fill:
                                 <input class="basebtn" id="bgcolorbtn" data-jscolor="{value:'rgba(255,255,255,0)'}">
+                            </div>
+                            <div class="toolbarline">
+                                <button class="basebtn" id="deletebtn">Delete Spline</button>
                             </div>
                             <script>
                                 jscolor.presets.default = {

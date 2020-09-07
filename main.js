@@ -25,6 +25,7 @@ const {
    REFRESH_PAGE,
    REFRESH_HIREARCHY,
    REQUEST_NODE_CONTEXT,
+   REQUEST_EXTENDED_NODE_CONTEXT,
    DELETE_NODE,
    VERIFY_NODE,
    REQUEST_DOCUMENT_BYNODE,
@@ -32,6 +33,7 @@ const {
    SAVE_DOCUMENT,
    NEW_DOCUMENT,
    CHILD_DOCUMENT,
+   MAIN_TO_RENDER_SETFOCUS,
    REMOVE_PARENT_DOCUMENT,
    DELETE_DOCUMENT,
    COMPLETE_DOCUMENT_DELETE,
@@ -56,6 +58,9 @@ const {
 } = require('./utils/constants');
 
 var nodepath = "";
+var docpath = "";
+var extendedcontext = false;
+
 var nodemenu = false;
 //var debugmode = false;
 //var downloadcomplete = false;
@@ -146,14 +151,14 @@ let nodedeleteoptions  = {
 
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
-      /*
+      
       {
          label: 'stresstest',
          click: () => {
-            win.webContents.send(NOTIFY_UPDATEDOWNLOADING , );
+            win.webContents.send(NOTIFY_UPDATECOMPLETE , );
          }
       },
-      */
+      
 		{
          label: 'Load Background Image',
          click: () => {
@@ -313,9 +318,44 @@ contextMenu({
             */
             nodemenu = false;
          }
+      },
+      {
+         label: 'Bind node to Document',
+         visible: (nodemenu === true && extendedcontext === true && !iscurrentdoc()),
+         click: () => {
+
+            for (var i = 0; i < CurrentContent.content.nodes.length; i++)
+            {
+               if (CurrentContent.content.nodes[i].id == nodepath)
+               {
+                  CurrentContent.content.nodes[i].documentref = docpath;
+                  dirtyproject = true;
+                  break;
+               }
+            }
+            
+            nodemenu = false;
+            extendedcontext = false;
+         }
       }
 	]
 });
+
+function iscurrentdoc()
+{
+   for (var i = 0; i < CurrentContent.content.nodes.length; i++)
+   {
+      if (CurrentContent.content.nodes[i].id == nodepath)
+      {
+         if (CurrentContent.content.nodes[i].documentref == docpath)
+         {
+            return true;
+         }
+         break;
+      }
+   }
+   return false;
+}
 
 
 const newproject = async () => {
@@ -403,6 +443,7 @@ const deeploadproject = async () => {
           return;
       }
       Databasetemplate.fromjson(data);
+      CurrentContent.projecturl = filename.filePaths[0];
       updaterenderer();
    }); 
 }
@@ -539,11 +580,13 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
       {
          //console.log("found id " + document.id);
          if (CurrentContent.content.textEntries[i].content != document.content 
-            || CurrentContent.content.textEntries[i].name != document.name )
+            || CurrentContent.content.textEntries[i].name != document.name 
+            || CurrentContent.content.textEntries[i].drawing != document.drawing)
          {
             CurrentContent.content.textEntries[i].name = document.name;
             CurrentContent.content.textEntries[i].content = document.content;
             CurrentContent.content.textEntries[i].drawing = document.drawing;
+            //console.log(document.drawing);
 
             win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
             dirtyproject = true;
@@ -628,6 +671,11 @@ ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
 
 ipcMain.on(CHILD_DOCUMENT, function(event, data) 
 {
+   setchild(data);
+});
+
+function setchild(data)
+{
    //console.log(data);
    var done = 0;
    for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
@@ -679,7 +727,7 @@ ipcMain.on(CHILD_DOCUMENT, function(event, data)
 
    win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
    dirtyproject = true;
-});
+}
 
 ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
 
@@ -739,6 +787,12 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
    
 });
 
+ipcMain.on(REQUEST_EXTENDED_NODE_CONTEXT, function(event, data) {
+   nodepath = data.nodeid;
+   docpath = data.docid;
+   extendedcontext = true;
+   nodemenu = true;
+})
 
 ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
    nodepath = message;
@@ -749,9 +803,22 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
    for (var i in CurrentContent.content.nodes) {
       if (CurrentContent.content.nodes[i].id == data.id) {
          CurrentContent.content.nodes[i].location = {x: data.x, y: data.y}
+         
+         if(data.parentid != null)
+         {
+            var docdata = {
+               child: CurrentContent.content.nodes[i].documentref,
+               parent: data.parentid
+            }
+             
+            setchild(docdata)
+            win.webContents.send(MAIN_TO_RENDER_SETFOCUS, docdata.child);
+            return;
+         }
+
          win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
          dirtyproject = true;
-         break; //Stop this loop, we found it!
+         return; //Stop this loop, we found it!
       }
     }
 });

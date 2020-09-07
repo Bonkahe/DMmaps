@@ -1,6 +1,6 @@
 {
   "name": "dmmaps",
-  "version": "0.1.6",
+  "version": "0.2.2",
   "description": "A DM's world building toolkit.",
   "main": "./main.js",
   "scripts": {
@@ -29,6 +29,7 @@
     "electron-context-menu": "^2.3.0",
     "electron-updater": "^4.3.4",
     "jquery": "^3.5.1",
+    "jquery-popup-overlay": "^2.1.5",
     "js-spline": "^1.0.1",
     "jsdom": "^16.4.0",
     "mousetrap": "^1.6.5",
