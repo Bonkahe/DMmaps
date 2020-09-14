@@ -1940,16 +1940,6 @@ function rebuildhirearchy(content)
     column = 0;
     //newhtml = newhtml + '</li>';
   }
-  row = 0;
-
-  if (textEntries.length > 0)
-  {
-    firstbar.style.height = (row * rowheight) - (rowheight / 2) + "px";
-  }
-  else
-  {
-    firstbar.style.height = "0px";
-  }
 
   hirearchylist.innerHTML = newhtml;
   highlightdecider(selecteddocid, selectednodeid);
@@ -1962,6 +1952,7 @@ function rebuildhirearchy(content)
     if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].getAttribute("parent-index"))))
     {
       x[i].style.display = "none";
+      row--;
     }
     else
     {
@@ -1969,6 +1960,16 @@ function rebuildhirearchy(content)
     }
     //console.log(x[i]);
   }
+
+  if (textEntries.length > 0)
+  {
+    firstbar.style.height = (row * rowheight) - (rowheight / 2) + "px";
+  }
+  else
+  {
+    firstbar.style.height = "0px";
+  }
+  row = 0;
 
   if (selecteddocid != null)
   {

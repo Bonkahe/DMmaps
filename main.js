@@ -68,6 +68,7 @@ const {
    DatabaseTextentry,
    SETGLOBAL_CHARGEN,
 } = require('./utils/constants');
+const { data } = require('jquery');
 
 var nodepath = "";
 var docpath = "";
@@ -262,7 +263,12 @@ contextMenu({
 
             //console.log(newnode);
 
-            win.webContents.send(CREATE_NEW_NODE , newnode);
+            var docnodepair = {
+               doc: newdoc,
+               node: newnode
+            }
+
+            win.webContents.send(CREATE_NEW_NODE , docnodepair);
             dirtyproject = true;
          }
       },
