@@ -1,0 +1,94 @@
+html{
+    overflow-y: auto;
+}
+
+body{
+    width: 100%;
+    color: white;
+}
+
+button {
+    outline: none;
+}
+
+.titlebar{
+    height: 12px; 
+}
+
+.basebtn{
+    white-space: nowrap;
+    min-width: 100px;
+    height: 20px;
+    background-color: var(--main-button-color);
+    user-select: none;
+}
+
+.flexcontainer{
+    display: flex;
+    flex-direction: row;
+    margin: 0;
+    padding: 5px;
+    min-width: 150px;
+}
+
+.flexcontainer p {
+    margin: 0;
+}
+
+.baseoutput{
+    background-color: rgb(39, 39, 39);
+    width: 100%;
+}
+
+.outputtext{
+    white-space: nowrap;
+    margin-left: 1em;
+}
+
+.greyout{
+    pointer-events: none;
+    background-color: #292727;
+    color: #8b8b8b;
+    user-select: none;
+}
+
+.greyout .basebtn{
+    background-color: #535353;
+}
+
+.greyout input[type=range]::-webkit-slider-runnable-track {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-webkit-slider-thumb {
+  background: #616161;
+}
+.greyout input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-moz-range-track {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-moz-range-thumb {
+  background: #616161;
+}
+
+.greyout input[type=range]::-ms-fill-lower {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-ms-fill-upper {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]::-ms-thumb {
+  background: #616161;
+}
+.greyout input[type=range]:focus::-ms-fill-lower {
+  background: #4e4b4d4b;
+}
+.greyout input[type=range]:focus::-ms-fill-upper {
+  background: #4e4b4d4b;
+}
+
+/* Handle */
+.greyout ::-webkit-scrollbar-thumb {
+    background: rgb(94, 94, 94);
+}

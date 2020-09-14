@@ -17,15 +17,29 @@
         <div class="container">
             <h1>Node Controls</h1>
             <p>Default size:</p>
-            <input type="range" id="basenodeRange" step="0.1" value="5">
+            <input type="range" id="basenodeRange" step="0.1" value="1" min="0" max="10">
 
             <div class="holder">
                 <span class="tooltiptext" id="node-display-tooltip">Please select a node.</span>
                 <div class="greyout" id="node-display">
                     <p id="currentnodedef" >Current Node size:</p>
                     <div id="rangeinput">
-                        <input type="range" id="currentnodeRange" >
+                        <input type="range" id="currentnodeRange" step="0.1" value="1" min="0" max="10">
                         <button class="basebtn" id="clearbtn">Clear</button>                        
+                    </div>
+                    <div class="toolbarline">
+                        <img id="nodeiconholder" src="" alt="">
+                        <div id="nodeiconcontrols"> 
+                            <button onclick="myFunction()" class="basebtn dropbtn" >Dropdown</button>
+                            <div id="nodeicondropdown" class="dropdown-content">
+                                <ul id="nodeicons">
+                                    <li><img src="./images/Tokens/home.png" alt=""> </li>
+                                    <li>test</li>
+                                    <li>test</li>
+                                    <li>test</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

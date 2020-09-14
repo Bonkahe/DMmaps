@@ -1,3 +1,5 @@
+
+
 class Databasetemplate {
     constructor() {
         this.versionnumber = 0.1;
@@ -9,6 +11,7 @@ class Databasetemplate {
             textEntries: [],
             nodes: []
         };
+        this.nodescale = 1;
     }
 };
 
@@ -18,6 +21,9 @@ class DatabaseNodeentry {
         this.location = { x: 0, y: 0 };
         this.documentref = "";
         this.locked = false;
+        this.individualnodescale = null;
+        this.tokenurl = "internaltoken0";
+        this.nodetoken;
     }
 }
 class DatabaseTextentry {
@@ -41,10 +47,15 @@ module.exports = {
     REFRESH_DATABASE_COMPLETE: 'refresh-database-complete',
     REFRESH_PAGE: 'refresh-page',
     REFRESH_HIREARCHY: 'refresh-hirearchy',
+    REQUEST_HIREARCHY_REFRESH: 'request-hirearchy-refrehs',
+    REFRESH_NODES: 'refresh-nodes',
     REQUEST_NODE_CONTEXT: 'request-node-context',
     REQUEST_EXTENDED_NODE_CONTEXT: 'request-extended-node-context',
     DELETE_NODE: 'delete-node',
     VERIFY_NODE: 'verify-node',
+    SCALE_ALL_NODES: 'scale-all-nodes',
+    SCALE_ONE_NODE: 'scale-one-node',
+    CLEAR_NODE_SCALE: 'clear-node-scale',
     REQUEST_DOCUMENT_BYNODE: 'request-document-bynode',
     REQUEST_DOCUMENT_BYDOC: 'request-document-bydoc',
     SAVE_DOCUMENT: 'save-document',
@@ -74,6 +85,8 @@ module.exports = {
     EDITOR_IMPORTSPLINES: 'editor-importsplines',
     EDITOR_SET_OVERRIDEINDEX: 'editor-setoverrideindex',
     EDITOR_DELETE_SPLINE: 'editor-delete-spline',
+    TITLEBAR_OPEN_GENERATOR_WINDOW: 'titlebar-open-generator-window',
+    SETGLOBAL_CHARGEN: 'setglobal-chargen',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,

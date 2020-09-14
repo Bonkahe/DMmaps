@@ -1,6 +1,6 @@
 {
   "name": "dmmaps",
-  "version": "0.2.2",
+  "version": "0.3.2",
   "description": "A DM's world building toolkit.",
   "main": "./main.js",
   "scripts": {
@@ -28,12 +28,17 @@
     "custom-electron-titlebar": "^3.2.4",
     "electron-context-menu": "^2.3.0",
     "electron-updater": "^4.3.4",
+    "glob": "^7.1.6",
+    "google-spreadsheet": "^3.0.13",
     "jquery": "^3.5.1",
     "jquery-popup-overlay": "^2.1.5",
     "js-spline": "^1.0.1",
     "jsdom": "^16.4.0",
     "mousetrap": "^1.6.5",
+    "node-xlsx": "^0.15.0",
     "quill": "^2.0.0-dev.4",
+    "quill-drag-and-drop-module": "^0.3.0",
+    "quill-image-drop-and-paste": "^1.1.1",
     "quill-image-resize-module": "^3.0.0",
     "split.js": "^1.6.2",
     "update-electron-app": "^1.5.0"

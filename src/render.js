@@ -8,15 +8,21 @@ const Split = require('split.js');
 const customTitlebar = require('custom-electron-titlebar');
 const Mousetrap = require('mousetrap');
 const { shell } = require('electron')
+var glob = require("glob")
 
 window.addEventListener('DOMContentLoaded', () => {
-  const titlebar = new customTitlebar.Titlebar({
-      backgroundColor: customTitlebar.Color.fromHex('#1a1918'),
-      overflow: "hidden",
-      titleHorizontalAlignment: "right"
+  rebuildmenu();
+})
+
+function rebuildmenu(newmenuitem){
+  titlebar = new customTitlebar.Titlebar({
+    backgroundColor: customTitlebar.Color.fromHex('#1a1918'),
+    overflow: "hidden",
+    titleHorizontalAlignment: "right"
   });
 
   menu = Menu.buildFromTemplate(template)
+  if (newmenuitem){menu.append(newmenuitem);}
 
   titlebar.updateMenu(menu);
   titlebar.updateTitle(' ');
@@ -42,7 +48,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   downloaddisplay.className += " loader";
   //getversion();
-})
+}
 
 
 //const Quill = require('quill');
@@ -58,10 +64,14 @@ const {
   REFRESH_DATABASE_COMPLETE,
   REFRESH_PAGE,
   REFRESH_HIREARCHY,
+  REQUEST_HIREARCHY_REFRESH,
   REQUEST_NODE_CONTEXT,
   REQUEST_EXTENDED_NODE_CONTEXT,
   DELETE_NODE,
   VERIFY_NODE,
+  SCALE_ALL_NODES,
+  SCALE_ONE_NODE,
+  CLEAR_NODE_SCALE,
   REQUEST_DOCUMENT_BYNODE,
   REQUEST_DOCUMENT_BYDOC,
   SAVE_DOCUMENT,
@@ -92,11 +102,16 @@ const {
   EDITOR_IMPORTSPLINES,
   EDITOR_SET_OVERRIDEINDEX,
   EDITOR_DELETE_SPLINE,
+  REFRESH_NODES,
+  TITLEBAR_OPEN_GENERATOR_WINDOW,
 }  = require('../utils/constants');
 const { start } = require('repl');
 const { Titlebar } = require('custom-electron-titlebar');
+const { data } = require('jquery');
 //const { map } = require('jquery');
 /** -------------------- Variables --------------------- */
+
+var titlebar;
 
 let rightClickPosition;
 var caratindex;
@@ -117,6 +132,12 @@ var texteditorcontainer = document.getElementById('textcontainer');
 //console.log(editorcontainer);
 
 var nodelist = [];
+var basenodescalelocked = 1.0;
+var basenodescaleunlocked = 1.1;
+var currentscale = 1.0;
+var nodetokenlist = [];
+
+var doubleclick = false;
 var hirearchylist = document.getElementById('hirearchylist');
 var barsparent = document.getElementById('hirearchylist-container');
 var firstbar = document.getElementById('hirearchylist-removeparent');
@@ -150,6 +171,17 @@ map.onload = function () {
 }
 
 
+
+/**---------------------------------------TeST------------------------------------ */
+
+var files = [
+  './images/Tokens/home.png',
+  './images/Tokens/PersonofInterest.png'
+]
+
+files.forEach(element => {
+  nodetokenlist.push(element);
+});
 
 
 
@@ -193,7 +225,13 @@ const template = [
     submenu: [
        {
           label: 'Editor window',
-          click: () => { ipcRenderer.send(TITLEBAR_OPENWINDOW); }
+          click: () => { ipcRenderer.send(TITLEBAR_OPENWINDOW); },
+          accelerator: 'CommandOrControl+W or F3'
+       },
+       {
+         label: 'Character creator',
+         click: () => { ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW);},
+         accelerator: 'F5'
        }
     ]
   },
@@ -230,13 +268,7 @@ const template = [
   {
     label: "animation",
     enabled: false
-  },
-  {
-    label: "test",
-    visible: restartavailable === true,
-    click: () => { 
-      ipcRenderer.send(NOTIFY_RESTART); }
-  },
+  }
 ]
 
 $('#donatebtn').click(function() {
@@ -261,6 +293,8 @@ ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
     infodisplay.innerHTML = "no version number";
   }
 })
+
+//const DragAndDropModule = require('quill-drag-and-drop-module');
 
 //var texteditorwindow = document.getElementById('texteditor');
 var texteditortitle = document.getElementById('texteditor-title');
@@ -296,8 +330,8 @@ Quill.register({'formats/doclink': QuillRuby}, true);
 //Quill.register('modules/imageResize', ImageResize);
 var resize = Quill.import('modules/imageResize');
 Quill.register(resize, true);
-//var drop = Quill.import('modules/imageDrop');
-//Quill.register(drop, true);
+//var tdrop = Quill.import('modules/imageDrop');
+
 
 var Size = Quill.import('attributors/style/size');
 Size.whitelist = ['14px', '16px', '18px', '20px', '26px', '32px'];
@@ -328,8 +362,7 @@ var toolbarOptions = [
 var editor = new Quill('#editor', {
   modules: {
     toolbar: '#toolbar',
-    imageResize: {modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]},
-    //imageDrop: true
+    imageResize: {modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]}
   },
   theme: 'snow'
   //imageHandler: imageHandler
@@ -685,6 +718,11 @@ Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
   return false;
 });
 
+Mousetrap.bind(['f5'], function() {
+  ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW); 
+  return false;
+});
+
 
 Mousetrap.prototype.stopCallback = function(e, element, combo) {
   return false;
@@ -695,7 +733,6 @@ Mousetrap.prototype.stopCallback = function(e, element, combo) {
 
 function paypallink()
 {
-  console.log("test");
   shell.openExternal('https://paypal.me/bonkahe?locale.x=en_US');
 }
 
@@ -745,20 +782,65 @@ editor.on('selection-change', function(range, oldRange, source) {
 /** -------------------- IPC BLOCK ---------------------  */
 
 ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
-  infodisplay.innerHTML = "Downloading... ";
+  infodisplay.innerHTML = message;
   downloaddisplay.style.display = "block";
 })
 
 ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
+
+  if (message != null)
+  {
+    var delayInMilliseconds = 2000; //1 second
+
+    setTimeout(function() {
+      ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
+        downloaddisplay.style.display = "none";
+        if (result)
+        {
+          infodisplay.innerHTML = "version: " + result;
+        }
+        else{
+          infodisplay.innerHTML = "no version number";
+        }
+      })
+    }, delayInMilliseconds);
+
+
+    downloaddisplay.style.display = "none";
+    infodisplay.innerHTML = "Save complete."
+    return;
+  }
+
+  titlebar.dispose();
+  var newmenuitem = new MenuItem({ 
+    label: 'Restart', 
+    click: () => { 
+      savetext();
+      ipcRenderer.send(NOTIFY_RESTART); 
+    } 
+  })
+  rebuildmenu(newmenuitem);
   downloaddisplay.style.display = "none";
-  infodisplay.innerHTML = "Download Complete, click to restart."
-  restartavailable = true;
+  infodisplay.innerHTML = "Download Complete!"
+  //restartavailable = true;
+  //menu = new Menu();
 
-  menu = Menu.buildFromTemplate(template)
+  //menu.append(new MenuItem({ label: 'MenuItem2', type: 'checkbox', checked: true }))
+  //menu = Menu.buildFromTemplate(template)
   
-  titlebar.updateMenu(menu);
+  
+  //titlebar.updateMenu(new Menu());
+  //downloaddisplay.style.display = "none";
+  //infodisplay.innerHTML = "Download Complete, click to restart."
 })
-
+/*
+{
+  label: "test",
+  visible: false,
+  click: () => { 
+    ipcRenderer.send(NOTIFY_RESTART); }
+},
+*/
 
 ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
   ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
@@ -776,8 +858,18 @@ ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
 /** -------------------- END TITLEBAR --------------------- */
 
 ipcRenderer.on(EDITOR_NODESETTINGS, (event, data) => {
-  if (data.currentdefaultnodescale != null){ console.log("Scale of all nodes =" + data.currentdefaultnodescale) }
-  if (data.currentnodescale != null){console.log("Scale of selected node =" +data.currentnodescale)}
+  if (data.currentdefaultnodescale != null){ 
+    rescalenodes(data.currentdefaultnodescale);
+    ipcRenderer.send(SCALE_ALL_NODES, data.currentdefaultnodescale);
+  }
+  if (data.currentnodescale != null){
+    rescaleselectednode(data.currentnodescale);
+  }
+
+  if (data.clear != null){
+    resetselectednode();
+    ipcRenderer.send(CLEAR_NODE_SCALE);
+  }
 })
 
 ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
@@ -850,34 +942,61 @@ ipcRenderer.on(EDITOR_INITIALIZED, (event) => {
   }
 })
 
-ipcRenderer.on(PROJECT_INITIALIZED, (event, message) => {
+ipcRenderer.on(REFRESH_NODES, (event, CurrentContent) =>{
+  selecteddocid = null;
+  document.querySelectorAll('.node-icon').forEach(function(a) {
+    a.remove()
+  })
+  
+  importnodes(CurrentContent);
+
+  rebuildhirearchy(CurrentContent.content);
+
+  
+/*
+  node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
+  if (node.className == "node-icon")
+  {
+    */
+  //rescalenodes(currentscale);
+})
+
+ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
+  openednodes = [];
+
   selecteddocid = null;
   selectednodeid = null;
   textchanged = false;
   overrideindex = null;
+  currentscale = CurrentContent.nodescale;
+  if ( currentscale == null)
+  {
+    currentscale = 1.0;
+  }
 
-  //console.log(message.CurrentContent.content.textEntries);
+  //console.log(CurrentContent.content.textEntries);
 
   document.querySelectorAll('.node-icon').forEach(function(a) {
     a.remove()
   })
   
   cleartexteditor();
-  rebuildhirearchy(message.CurrentContent.content);
+  rebuildhirearchy(CurrentContent.content);
 
   const projecttitle = document.getElementById('project-title');
-  projecttitle.innerHTML = "ProjectName: " + message.CurrentContent.name;
-  if (message.CurrentContent.backgroundurl == "")
+  projecttitle.innerHTML = "ProjectName: " + CurrentContent.name;
+  if (CurrentContent.backgroundurl == "")
   {
     switchtonomap();
   }
   else
   {
-    map.src = message.CurrentContent.backgroundurl;
+    map.src = CurrentContent.backgroundurl;
     resetmap();
     
     switchtomap();
-    importnodes(message);
+    importnodes(CurrentContent);
+    //rescalenodes(currentscale);
   }
 })
 
@@ -900,6 +1019,7 @@ ipcRenderer.on(CHANGE_MAP, (event, message) => {
 })
 
 ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
+  newdoc = true;
   mousecreatenode(rightClickPosition.x,rightClickPosition.y,message.id, message.documentref);
 })
 
@@ -1281,7 +1401,7 @@ function loadtext(document)
 
   if (document.drawing != null && document.drawing.length > 0)
   {
-    console.log(document.drawing[0]);
+    //console.log(document.drawing[0]);
     for (var i = 0; i < document.drawing.length; i++)
     {
       drawings.push(new drawing(document.drawing[i].points, 
@@ -1347,7 +1467,7 @@ function savetext (callback)
       callback();
     }
 
-    console.log("nothing to save")
+    //console.log("nothing to save")
     return false;
   }
   var newdoc = new DatabaseTextentry();
@@ -1430,17 +1550,30 @@ function resetmap()
   */
 }
 
-function importnodes(database)
+function panto(x,y)
+{
+  var coords = convertdoctoworldcords(x,y);
+
+  var newx = (window.innerWidth / 2) - coords.x;
+  var newy = (window.innerHeight / 2) - coords.y;
+
+  instance.panBy({ 
+    originX: newx, 
+    originY: newy
+  });
+}
+
+function importnodes(CurrentContent)
 {
   //console.log(database.CurrentContent);
-  database.CurrentContent.content.nodes.forEach(element => {
-    createnode(element.location.x, element.location.y, element.id, element.documentref, element.locked);
+  CurrentContent.content.nodes.forEach(element => {
+    createnode(element);
   });
 
   //createnode(rightClickPosition.x,rightClickPosition.y,message);
 }
 
-function createnode(x,y, nodeid, docid, locked)
+function createnode(node)
 {
   var img = document.createElement('button');
   img.onmouseenter = function(event){
@@ -1454,25 +1587,53 @@ function createnode(x,y, nodeid, docid, locked)
     deactivatepanning = false
   };
 
-  dragNode(img, mapdiv);
-  //img.id = "node-icon";
-  img.className = "node-icon";
-  img.setAttribute("node-db-path", nodeid)
-  img.setAttribute("doc-db-path", docid)
-  img.setAttribute("locked", locked)
-
-  mapdiv.appendChild(img); 
-    
-  img.style.left = (x  + "px");
-  img.style.top = (y  + "px");
-
-  if (locked)
+  if (node.nodetoken != null)
   {
-    img.style.transform = `matrix(1, 0, 0, 1, 0, 0)`;
+    if (isNaN(node.nodetoken))
+    {
+      img.style.backgroundImage  = "url('" + node.nodetoken + "')";
+    }
+    else
+    {
+      img.style.backgroundImage  = "url('" + nodetokenlist[node.nodetoken] + "')";
+    }
+    img.setAttribute("node-icon", node.nodetoken)
   }
   else
   {
-    img.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
+    img.style.backgroundImage  = "url('" + nodetokenlist[0] + "')";
+    img.setAttribute("node-icon", 0)
+  }
+  dragNode(img, mapdiv);
+  //img.id = "node-icon";
+  img.className = "node-icon";
+  img.setAttribute("node-db-path", node.id)
+  img.setAttribute("doc-db-path", node.documentref)
+  img.setAttribute("locked", node.locked)
+
+  mapdiv.appendChild(img); 
+    
+  img.style.left = (node.location.x  + "px");
+  img.style.top = (node.location.y  + "px");
+  
+  var myscale = node.nodescale;
+  if (myscale === void(0)){
+    myscale = currentscale;
+  }
+  else
+  {
+    img.setAttribute("scaled", myscale);
+  }
+
+  //console.log(myscale);
+
+  if (node.locked)
+  {
+    img.style.transform = 'matrix(' + (myscale * basenodescalelocked) +', 0, 0, ' + (myscale * basenodescalelocked) +', 0, 0)';
+  }
+  else
+  {
+    img.style.transform = 'matrix(' + (myscale * basenodescaleunlocked) +', 0, 0, ' + (myscale * basenodescaleunlocked) +', 0, 0)';
   }
 
   nodelist.push(img);
@@ -1515,11 +1676,35 @@ function convertworldtodoccords(x,y)
   var multipliednormalizedy = normalizedy * modifiedzoom;
   
   var coords = {
-    x: multipliednormalizedx ,
+    x: multipliednormalizedx,
     y: multipliednormalizedy
   }
   return coords;
 }
+
+function convertdoctoworldcords(x,y)
+{
+  var modifiedzoom = 1 / zoom;
+
+  x = parseFloat(x);
+  y = parseFloat(y);
+  
+  var originx = mapdiv.getBoundingClientRect().left;
+  var originy = mapdiv.getBoundingClientRect().top;
+  
+  var dividednormalizedx = x / modifiedzoom;
+  var normalizedx = dividednormalizedx + originx;
+
+  var dividednormalizedy = y / modifiedzoom;
+  var normalizedy = dividednormalizedy + originy;
+  
+  var coords = {
+    x: normalizedx,
+    y: normalizedy
+  }
+  return coords;
+}
+
 
 function mousecreatenode(x,y, nodeid, docid)
 {
@@ -1536,10 +1721,16 @@ function mousecreatenode(x,y, nodeid, docid)
     deactivatepanning = false
   };
 
+  if (nodetokenlist.length > 0)
+  {
+    img.style.backgroundImage  = "url('" + nodetokenlist[0] + "')";
+  }
+
   dragNode(img, mapdiv);
   //img.id = "node-icon";
   img.setAttribute("node-db-path", nodeid)
   img.setAttribute("doc-db-path", docid)
+  img.setAttribute("node-icon", 0)
   img.setAttribute("locked", "false")
   img.className = "node-icon";
   /*
@@ -1557,23 +1748,77 @@ function mousecreatenode(x,y, nodeid, docid)
   var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
   */
   var coords = convertworldtodoccords(x,y);
-  console.log(coords);
+  //console.log(coords);
   mapdiv.appendChild(img); 
     
   img.style.left = ((coords.x - 32)  + "px");
   img.style.top = ((coords.y - 32)  + "px");
-  img.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
+  img.style.transform = 'matrix(' + (currentscale * basenodescaleunlocked) +', 0, 0, ' + (currentscale * basenodescaleunlocked) +', 0, 0)';
 
-  data = {
+  var verifydata = {
     x:coords.x,
     y:coords.y,
     id:nodeid,
     parentid:selecteddocid
   };
   
-  ipcRenderer.send(VERIFY_NODE, data);
+  ipcRenderer.send(VERIFY_NODE, verifydata);
 
   nodelist.push(img);
+}
+
+function rescalenodes(scalepercent)
+{
+  currentscale = scalepercent;
+
+  nodelist.forEach(function(element) {
+    if (!element.getAttribute("scaled"))
+    {
+      if (element.getAttribute("locked"))
+      {
+        element.style.transform = 'matrix(' + (currentscale * basenodescaleunlocked) +', 0, 0, ' + (currentscale * basenodescaleunlocked) +', 0, 0)';
+      }
+      else
+      {
+        element.style.transform = 'matrix(' + (currentscale * basenodescalelocked) +', 0, 0, ' + (currentscale * basenodescalelocked) +', 0, 0)';
+      }
+    }
+  })
+}
+
+function rescaleselectednode(scalepercent)
+{
+  if (!selectednodeid){return;}  
+  var nodetoscale = document.querySelector('[node-db-path="' + selectednodeid +'"]');
+
+  if (!nodetoscale){return;}
+  if (nodetoscale.getAttribute("locked"))
+  {
+    nodetoscale.style.transform = 'matrix(' + (scalepercent * basenodescalelocked) +', 0, 0, ' + (scalepercent * basenodescalelocked) +', 0, 0)';
+  }
+  else
+  {
+    nodetoscale.style.transform = 'matrix(' + (scalepercent * basenodescaleunlocked) +', 0, 0, ' + (scalepercent * basenodescaleunlocked) +', 0, 0)';
+  }
+
+  nodetoscale.setAttribute("scaled", scalepercent);
+  
+  var nodescaledata = {
+    id: selectednodeid,
+    scale: scalepercent
+  }
+
+  ipcRenderer.send(SCALE_ONE_NODE, nodescaledata);
+}
+
+function resetselectednode()
+{
+  var nodescaledata = {
+    id: selectednodeid,
+    scale: null
+  }
+
+  ipcRenderer.send(SCALE_ONE_NODE, nodescaledata);
 }
 
 function togglenode(id, locked)
@@ -1584,11 +1829,11 @@ function togglenode(id, locked)
 
   if (locked)
   {
-    nodetotoggle.style.transform = `matrix(1, 0, 0, 1, 0, 0)`;
+    nodetotoggle.style.transform = 'matrix(' + (currentscale * basenodescalelocked) +', 0, 0, ' + (currentscale * basenodescalelocked) +', 0, 0)';
   }
   else
   {
-    nodetotoggle.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
+    nodetotoggle.style.transform = 'matrix(' + (currentscale * basenodescaleunlocked) +', 0, 0, ' + (currentscale * basenodescaleunlocked) +', 0, 0)';
   }
 }
 
@@ -1636,10 +1881,10 @@ function selectnode(buttonelmnt)
   })
 }
 var columnrowcount;
-var test;
+var openednodes = [];
 function rebuildhirearchy(content)
 {
-  highlightdecider(selecteddocid, selectednodeid);
+  
   hirearchylist.innerHTML = null;
   /*
   var bars = document.getElementsByClassName("sub-bar");
@@ -1653,6 +1898,7 @@ function rebuildhirearchy(content)
   */
 
   $('.sub-bar').remove();
+  $('.sub-tiles').remove();
   var textEntries = [];
   textEntries = content.textEntries;
 
@@ -1661,7 +1907,6 @@ function rebuildhirearchy(content)
   newhtml = '';
   column = 0;
   row = 0;
-  test = 0;
 
   columnrowcount = [];
   for(var i = 0; i < textEntries.length; i++)
@@ -1670,16 +1915,26 @@ function rebuildhirearchy(content)
     {
       continue;
     }
-    test = test + 1;
     row = row + 1;
     
-    newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[i].id + '" onclick="hirearchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + '</li>';
-
+    var textinsert = '';
+    if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
+    {
+      if (openednodes.includes(i))
+      {
+        textinsert = "<div class='hirearchylist-close sub-tiles' onclick='closechildren(this,event," + i + ")'></div>";
+      }
+      else
+      {
+        textinsert = "<div class='hirearchylist-open sub-tiles' onclick='openchildren(event," + i + ")'></div>";
+      }
+    }
     
+    newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[i].id + '" onclick="hirearchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + textinsert + '</li>';
 
     if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
     {
-      builddocs(textEntries, textEntries[i].childdocuments, textEntries[i].id)
+      builddocs(textEntries, textEntries[i].childdocuments, i);
     }
 
     column = 0;
@@ -1687,19 +1942,9 @@ function rebuildhirearchy(content)
   }
   row = 0;
 
-    /**
-  first bar will just be set to 
-  (length * 20) - 10
-   
-
-
-  then an image of a line sweeping out and going right will be placed to the left of each li.
-
-  **/
-
   if (textEntries.length > 0)
   {
-    firstbar.style.height = (textEntries.length * rowheight) - (rowheight / 2) + "px";
+    firstbar.style.height = (row * rowheight) - (rowheight / 2) + "px";
   }
   else
   {
@@ -1707,12 +1952,22 @@ function rebuildhirearchy(content)
   }
 
   hirearchylist.innerHTML = newhtml;
+  highlightdecider(selecteddocid, selectednodeid);
 
 
 
-  var x = document.getElementsByClassName("hirearchylist-items");
+  var x = hirearchylist.getElementsByClassName("itemchildren");
   for (var i = 0; i < x.length; i++) {
-    //sortList(x[i]);
+    //console.log(openednodes + "--" + x[i].getAttribute("parent-index") + "--" + openednodes.includes(parseInt(x[i].getAttribute("parent-index"))));
+    if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].getAttribute("parent-index"))))
+    {
+      x[i].style.display = "none";
+    }
+    else
+    {
+      x[i].style.display = "block";
+    }
+    //console.log(x[i]);
   }
 
   if (selecteddocid != null)
@@ -1726,6 +1981,44 @@ function rebuildhirearchy(content)
   }
 }
 
+function openchildren(event, i)
+{
+  event.stopPropagation();
+  openednodes.push(i);
+  console.log(openednodes);
+  //refresh hirearchy
+  ipcRenderer.send(REQUEST_HIREARCHY_REFRESH,);
+}
+
+function closechildren(element, event, i)
+{
+  event.stopPropagation();
+  const index = openednodes.indexOf(i);
+  if (index > -1) {
+    openednodes.splice(index, 1);
+  }
+  iterateallchildren(i);
+  //refresh hirearchy
+  ipcRenderer.send(REQUEST_HIREARCHY_REFRESH,);
+}
+
+
+function iterateallchildren(index)
+{
+  var x = hirearchylist.getElementsByClassName("itemchildren");
+  for (var i = 0; i < x.length; i++) {
+    if (x[i].hasAttribute("parent-index") && x[i].getAttribute("parent-index") == index)
+    {
+      const index = openednodes.indexOf(i);
+      if (index > -1) {
+        openednodes.splice(index, 1);
+      }
+      iterateallchildren(x[i].getAttribute("this-index"));
+    }
+  }
+}
+
+
 function selectElementContents(el) {
   var range = document.createRange();
   range.selectNodeContents(el);
@@ -1734,10 +2027,9 @@ function selectElementContents(el) {
   sel.addRange(range);
 }
 
-function builddocs(textEntries, childEntries)
+function builddocs(textEntries, childEntries, parentindex)
 {
   column = column + 1;
-  test = test + 1;
   columnrowcount.push(row);
 
   for (var i = 0; i < childEntries.length; i++)
@@ -1752,24 +2044,37 @@ function builddocs(textEntries, childEntries)
 
       row = row + 1;
 
-      newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[j].id + '" onclick="hirearchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + '</li>';
+      var textinsert = '';
+      if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
+      {
+        if (openednodes.includes(j))
+        {
+          textinsert = "<div class='hirearchylist-close sub-tiles' onclick='closechildren(this,event," + j + ")'></div>";
+        }
+        else
+        {
+          textinsert = "<div class='hirearchylist-open sub-tiles' onclick='openchildren(event," + j + ")'></div>";
+        }
+      }
+
+      newhtml = newhtml + '<li class="itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" this-index="' + j + '" parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hirearchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
 
 
 
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
         //newhtml = newhtml + '<ul class="hirearchylist-items">';
-        builddocs(textEntries, textEntries[j].childdocuments, textEntries[j].id)
+        builddocs(textEntries, textEntries[j].childdocuments, j)
         //newhtml = newhtml + '</ul>';
       }
       //newhtml = newhtml + '</li>';
       break;
     }
   }
-  console.log(childEntries.length);
+  //console.log(childEntries.length);
   column = column - 1;
   columnrowcount.pop();
-
+  /*
   if (row > columnrowcount[columnrowcount.length - 1])
   {
     const newbar = document.createElement("div"); 
@@ -1778,10 +2083,11 @@ function builddocs(textEntries, childEntries)
     newbar.id = columnrowcount[columnrowcount.length - 1] + "--" + row;
     
     newbar.style.top = columnrowcount[columnrowcount.length - 1] * rowheight + "px";
-    newbar.style.left = (column * columnwidth - 4 + "px");
+    newbar.style.left = (column * columnwidth + "px");
     newbar.style.height = ((row - columnrowcount[columnrowcount.length - 1]) * rowheight) - (rowheight / 2) + "px";
     barsparent.appendChild(newbar); 
   }
+  */
 }
 
 /**
@@ -1802,9 +2108,28 @@ function sortList(ul) {
 
 function hirearchybuttonpressed(id)
 { 
-  //console.log(id);
-  //dochighlighttoggle(id);
-  selectdoc(id);
+  if (selecteddocid == id && doubleclick)
+  {
+    var elementclicked = hirearchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
+    var childNode = elementclicked.querySelector('.sub-tiles');
+    if(childNode)
+    {
+      childNode.click();
+    }
+    doubleclick = false;
+  }
+  else
+  {
+    if (selecteddocid != id)
+    {
+      selectdoc(id);
+    }
+    var delayInMilliseconds = 500; //1 second
+    doubleclick = true;
+    setTimeout(function() {
+      doubleclick = false;
+    }, delayInMilliseconds);
+  }
 }
 
 function allowDrop(ev) {
@@ -1910,6 +2235,7 @@ function highlightdoc(docid)
   if(foundnode){
 
     // HIGHLIGHT NODE ----
+    panto(foundnode.style.left, foundnode.style.top);
     
     selectionchanged(docid,foundnode.getAttribute('node-db-path'));
     return;    
@@ -1945,7 +2271,16 @@ function selectionchanged(docid, nodeid)
 {
   var data = {
     docid: docid,
-    nodeid: nodeid
+    nodeid: nodeid,
+    nodeinternalscale: null
+  }
+
+  selectednodeid = nodeid;
+  selecteddocid = docid;
+
+  if(nodeid != null)
+  {
+    data.nodeinternalscale = mapdiv.querySelector('*[node-db-path="' + nodeid + '"]').getAttribute("scaled");
   }
 
   //console.log(data)
@@ -2014,6 +2349,7 @@ function dragNode(buttonelmnt, parentelmnt){
   buttonelmnt.onmousedown = dragMouseDown;
   
   var mouseorigin, nodelocked = true, softlockdistance;
+  var scale;
 
   function dragMouseDown(e) {
     e = e || window.event;
@@ -2023,6 +2359,7 @@ function dragNode(buttonelmnt, parentelmnt){
       return;
     }
     //console.log(buttonelmnt.getAttribute("locked"));
+    
 
 
     if (buttonelmnt.getAttribute("locked") == "true")
@@ -2037,7 +2374,13 @@ function dragNode(buttonelmnt, parentelmnt){
       x: (e.clientX - 32),
       y: (e.clientY - 32)
     }
-    softlockdistance = 32 * zoom;
+    
+    scale = buttonelmnt.getAttribute("scaled");
+
+    if (!scale){scale = currentscale;}
+  
+    console.log(scale + "--" + zoom);
+    softlockdistance = (32 * scale) * zoom;
 
     document.onmouseup = closeDragElement;
     // call a function whenever the cursor moves:
@@ -2047,15 +2390,19 @@ function dragNode(buttonelmnt, parentelmnt){
   function elementDrag(e) {
     e = e || window.event;
     e.preventDefault();
+    
 
     if (nodelocked)
     {
+      //console.log(softlockdistance);
+      //console.log(mouseorigin.x + " -- " + mouseorigin.y + " ----- x:" + (e.clientX - 32) + " -- y:" + (e.clientY - 32));
       if ((e.clientX - 32) - mouseorigin.x > softlockdistance 
       || (e.clientX - 32) - mouseorigin.x < -softlockdistance 
       || (e.clientY - 32) - mouseorigin.y > softlockdistance 
       || (e.clientY - 32) - mouseorigin.y < -softlockdistance)
       {
-        //console.log(mouseorigin.x + " -- " + mouseorigin.y + " ----- x:" + (e.clientX - 32) + " -- y:" + (e.clientY - 32));
+        //console.log("test");
+        
         nodelocked = false;
 
         
@@ -2064,7 +2411,11 @@ function dragNode(buttonelmnt, parentelmnt){
         document.body.appendChild(buttonelmnt);
         buttonelmnt.style.left = (e.clientX - 32) + "px";
         buttonelmnt.style.top = (e.clientY - 32) + "px";
-        buttonelmnt.style.transform = `matrix(${zoom * 1.1}, 0, 0, ${zoom * 1.1}, 0, 0)`;
+        scale = buttonelmnt.getAttribute("scaled");
+
+        if (!scale){scale = currentscale;}
+
+        buttonelmnt.style.transform = `matrix(${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0, ${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0)`;
       }
     }
 
@@ -2092,7 +2443,11 @@ function dragNode(buttonelmnt, parentelmnt){
     var x = (parseFloat(buttonelmnt.style.left) + 32);
     var y = (parseFloat(buttonelmnt.style.top) + 32);
 
-    buttonelmnt.style.transform = `matrix(1.1, 0, 0, 1.1, 0, 0)`;
+    scale = buttonelmnt.getAttribute("scaled");
+
+    if (!scale){scale = currentscale;}
+
+    buttonelmnt.style.transform = 'matrix(' + (scale * basenodescaleunlocked) +', 0, 0, ' + (scale * basenodescaleunlocked) +', 0, 0)';
 
     var modifiedzoom = 1 / zoom;
 
@@ -2111,12 +2466,12 @@ function dragNode(buttonelmnt, parentelmnt){
     buttonelmnt.style.top = (multipliednormalizedy  + "px");
 
     //send data to main
-    data = {
+    var mydata = {
       x:multipliednormalizedx,
       y:multipliednormalizedy,
       id:buttonelmnt.getAttribute("node-db-path")
     };
-    ipcRenderer.send(VERIFY_NODE, data);
+    ipcRenderer.send(VERIFY_NODE, mydata);
   }
 }
 

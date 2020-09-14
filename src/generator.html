@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="app">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+
+    <link rel="stylesheet" href="roottheme.css">
+    <link rel="stylesheet" href="generator.css">    
+
+    <script defer src="generator.js"></script>
+    
+</head>
+<body>
+    
+    <div id="editor-container">
+        <div class="container" id="buildcontainer">
+            <h1>Character Creator:</h1>
+            <button class="basebtn" onclick="rebuildall()">Rebuild all</button>
+            <div class="flexcontainer">
+                <select id="ddlViewBy">
+                  </select>
+            </div>
+            <div class="flexcontainer">
+                <button class="basebtn" onclick="rebuildname()" >Name</button><p class="baseoutput" id="Name-output"> </p>
+            </div>
+            <div class="flexcontainer">
+                <button class="basebtn" onclick="rebuildheight()" >Height</button><p class="baseoutput" id="Height-output"> </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

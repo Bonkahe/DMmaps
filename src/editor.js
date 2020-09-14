@@ -8,6 +8,7 @@ const Split = require('split.js');
 const customTitlebar = require('custom-electron-titlebar');
 const Mousetrap = require('mousetrap');
 const jscolor = require('./colorpicker/jscolor');
+var glob = require("glob")
 
 window.addEventListener('DOMContentLoaded', () => {
     const titlebar = new customTitlebar.Titlebar({
@@ -30,6 +31,7 @@ const {
     EDITOR_IMPORTSPLINES,
     EDITOR_SET_OVERRIDEINDEX,
     EDITOR_DELETE_SPLINE,
+    TITLEBAR_OPENWINDOW,
 }  = require('../utils/constants');
 
 /** -------------------- Variables --------------------- */
@@ -52,6 +54,7 @@ var zonedisplaytooltip = document.getElementById('zone-display-tooltip');
 /**nodes */
 var defaultnodesizeRange = document.getElementById('basenodeRange');
 var currentnodesizeRange = document.getElementById('currentnodeRange');
+var nodescaleclearbtn = document.getElementById('clearbtn');
 
 /**docs(drawing) */
 
@@ -71,6 +74,42 @@ var initialdata = {
     currentisfill: enablefillBtn.checked,
     currentfillstyle: fillcolorSelector.value
 }
+
+var nodetokenlist = [];
+var nodeiconholder = document.getElementById('nodeiconholder');
+
+var files = [
+'./images/Tokens/home.png',
+'./images/Tokens/PersonofInterest.png'
+]
+
+files.forEach(element => {
+nodetokenlist.push(element);
+    nodeiconholder.src = nodetokenlist[0];
+});
+  
+
+  /* When the user clicks on the button,
+toggle between hiding and showing the dropdown content */
+function myFunction() {
+    document.getElementById("nodeicondropdown").classList.toggle("show");
+  }
+  
+  // Close the dropdown menu if the user clicks outside of it
+  window.onclick = function(event) {
+    if (!event.target.matches('.dropbtn')) {
+      var dropdowns = document.getElementsByClassName("dropdown-content");
+      var i;
+      for (i = 0; i < dropdowns.length; i++) {
+        var openDropdown = dropdowns[i];
+        if (openDropdown.classList.contains('show')) {
+          openDropdown.classList.remove('show');
+        }
+      }
+    }
+  }
+
+
 
 /**Event Listeners */
 Mousetrap.bind(['command+d', 'ctrl+d'], function() {
@@ -109,6 +148,14 @@ currentnodesizeRange.addEventListener(
     function() { currentnodesizeChange(this.value); },
     false
 );
+
+nodescaleclearbtn.addEventListener(
+    'click',
+    function() { nodescaleclear(); },
+    false
+)
+
+
 
 allowdrawingBtn.addEventListener(
     'input',
@@ -150,14 +197,28 @@ deletesplineBtn.addEventListener(
 
 function defaultnodesizeChange(e)
 {
-    if (e === 0){e = 1;}
-    console.log(e);
+    if (e === 0){e = 0.1;}
+    var data = {
+        currentdefaultnodescale: e,
+    }
+    sendnodedata(data);
 }
 
 function currentnodesizeChange(e)
 {
-    if (e === 0){e = 1;}
-    console.log(e);
+    if (e === 0){e = 0.1;}
+    var data = {
+        currentnodescale: e,
+    }
+    sendnodedata(data);
+}
+
+function nodescaleclear()
+{
+    var data = {
+        clear: true
+    }
+    sendnodedata(data);
 }
 
 function allowdrawingChange(e)
@@ -169,7 +230,7 @@ function allowdrawingChange(e)
 }
 function splinewidthChange(e)
 {
-    if (e === 0){e = 1;}
+    if (e === 0){e = 0.1;}
 
     var data = {
         currentwidth: e,
@@ -201,6 +262,11 @@ function fillcolorChange(e)
 function deletesplinebtnPressed()
 {
     primarywindow.webContents.send (EDITOR_DELETE_SPLINE, );
+}
+
+function sendnodedata(data)
+{
+    primarywindow.webContents.send (EDITOR_NODESETTINGS, data);
 }
 
 
@@ -245,6 +311,11 @@ ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
     else
     {
         setnodedisplayinactive();
+    }
+
+    if (data.nodeinternalscale != null)
+    {
+        currentnodesizeRange.value = data.nodeinternalscale;
     }
 })
 

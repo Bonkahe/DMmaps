@@ -13,6 +13,11 @@ const {basename} = require('path')
 const contextMenu = require('electron-context-menu');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
+
+setInterval(() => {
+   autoUpdater.checkForUpdatesAndNotify();
+}, 1000 * 60 * 15);
+
 //require('@treverix/remote/main').initialize()
 const {
    SAVE_MAP_TO_STORAGE,
@@ -24,10 +29,15 @@ const {
    REFRESH_DATABASE_COMPLETE,
    REFRESH_PAGE,
    REFRESH_HIREARCHY,
+   REQUEST_HIREARCHY_REFRESH,
+   REFRESH_NODES,
    REQUEST_NODE_CONTEXT,
    REQUEST_EXTENDED_NODE_CONTEXT,
    DELETE_NODE,
    VERIFY_NODE,
+   SCALE_ALL_NODES,
+   SCALE_ONE_NODE,
+   CLEAR_NODE_SCALE,
    REQUEST_DOCUMENT_BYNODE,
    REQUEST_DOCUMENT_BYDOC,
    SAVE_DOCUMENT,
@@ -52,9 +62,11 @@ const {
    NOTIFY_CURRENTVERSION,
    EDITOR_DOCSELECTED,
    EDITOR_DESELECT,
+   TITLEBAR_OPEN_GENERATOR_WINDOW,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry,
+   SETGLOBAL_CHARGEN,
 } = require('./utils/constants');
 
 var nodepath = "";
@@ -74,6 +86,9 @@ let CurrentContent = new Databasetemplate();
 
 global.win = null;
 global.editorwindow = null;
+global.generatorwindow = null;
+global.updatechargenset = false;
+var internaleditorshown = false;
 
 function createWindow() {
    win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, frame: false, webPreferences: {
@@ -86,14 +101,6 @@ function createWindow() {
    }))
 
    global.textwindow = win;
-   //const menu = Menu.buildFromTemplate(template)
-   //win.setMenu(menu)
-   /*
-   let child = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxHeight: 1000, maxWidth: 500, parent: win, frame: false, webPreferences: {
-      nodeIntegration: true, enableRemoteModule: true
-      }})
-   */
-   //child.show()
 
    win.on('close', function(e) 
    {
@@ -111,30 +118,65 @@ function createWindow() {
          }
       }
    });
+
+   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  parent: win, frame: false, show:false, webPreferences: {
+      nodeIntegration: true, enableRemoteModule: true
+   }});
+   editorwindow.loadURL(url.format ({
+      pathname: path.join(__dirname, './src/editor.html'),
+      protocol: 'file:',
+      slashes: true,
+   }));
+
+   editorwindow.on('close', function(e) 
+   {
+      editorwindow.hide();
+      win.focus();
+
+      e.preventDefault();        
+   });
+
+   generatorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  parent: win, frame: false, show:false, webPreferences: {
+      nodeIntegration: true, enableRemoteModule: true
+   }});
+   generatorwindow.loadURL(url.format ({
+      pathname: path.join(__dirname, './src/generator.html'),
+      protocol: 'file:',
+      slashes: true,
+   }));
+
+   generatorwindow.on('close', function(e) 
+   {
+      generatorwindow.hide();
+      win.focus();
+
+      e.preventDefault();        
+   });
 }
 
 function opentoolbarwindow()
 {
-   if (editorwindow == null)
+   if (editorwindow.isVisible())
    {
-      editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  parent: win, frame: false, webPreferences: {
-         nodeIntegration: true, enableRemoteModule: true
-      }});
-      editorwindow.loadURL(url.format ({
-         pathname: path.join(__dirname, './src/editor.html'),
-         protocol: 'file:',
-         slashes: true,
-      }));
-      editorwindow.show()
-
-      editorwindow.on('close', function(e)
-      {
-         editorwindow = null;
-      });
+      win.focus();
+      editorwindow.hide();
    }
    else
    {
-      editorwindow.close();
+      editorwindow.show();
+   }
+}
+
+function opengeneratorwindow()
+{
+   if (generatorwindow.isVisible())
+   {
+      win.focus();
+      generatorwindow.hide();
+   }
+   else
+   {
+      generatorwindow.show();
    }
 }
 
@@ -151,14 +193,14 @@ let nodedeleteoptions  = {
 
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
-      
+      /*
       {
          label: 'stresstest',
          click: () => {
             win.webContents.send(NOTIFY_UPDATECOMPLETE , );
          }
       },
-      
+      */
 		{
          label: 'Load Background Image',
          click: () => {
@@ -323,19 +365,37 @@ contextMenu({
          label: 'Bind node to Document',
          visible: (nodemenu === true && extendedcontext === true && !iscurrentdoc()),
          click: () => {
-
+            var count = 0;
             for (var i = 0; i < CurrentContent.content.nodes.length; i++)
             {
+               if (count == 2)
+               {
+                  break;
+               }
+
+               if (CurrentContent.content.nodes[i].documentref == docpath)
+               {
+                  CurrentContent.content.nodes[i].documentref = "";
+                  count = count + 1;
+                  dirtyproject = true;
+                  continue;
+               }
+
                if (CurrentContent.content.nodes[i].id == nodepath)
                {
                   CurrentContent.content.nodes[i].documentref = docpath;
+                  count = count + 1;
                   dirtyproject = true;
-                  break;
+                  continue;
                }
+               
+               
             }
             
             nodemenu = false;
             extendedcontext = false;
+
+            win.webContents.send(REFRESH_NODES, CurrentContent);
          }
       }
 	]
@@ -498,6 +558,7 @@ const saveasproject = async () => {
 
          dirtyproject = false;
          win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+         win.webContents.send(NOTIFY_UPDATECOMPLETE, "gottem");
       }); 
    });
 }
@@ -505,7 +566,7 @@ const saveasproject = async () => {
 
 function updaterenderer()
 {
-   win.webContents.send(PROJECT_INITIALIZED , {CurrentContent});
+   win.webContents.send(PROJECT_INITIALIZED , CurrentContent);
 }
 
 ipcMain.handle(REQUEST_DOCUMENT_BYDOC, async (event, docid) =>
@@ -627,6 +688,8 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
       dirtyproject = false;
       win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
       console.log("The file has been succesfully saved");
+
+      win.webContents.send(NOTIFY_UPDATECOMPLETE, "gottem");
    });
 });
 
@@ -823,6 +886,26 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
     }
 });
 
+ipcMain.on(SCALE_ALL_NODES, function(event, scale) {
+   CurrentContent.nodescale = scale;
+   dirtyproject = true;
+})
+
+ipcMain.on(SCALE_ONE_NODE, function(event, data) {
+   for (var i in CurrentContent.content.nodes) {
+      if (CurrentContent.content.nodes[i].id == data.id) {
+         
+         CurrentContent.content.nodes[i].individualnodescale = data.scale;
+         dirtyproject = true;
+         return; //Stop this loop, we found it!
+      }
+    }
+})
+
+ipcMain.on(CLEAR_NODE_SCALE, function(event, data) {
+   win.webContents.send(REFRESH_NODES, CurrentContent);
+})
+
 /** ---------------------------   TITLE BAR IPCS   ----------------------------- */
 
 ipcMain.on(TITLEBAR_NEWPROJECT, function(event) {
@@ -834,10 +917,12 @@ ipcMain.on(TITLEBAR_LOADPROJECT, function(event) {
 });
 
 ipcMain.on(TITLEBAR_SAVEPROJECT, function(event) {
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, "Saving Database... ");
    saveproject();
 });
 
 ipcMain.on(TITLEBAR_SAVEASPROJECT, function(event) {
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, "Saving Database... ");
    saveasproject();
 });
 
@@ -855,13 +940,17 @@ ipcMain.on(TITLEBAR_OPENWINDOW, function(event) {
    opentoolbarwindow();
 });
 
+ipcMain.on(TITLEBAR_OPEN_GENERATOR_WINDOW, function(event) {
+   opengeneratorwindow();
+});
+
 ipcMain.handle(RETRIEVE_VERSION, async (event) =>
 {
    return app.getVersion();
 })
 
 autoUpdater.on('update-available', () => {
-   win.webContents.send(NOTIFY_UPDATEDOWNLOADING);
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, "Downloading... ");
 });
  
 autoUpdater.on('update-downloaded', () => {
@@ -872,6 +961,14 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
    autoUpdater.quitAndInstall()
 });
 
+ipcMain.on(REQUEST_HIREARCHY_REFRESH, function(event) {
+   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+});
+
+
+ipcMain.on(SETGLOBAL_CHARGEN, function(event) {
+   updatechargenset = true;
+})
 
 
 
@@ -928,6 +1025,7 @@ Databasetemplate.fromjson = function(json)
    db.projecturl = data.projecturl;
    db.backgroundurl = data.backgroundurl;
    db.name = data.name;
+   db.nodescale = data.nodescale;
 
    data.content.textEntries.forEach(jsondoc => {
       var newdoc = new DatabaseTextentry();
@@ -946,6 +1044,8 @@ Databasetemplate.fromjson = function(json)
       newnode.location = jsonnode.location;
       newnode.documentref = jsonnode.documentref;
       newnode.locked = jsonnode.locked;
+      newnode.individualnodescale = jsonnode.individualnodescale;
+      newnode.nodetoken = jsonnode.nodetoken;
       db.content.nodes.push(newnode);
       //console.log(newnode);
    });
