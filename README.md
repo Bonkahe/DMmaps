@@ -56,12 +56,19 @@ And that's it, you are good to go!
 
 
 ### Hotkeys
+
 **Ctrl+S** - Saves current Database.
+
 **Ctrl+Shift+S** - Saves Database to new location.
+
 **F1/Ctrl+B** - Opens the Hirearchy Outliner.
+
 **F2/Ctrl+E** - Opens the Document Editor.
+
 **F3** - Opens the Toolbox.
+
 **F5** - Opens the Character Generator.
+
 **Ctrl+D** - Deselects current Document.
 
 ## License
