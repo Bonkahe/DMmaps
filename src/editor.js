@@ -31,6 +31,7 @@ const {
     EDITOR_IMPORTSPLINES,
     EDITOR_SET_OVERRIDEINDEX,
     EDITOR_DELETE_SPLINE,
+    EDITOR_REQUEST_REFRESH,
     TITLEBAR_OPENWINDOW,
 }  = require('../utils/constants');
 
@@ -290,7 +291,16 @@ ipcRenderer.on(EDITOR_IMPORTSPLINES, (event, data) => {
     selectedindex = data.index;
 })
 
-
+ipcRenderer.on(EDITOR_REQUEST_REFRESH, (event, message) => {
+    var senddata = {
+        alloweddrawing: allowdrawingBtn.checked,
+        currentcolor: splinecolorSelector.value,
+        currentwidth: splinewidthRange.value,
+        currentisfill: enablefillBtn.checked,
+        currentfillstyle: fillcolorSelector.value
+    }
+    primarywindow.webContents.send (EDITOR_DRAWINGSETTINGS, senddata);
+})
 
 
 ipcRenderer.on(EDITOR_SELECTION, (event, data) => {

@@ -56,6 +56,7 @@ const {
   EDITOR_IMPORTSPLINES,
   EDITOR_SET_OVERRIDEINDEX,
   EDITOR_DELETE_SPLINE,
+  EDITOR_REQUEST_REFRESH,
   REFRESH_NODES,
   TITLEBAR_OPEN_GENERATOR_WINDOW,
 }  = require('../utils/constants');
@@ -139,6 +140,12 @@ let overrideindex = null;
 
 
 /**---------------------------------------Initialization------------------------------------ */
+
+editorwindow = remote.getGlobal ('editorwindow'); //grabs the editor if it exists.
+if (editorwindow)
+{
+  editorwindow.webContents.send (EDITOR_REQUEST_REFRESH);
+}
 
 var splitinstance = Split(['.a','.b', '.c'], {
   sizes: [20, 55, 30],
@@ -461,8 +468,6 @@ class drawing {
 
     function drawLine(x1, y1, x2, y2) {
       canvascontext.beginPath();
-      canvascontext.strokeStyle = this.color;
-      canvascontext.lineWidth = this.width;
       canvascontext.moveTo(x1, y1);
       canvascontext.lineTo(x2, y2);
       canvascontext.stroke();
@@ -471,6 +476,8 @@ class drawing {
 
     this.drag = function (mousex, mousey) {
       if (this.points.length > 0) {
+        canvascontext.strokeStyle = this.color;
+        canvascontext.lineWidth = this.width;
         drawLine(this.points[this.points.length - 1].x, this.points[this.points.length - 1].y, mousex, mousey);
       }
     };
@@ -1555,6 +1562,13 @@ function rebuildhierarchy(content)
   for (var i = 0; i < x.length; i++) {
     if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].getAttribute("parent-index"))))
     {
+      
+      const index = openednodes.indexOf(parseInt(x[i].getAttribute("this-index")));
+      if (index > -1) {
+        console.log("test");
+        openednodes.splice(index, 1);
+      }
+
       x[i].style.display = "none";
       row--;
     }

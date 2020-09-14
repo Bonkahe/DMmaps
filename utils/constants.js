@@ -87,6 +87,7 @@ module.exports = {
     EDITOR_IMPORTSPLINES: 'editor-importsplines',
     EDITOR_SET_OVERRIDEINDEX: 'editor-setoverrideindex',
     EDITOR_DELETE_SPLINE: 'editor-delete-spline',
+    EDITOR_REQUEST_REFRESH: 'editor-request-refresh',
     TITLEBAR_OPEN_GENERATOR_WINDOW: 'titlebar-open-generator-window',
     SETGLOBAL_CHARGEN: 'setglobal-chargen',
     Databasetemplate,

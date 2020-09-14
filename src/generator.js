@@ -11,7 +11,7 @@ const Mousetrap = require('mousetrap');
 const jscolor = require('./colorpicker/jscolor');
 var glob = require("glob")
 const { GoogleSpreadsheet } = require('google-spreadsheet');
-const creds = require('./vitaedatabase-a2beb10b1687.json'); // the file saved above
+//const creds = require('./vitaedatabase-a2beb10b1687.json'); // the file saved above
 const { TITLEBAR_OPEN_GENERATOR_WINDOW }  = require('../utils/constants');
 const { clipboard } = require('electron')
 var faker = require('./char/faker.js');
@@ -169,7 +169,7 @@ Mousetrap.bind(['ctrl+r'], function() {
 asyncCall();
 
 async function asyncCall() {
-    var updatechargenset = remote.getGlobal ('updatechargenset');
+    //var updatechargenset = remote.getGlobal ('updatechargenset');
 
     var sheet, headers; // or use doc.sheetsById[id]
     var rows = [];
@@ -179,7 +179,7 @@ async function asyncCall() {
     const workSheetsFromFile = xlsx.parse(`${__dirname}/NPC Generator Database.xlsx`);
 
     //console.log(workSheetsFromFile);
-
+    /*
     if (updatechargenset)
     {
         // spreadsheet key is the long id in the sheets URL
@@ -194,23 +194,22 @@ async function asyncCall() {
         rows = await sheet.getRows();
         headers = sheet.headerValues;
     }
-    else
+    */
+    headers = workSheetsFromFile[0].data[0];
+    //console.log(headers);
+    for (var i = 1; i < workSheetsFromFile[0].data.length; i++)
     {
-        headers = workSheetsFromFile[0].data[0];
-        //console.log(headers);
-        for (var i = 1; i < workSheetsFromFile[0].data.length; i++)
+        if (workSheetsFromFile[0].data[i].length == 0)
         {
-            if (workSheetsFromFile[0].data[i].length == 0)
-            {
-                break;
-            }
-
-            var row = {
-                rawdata: workSheetsFromFile[0].data[i]
-            }
-            rows.push(row);
+            break;
         }
+
+        var row = {
+            rawdata: workSheetsFromFile[0].data[i]
+        }
+        rows.push(row);
     }
+    
 
     //console.table(sheet.headerValues);
 
