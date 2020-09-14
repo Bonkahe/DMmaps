@@ -13,6 +13,7 @@ First import a background (usually the world map of your world, if you do not ha
 Once you have a background in remmember to save (**Ctrl+S**) to a location which you will remmember. It is recommended to push the database into a folder where you will keep your images.
 
 **Map Controls**
+![](MapControls.gif)
 Middle mouse button down will allow panning around.
 Scroll wheel allows zooming in and out.
 Right click at any time and select reset map to center map.
