@@ -8,52 +8,6 @@ const Split = require('split.js');
 const customTitlebar = require('custom-electron-titlebar');
 const Mousetrap = require('mousetrap');
 const { shell } = require('electron')
-var glob = require("glob")
-
-window.addEventListener('DOMContentLoaded', () => {
-  rebuildmenu();
-})
-
-function rebuildmenu(newmenuitem){
-  titlebar = new customTitlebar.Titlebar({
-    backgroundColor: customTitlebar.Color.fromHex('#1a1918'),
-    overflow: "hidden",
-    titleHorizontalAlignment: "right"
-  });
-
-  menu = Menu.buildFromTemplate(template)
-  if (newmenuitem){menu.append(newmenuitem);}
-
-  titlebar.updateMenu(menu);
-  titlebar.updateTitle(' ');
-
-  var aTags = document.getElementsByClassName("menubar-menu-title");
-  //document.getElementsByClassName("window-title")[0].style.margin = "0 0 0 auto";
-  for (var i = 0; i < aTags.length; i++) {
-    if (aTags[i].textContent == "output") {
-      infodisplay = aTags[i];
-      break;
-    }
-  }
-
-  for (var i = 0; i < aTags.length; i++) {
-    if (aTags[i].textContent == "animation") {
-      downloaddisplay = aTags[i];
-      break;
-    }
-  }
-
-  infodisplay.innerHTML = "version:";
-  downloaddisplay.innerHTML = "";
-
-  downloaddisplay.className += " loader";
-  //getversion();
-}
-
-
-//const Quill = require('quill');
-//const ImageResize = require('quill-image-resize-module');
-
 const {
   SAVE_MAP_TO_STORAGE,
   CHANGE_MAP,
@@ -63,8 +17,8 @@ const {
   REFRESH_DATABASE,
   REFRESH_DATABASE_COMPLETE,
   REFRESH_PAGE,
-  REFRESH_HIREARCHY,
-  REQUEST_HIREARCHY_REFRESH,
+  REFRESH_HIERARCHY,
+  REQUEST_HIERARCHY_REFRESH,
   REQUEST_NODE_CONTEXT,
   REQUEST_EXTENDED_NODE_CONTEXT,
   DELETE_NODE,
@@ -112,24 +66,22 @@ const { data } = require('jquery');
 /** -------------------- Variables --------------------- */
 
 var titlebar;
+var editorwindow;
 
-let rightClickPosition;
-var caratindex;
+/**Application Menu */
+
+var menu;
+var infodisplay;
+var restartavailable = false;
+var downloaddisplay;
+
+/**MapVariables */
+var rightClickPosition;
 var zoom = 1;
 var textchanged = false;
 var instance;
 var node;
 var deactivatepanning = false;
-var newdoc = false;
-var previoustexteditorsize = 30;
-var previoushirearchysize = 15;
-
-var texteditortoolbar = document.getElementById('toolbar');
-var toolbarheight;
-var editorcontainer = document.getElementById('editor');
-var texteditorcontainer = document.getElementById('textcontainer');
-
-//console.log(editorcontainer);
 
 var nodelist = [];
 var basenodescalelocked = 1.0;
@@ -137,19 +89,38 @@ var basenodescaleunlocked = 1.1;
 var currentscale = 1.0;
 var nodetokenlist = [];
 
+var mapdiv = document.getElementById('mapdiv');
+var map = document.getElementById('map');
+
+/**SplitVariables */
+var previoustexteditorsize = 30;
+var previoushierarchysize = 15;
+
+/**TextEditorVariables */
+var texteditortitle = document.getElementById('texteditor-title');
+var texteditortoolbar = document.getElementById('toolbar');
+var toolbarheight;
+var editorcontainer = document.getElementById('editor');
+var texteditorcontainer = document.getElementById('textcontainer');
+var caratindex;
+
+/**hierarchyVariables */
+var newdoc = false;
 var doubleclick = false;
-var hirearchylist = document.getElementById('hirearchylist');
-var barsparent = document.getElementById('hirearchylist-container');
-var firstbar = document.getElementById('hirearchylist-removeparent');
+var hierarchylist = document.getElementById('hierarchylist');
+var firstbar = document.getElementById('hierarchylist-removeparent');
 var columnwidth = 10;
 var rowheight = 20;
 var selecteddocid;
 var selectednodeid;
 var column;
 var row;
+var columnrowcount;
+var openednodes = [];
+var textEntries = [];
 var newhtml;
 
-var editorwindow;
+/**DrawingTools */
 const canvas = document.getElementById('canvaswindow');
 const canvascontext = canvas.getContext('2d');
 var drawings = [];
@@ -164,16 +135,28 @@ let currentisfill = true;
 let currentfillstyle = "rgba(32, 45, 21, 0.2)";
 let overrideindex = null;
 
-var mapdiv = document.getElementById('mapdiv');
-var map = document.getElementById('map');
+
+
+/**---------------------------------------Initialization------------------------------------ */
+
+var splitinstance = Split(['.a','.b', '.c'], {
+  sizes: [20, 55, 30],
+  minSize: [0, 0 ,0],
+  gutterSize: 20,
+  snapOffset: 100,
+  onDrag: function(sizes) {
+    resizetextwindow();
+  }
+})
+resizetextwindow(); //Ensures the text editor initializes at the correct size.
+
 map.onload = function () {
   resetmap();
 }
+/**Initializes Dragging the map */
+dragElement(mapdiv, document.getElementById("textcontainer"), document.getElementById("hierarchycontainer"));
 
-
-
-/**---------------------------------------TeST------------------------------------ */
-
+/**Handles importing the token images*/
 var files = [
   './images/Tokens/home.png',
   './images/Tokens/PersonofInterest.png'
@@ -183,12 +166,51 @@ files.forEach(element => {
   nodetokenlist.push(element);
 });
 
+ipcRenderer.send(REFRESH_PAGE);
 
 
-var menu;
-var infodisplay;
-var restartavailable = false;
-var downloaddisplay;
+
+/**Builds the menu for the application. */
+window.addEventListener('DOMContentLoaded', () => {
+  rebuildmenu();
+})
+
+function rebuildmenu(newmenuitem){
+  titlebar = new customTitlebar.Titlebar({
+    backgroundColor: customTitlebar.Color.fromHex('#1a1918'),
+    overflow: "hidden",
+    titleHorizontalAlignment: "right"
+  });
+
+  menu = Menu.buildFromTemplate(template)
+  if (newmenuitem){menu.append(newmenuitem);}
+
+  titlebar.updateMenu(menu);
+  titlebar.updateTitle(' ');
+
+  var aTags = document.getElementsByClassName("menubar-menu-title");
+  //document.getElementsByClassName("window-title")[0].style.margin = "0 0 0 auto";
+  for (var i = 0; i < aTags.length; i++) {
+    if (aTags[i].textContent == "output") {
+      infodisplay = aTags[i];
+      break;
+    }
+  }
+
+  for (var i = 0; i < aTags.length; i++) {
+    if (aTags[i].textContent == "animation") {
+      downloaddisplay = aTags[i];
+      break;
+    }
+  }
+
+  infodisplay.innerHTML = "version:";
+  downloaddisplay.innerHTML = "";
+
+  downloaddisplay.className += " loader";
+  //getversion();
+}
+
 const template = [
   {
      label: 'File',
@@ -271,6 +293,7 @@ const template = [
   }
 ]
 
+/**Handles Donation overlay */
 $('#donatebtn').click(function() {
   shell.openExternal('https://www.paypal.com/paypalme/bonkahe?locale.x=en_US');
 });
@@ -278,12 +301,14 @@ $('#donatebtn').click(function() {
 $('#close').click(function() {
   $('#overlay').fadeOut(500);
 });
-/*
-$("body > div:not(#popup)").click(function(e) {
+
+/**Handles clicking off the overlay to close it*/
+document.getElementById('overlay').addEventListener('mousedown', e => {
+  if (e.which != 1) { return;}
   $('#overlay').fadeOut(500);
 });
-*/
 
+/**Retrieves the version number. */
 ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
   if (result)
   {
@@ -294,12 +319,10 @@ ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
   }
 })
 
-//const DragAndDropModule = require('quill-drag-and-drop-module');
-
-//var texteditorwindow = document.getElementById('texteditor');
-var texteditortitle = document.getElementById('texteditor-title');
-
-let Embed = Quill.import('blots/embed');
+/**Handles The options for the text editor menus */
+var Embed = Quill.import('blots/embed');
+var resize = Quill.import('modules/imageResize');
+var Size = Quill.import('attributors/style/size');
 
 Embed.whitelist = ['doclink', 'rt'];
 class QuillRuby extends Embed {
@@ -307,7 +330,7 @@ class QuillRuby extends Embed {
         var node = super.create(value);
         node.setAttribute('contenteditable', false);
         node.setAttribute('db-path', value);
-        node.setAttribute('onclick', 'hirearchybuttonpressed(' + value + ')')
+        node.setAttribute('onclick', 'hierarchybuttonpressed(' + value + ')')
         node.innerHTML = retrievename(value);
 
         return node;
@@ -319,45 +342,15 @@ class QuillRuby extends Embed {
     }
 }
 
-
-
 QuillRuby.blotName = 'doclink';
 QuillRuby.className = 'quill-doclink';
 QuillRuby.tagName = 'button';
 
 Quill.register({'formats/doclink': QuillRuby}, true);
- 
-//Quill.register('modules/imageResize', ImageResize);
-var resize = Quill.import('modules/imageResize');
 Quill.register(resize, true);
-//var tdrop = Quill.import('modules/imageDrop');
 
-
-var Size = Quill.import('attributors/style/size');
 Size.whitelist = ['14px', '16px', '18px', '20px', '26px', '32px'];
 Quill.register(Size, true);
-
-
-var toolbarOptions = [
-  ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
-  ['blockquote', 'code-block'],
-
-  //[{ 'header': 1 }, { 'header': 2 }],               // custom button values
-  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-  //[{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
-  //[{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
-  //[{ 'direction': 'rtl' }],                         // text direction
-
-  [{ 'size': ['14px', '16px', '18px', '20px', '26px', '32px'] }],  // custom dropdown
-  //[{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-
-  [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
-  [{ 'font': [] }],
-  [{ 'align': [] }],
-  ['image' ],
-
-  ['clean']                                         // remove formatting button
-];
 
 var editor = new Quill('#editor', {
   modules: {
@@ -365,22 +358,40 @@ var editor = new Quill('#editor', {
     imageResize: {modules: [ 'Resize', 'DisplaySize', 'Toolbar' ]}
   },
   theme: 'snow'
-  //imageHandler: imageHandler
 });
 
+/**Inserts the image import option into the text editors menu.*/
+editor.getModule("toolbar").addHandler("image", imageHandler);
 
-/** POPUP HANDLING */
+function imageHandler(image, callback) {
+  var input = document.createElement("input");
+  input.setAttribute("type", "file");
+  input.click();
+  // Listen upload local image and save to server
+  input.onchange = () => {
+      var file = input.files[0];
+      var path = file.path.replace(/\\/g,"/");
+
+      // file type is only image.
+      if (/^image\//.test(file.type)) {
+        insertToEditor(path);
+      } else {
+          console.warn("Only images can be uploaded here.");
+      }
+  };
+}
+
+function insertToEditor(url) {
+  // push image url to editor.
+  const range = editor.getSelection();
+  editor.insertEmbed(range.index, "image", url, Quill.sources.USER);
+}
 
 
-document.getElementById('overlay').addEventListener('mousedown', e => {
-  if (e.which != 1) { return;}
-  $('#overlay').fadeOut(500);
-});
-
-
-
-/** ---------------- Canvas Prototyping --------------------- */
-
+/** ---------------- Canvas --------------------- */
+/**
+ * Exports All the drawings to a IPC friendly format
+ */
 function getexportabledrawings()
 {
   var newdrawings = [];
@@ -400,96 +411,99 @@ function getexportabledrawings()
   return data;
 }
 
-function drawing(points, color, width, fillstyle, isfill)
-{
-  this.points = points;
-  this.color = color;
-  this.width = width;
-  this.isfill = isfill;
-  this.fillstyle = fillstyle;
-  var x = 0;
-  var y = 0;
+/**
+ * 
+ * @param {Points used when importing, override all points} points 
+ * @param {Color of the lines} color 
+ * @param {Width of the lines} width 
+ * @param {Color of the fill regions} fillstyle 
+ * @param {Whether or not the fill regions are active} isfill 
+ */
+class drawing {
+  constructor(points, color, width, fillstyle, isfill) {
+    this.points = points;
+    this.color = color;
+    this.width = width;
+    this.isfill = isfill;
+    this.fillstyle = fillstyle;
+    var x = 0;
+    var y = 0;
 
-  this.draw = function(){
-    if (this.points.length > 1)
-    {
-      this.x = this.points[0].x;
-      this.y = this.points[0].y;
-      canvascontext.moveTo(this.x, this.y);
+    this.draw = function () {
+      if (this.points.length > 1) {
+        this.x = this.points[0].x;
+        this.y = this.points[0].y;
+        canvascontext.moveTo(this.x, this.y);
+        canvascontext.strokeStyle = this.color;
+        canvascontext.lineWidth = this.width;
+        canvascontext.fillStyle = this.fillstyle;
+        canvascontext.beginPath();
+        for (var i = 0; i < this.points.length; i++) {
+          drawpolygon(this.points[i].x, this.points[i].y);
+        }
+        canvascontext.stroke();
+        canvascontext.closePath();
+        if (this.isfill) {
+          canvascontext.fill();
+        }
+      }
+    };
+
+    function drawpolygon(x1, y1) {
+      canvascontext.lineTo(x1, y1);
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+      canvascontext.beginPath();
       canvascontext.strokeStyle = this.color;
       canvascontext.lineWidth = this.width;
-      canvascontext.fillStyle = this.fillstyle;
-      canvascontext.beginPath();
-      for(var i = 0; i < this.points.length; i++)
-      {
-        drawpolygon( this.points[i].x, this.points[i].y);
-      }
+      canvascontext.moveTo(x1, y1);
+      canvascontext.lineTo(x2, y2);
       canvascontext.stroke();
       canvascontext.closePath();
-      if (this.isfill)
-      {
-        canvascontext.fill();
+    }
+
+    this.drag = function (mousex, mousey) {
+      if (this.points.length > 0) {
+        drawLine(this.points[this.points.length - 1].x, this.points[this.points.length - 1].y, mousex, mousey);
       }
-    }
-  }
+    };
 
-  function drawpolygon(x1,y1)
-  {
-    canvascontext.lineTo(x1, y1);
-  }
-  
-  function drawLine( x1, y1, x2, y2) {
-    canvascontext.beginPath();
-    canvascontext.strokeStyle = this.color;
-    canvascontext.lineWidth = this.width;
-    canvascontext.moveTo(x1, y1);
-    canvascontext.lineTo(x2, y2);
-    canvascontext.stroke();
-    canvascontext.closePath();
-  }
+    this.addpoint = function (newx, newy) {
+      var newpoint = {
+        x: newx,
+        y: newy
+      };
+      this.points.push(newpoint);
+    };
 
-  this.drag = function(mousex,mousey){
-    if (this.points.length > 0)
-    {
-      drawLine( this.points[this.points.length - 1].x, this.points[this.points.length - 1].y, mousex, mousey,);
-    }
-  }
+    this.getDistanceFrom = function (x, y) {
+      if (this.points.length > 0) {
+        return getDistance(x, y, this.points[this.points.length - 1].x, this.points[this.points.length - 1].y);
+      }
+    };
 
-  this.addpoint = function(newx,newy){
-    var newpoint = {
-      x:newx,
-      y:newy
-    }
-    this.points.push(newpoint);
-  }
-
-  this.getDistanceFrom = function(x, y){
-    if (this.points.length > 0)
-    {
-      return getDistance(x,y,this.points[this.points.length - 1].x, this.points[this.points.length - 1].y);
-    }
-  }
-
-  function getDistance(xA, yA, xB, yB) { 
-    var xDiff = xA - xB; 
-    var yDiff = yA - yB;
-    return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
-  }
-
-  this.exportsaveable = function()
-  {
-    var newdrawing = {
-      points: this.points,
-      color: this.color,
-      width: this.width,
-      isfill: this.isfill,
-      fillstyle: this.fillstyle
+    function getDistance(xA, yA, xB, yB) {
+      var xDiff = xA - xB;
+      var yDiff = yA - yB;
+      return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
     }
 
-    return newdrawing;
+    this.exportsaveable = function () {
+      var newdrawing = {
+        points: this.points,
+        color: this.color,
+        width: this.width,
+        isfill: this.isfill,
+        fillstyle: this.fillstyle
+      };
+
+      return newdrawing;
+    };
   }
 }
 
+/**Called to complete the current drawing and iterate the drawing index, preparing for the next drawing, it also updates the toolbox with the new spline */
 function finishdrawing(e)
 {
   canvascontext.clearRect(0,0, canvas.width, canvas.height);
@@ -504,6 +518,7 @@ function finishdrawing(e)
   editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
 }
 
+/**Handles Actually drawing when moveing your mouse and clicking and dragging on the canvas */
 canvas.addEventListener('mousedown', e => {
   if (e.which != 1 || selecteddocid === null || alloweddrawing === false || overrideindex != null) { return;}
 
@@ -550,6 +565,7 @@ canvas.addEventListener('mousemove', e => {
   }
 });
 
+/**Helper that re-renders the entire canvas. */
 function canvasRender()
 {
   canvascontext.clearRect(0,0, canvas.width, canvas.height);
@@ -562,50 +578,14 @@ function canvasRender()
 /** ------------------  END DRAWING ---------------------  */
 
 
-
-
-
-
-
-
-
-
-
-
-//console.log(editor.root);
+/**Handles everything having to do with dropping links into the editor*/
 editor.root.setAttribute('ondrop', 'textdrop(event)');
 editor.root.setAttribute('ondragover', 'allowDrop(event)');
 editor.on('text-change', function(delta, source) {
   textchanged = true;
 });
 
-editor.getModule("toolbar").addHandler("image", imageHandler);
-
-function imageHandler(image, callback) {
-  var input = document.createElement("input");
-  input.setAttribute("type", "file");
-  input.click();
-  // Listen upload local image and save to server
-  input.onchange = () => {
-      var file = input.files[0];
-      var path = file.path.replace(/\\/g,"/");
-
-      // file type is only image.
-      if (/^image\//.test(file.type)) {
-        insertToEditor(path);
-      } else {
-          console.warn("Only images can be uploaded here.");
-      }
-  };
-}
-
-function insertToEditor(url) {
-  // push image url to editor.
-  const range = editor.getSelection();
-  editor.insertEmbed(range.index, "image", url, Quill.sources.USER);
-}
-
-
+/**Extensions for the editor, to allow it to take and give html */
 // set html content
 editor.setHTML = (html) => {
   editor.root.innerHTML = html;
@@ -626,27 +606,69 @@ editor.insertHTML = (html) => {
   $('#' + date).remove();
 };
 
-
-//May need to swap out later to allow hirearchy
-var splitinstance = Split(['.a','.b', '.c'], {
-  sizes: [20, 55, 30],
-  minSize: [0, 0 ,0],
-  gutterSize: 20,
-  snapOffset: 100,
-  onDrag: function(sizes) {
-    resizetextwindow();
-  }
-})
-
+/**Rebuilds the text window to match the remaining size in the div. */
 function resizetextwindow()
 {
   toolbarheight = texteditortoolbar.getBoundingClientRect().height + texteditortitle.getBoundingClientRect().height;
   editorcontainer.style.height = (texteditorcontainer.getBoundingClientRect().height  - (toolbarheight + 10)) + 'px';
 }
 
-dragElement(mapdiv, document.getElementById("textcontainer"), document.getElementById("hirearchycontainer"));
+/** -------------------------------- HOTKEYS ----------------------------- */
 
-ipcRenderer.send(REFRESH_PAGE);
+/**Had unwanted results, removed. */
+Mousetrap.bind(['pageup', 'pagedown'], function(){
+  return false;
+})
+
+Mousetrap.bind(['command+s', 'ctrl+s'], function() {
+  ipcRenderer.send(TITLEBAR_SAVEPROJECT);
+  return false;
+});
+
+Mousetrap.bind(['command+shift+s', 'ctrl+shift+s'], function() {
+  ipcRenderer.send(TITLEBAR_SAVEASPROJECT);
+  return false;
+});
+
+Mousetrap.bind(['command+e', 'ctrl+e', 'f2'], function() {
+  toggletexteditor();
+  return false;
+});
+
+Mousetrap.bind(['command+b', 'ctrl+b', 'f1'], function() {
+  togglehierarchy();
+  return false;
+});
+
+Mousetrap.bind(['command+d', 'ctrl+d'], function() {
+  highlightdecider(null, null);
+  savetext();
+  drawings = [];
+  freedrawing = false;
+  isDrawing = false;
+  currentdrawing = 0;
+  overrideindex = null;
+  canvasRender();
+  
+  return false;
+});
+
+Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
+  ipcRenderer.send(TITLEBAR_OPENWINDOW); 
+  return false;
+});
+
+Mousetrap.bind(['f5'], function() {
+  ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW); 
+  return false;
+});
+
+Mousetrap.prototype.stopCallback = function(e, element, combo) {
+  return false;
+}
+
+
+/** ------------------------------ Event Listeners --------------------------- */
 
 window.addEventListener('contextmenu', (e) => {
   if(isDrawing){
@@ -674,68 +696,6 @@ window.addEventListener('contextmenu', (e) => {
   }
 }, false)
 
-/** -------------------------------- HOTKEYS ----------------------------- */
-
-Mousetrap.bind(['pageup', 'pagedown'], function(){
-  return false;
-})
-
-Mousetrap.bind(['command+s', 'ctrl+s'], function() {
-  ipcRenderer.send(TITLEBAR_SAVEPROJECT);
-  return false;
-});
-
-Mousetrap.bind(['command+shift+s', 'ctrl+shift+s'], function() {
-  ipcRenderer.send(TITLEBAR_SAVEASPROJECT);
-  return false;
-});
-
-Mousetrap.bind(['command+e', 'ctrl+e', 'f2'], function() {
-  toggletexteditor();
-  return false;
-});
-
-Mousetrap.bind(['command+b', 'ctrl+b', 'f1'], function() {
-  togglehirearchy();
-  return false;
-});
-
-Mousetrap.bind(['command+d', 'ctrl+d'], function() {
-  highlightdecider(null, null);
-  savetext();
-  drawings = [];
-  freedrawing = false;
-  isDrawing = false;
-  currentdrawing = 0;
-  overrideindex = null;
-  canvasRender();
-  
-  return false;
-});
-
-Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
-  ipcRenderer.send(TITLEBAR_OPENWINDOW); 
-  return false;
-});
-
-Mousetrap.bind(['f5'], function() {
-  ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW); 
-  return false;
-});
-
-
-Mousetrap.prototype.stopCallback = function(e, element, combo) {
-  return false;
-}
-
-
-/** ------------------------------ END HOTKEYS --------------------------- */
-
-function paypallink()
-{
-  shell.openExternal('https://paypal.me/bonkahe?locale.x=en_US');
-}
-
 const backgroundload = document.getElementById('backgroundBtn');
 backgroundload.onclick = e => {
   getFileFromUser();
@@ -743,13 +703,16 @@ backgroundload.onclick = e => {
 
 const newdocbtn = document.getElementById('btn-newdoc');
 newdocbtn.onclick = e => {
-  createdocument();
   newdoc = true;
+  ipcRenderer.send(NEW_DOCUMENT, selecteddocid);
 };
 
 const deletdocbtn = document.getElementById('btn-deletedoc');
 deletdocbtn.onclick = e => {
-  deletedocument();
+  if (selecteddocid != null)
+  {
+    ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
+  }
 };
 
 texteditortitle.addEventListener("input", function() {
@@ -760,6 +723,7 @@ texteditortitle.addEventListener('focusout', (event) => {
   savetext();   
 });
 
+/**Used to keep track of where you last selected in the text editor, to allow droping of links.*/
 editor.onblur = function(){
   console.log(editor.getSelection());
 };
@@ -767,19 +731,14 @@ editor.onblur = function(){
 editor.on('selection-change', function(range, oldRange, source) {
   if (range === null && oldRange !== null) {
     caratindex = oldRange;
-  } 
-  else if (range !== null && oldRange === null)
-  {
-    //console.log("focus");
   }
 });
 
-
-
-
-
-
 /** -------------------- IPC BLOCK ---------------------  */
+
+/**
+ * Recieves events from the other windows, as well as the main thread.
+ */
 
 ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
   infodisplay.innerHTML = message;
@@ -790,7 +749,7 @@ ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
 
   if (message != null)
   {
-    var delayInMilliseconds = 2000; //1 second
+    var delayInMilliseconds = 2000; //2 second
 
     setTimeout(function() {
       ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
@@ -822,25 +781,7 @@ ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
   rebuildmenu(newmenuitem);
   downloaddisplay.style.display = "none";
   infodisplay.innerHTML = "Download Complete!"
-  //restartavailable = true;
-  //menu = new Menu();
-
-  //menu.append(new MenuItem({ label: 'MenuItem2', type: 'checkbox', checked: true }))
-  //menu = Menu.buildFromTemplate(template)
-  
-  
-  //titlebar.updateMenu(new Menu());
-  //downloaddisplay.style.display = "none";
-  //infodisplay.innerHTML = "Download Complete, click to restart."
 })
-/*
-{
-  label: "test",
-  visible: false,
-  click: () => { 
-    ipcRenderer.send(NOTIFY_RESTART); }
-},
-*/
 
 ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
   ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
@@ -854,8 +795,6 @@ ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
     }
   })
 })
-
-/** -------------------- END TITLEBAR --------------------- */
 
 ipcRenderer.on(EDITOR_NODESETTINGS, (event, data) => {
   if (data.currentdefaultnodescale != null){ 
@@ -893,22 +832,6 @@ ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
     drawings[overrideindex].fillstyle = currentfillstyle;
     canvasRender();
   }
-
-  /*
-  if (isDrawing)
-  {
-    drawings[currentdrawing].color = currentcolor;
-    drawings[currentdrawing].width = currentwidth;
-    drawings[currentdrawing].isfill = currentisfill;
-    drawings[currentdrawing].fillstyle = currentfillstyle;
-
-    canvascontext.clearRect(0,0, canvas.width, canvas.height);
-    for(var i = 0; i < drawings.length; i++)
-    {
-      drawings[i].draw();
-    }
-  }
-  */
 })
 
 ipcRenderer.on(EDITOR_SET_OVERRIDEINDEX, (event, newoverride) => {
@@ -950,38 +873,27 @@ ipcRenderer.on(REFRESH_NODES, (event, CurrentContent) =>{
   
   importnodes(CurrentContent);
 
-  rebuildhirearchy(CurrentContent.content);
-
-  
-/*
-  node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
-  if (node.className == "node-icon")
-  {
-    */
-  //rescalenodes(currentscale);
+  rebuildhierarchy(CurrentContent.content);
 })
 
+/**Called when booting up any project. */
 ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
+  //Clear old variables that need clearing.
   openednodes = [];
-
   selecteddocid = null;
   selectednodeid = null;
   textchanged = false;
   overrideindex = null;
   currentscale = CurrentContent.nodescale;
-  if ( currentscale == null)
-  {
-    currentscale = 1.0;
-  }
-
-  //console.log(CurrentContent.content.textEntries);
-
+  if ( currentscale == null){currentscale = 1.0;}
+  //Clear nodes/text editor
   document.querySelectorAll('.node-icon').forEach(function(a) {
     a.remove()
-  })
-  
+  })  
   cleartexteditor();
-  rebuildhirearchy(CurrentContent.content);
+
+  //Build hierarchy
+  rebuildhierarchy(CurrentContent.content);
 
   const projecttitle = document.getElementById('project-title');
   projecttitle.innerHTML = "ProjectName: " + CurrentContent.name;
@@ -1001,17 +913,15 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
 })
 
 ipcRenderer.on(REFRESH_DATABASE, (event, message) => {
-
-  savetext(completerefresh);
-  //ipcRenderer.send(REFRESH_DATABASE_COMPLETE);
+  ipcRenderer.send(REFRESH_DATABASE_COMPLETE);
 })
 
 ipcRenderer.on(RESET_MAP, (event, message) => {
   resetmap(); 
 })
 
-ipcRenderer.on(REFRESH_HIREARCHY, (event, message) =>{
-  rebuildhirearchy(message);
+ipcRenderer.on(REFRESH_HIERARCHY, (event, message) =>{
+  rebuildhierarchy(message);
 })
 
 ipcRenderer.on(CHANGE_MAP, (event, message) => {
@@ -1033,7 +943,8 @@ ipcRenderer.on(DELETE_NODE, (event, message) => {
 })
 
 ipcRenderer.on(COMPLETE_DOCUMENT_DELETE, (event, message) => {
-  completedelete();
+  selecteddocid = null;
+  cleartexteditor();
 })
 
 ipcRenderer.on(MAIN_TO_RENDER_SETFOCUS, (event, message) =>
@@ -1045,254 +956,23 @@ ipcRenderer.on(TOGGLE_NODE, (event, message) => {
   togglenode(message.id, message.locked);
 })
 
-
-
-
 /** -------------------- End region ---------------------  */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//** -------------------- Text editor button handlers. --------------------- */
-
-function btnsave ()
-{
-  savetext();
-}
-
-function btnweight ()
-{
-  var string = getSelectionHtml();
-
-  var stick = false;
-  var arrayOfStrings = string.split('<br>')
-
-  if (arrayOfStrings[0].fontweight == "normal")
-  {
-    stick = true;
-  }
-
-  string = "";
-  arrayOfStrings.forEach(element => {
-    if (stick)
-    {
-      element.fontweight = "bold"
-    }
-    else
-    {
-      element.fontweight = "normal"
-    }
-    string = string + element + '<br>';
-  });
-  //string = arrayOfStrings.join('<br>');
-  pasteHtmlAtCaret(string, false);
-}
-
-function btnitalics ()
-{
-  var string = getSelectionHtml();
-
-  var stick = false;
-  var arrayOfStrings = string.split('<br>')
-
-  if (arrayOfStrings[0].fontStyle == "normal")
-  {
-    stick = true;
-  }
-
-  string = "";
-  arrayOfStrings.forEach(element => {
-    if (stick)
-    {
-      element.fontStyle = "italic"
-    }
-    else
-    {
-      element.fontStyle = "normal"
-    }
-    string = string + element + '<br>';
-  });
-  //string = arrayOfStrings.join('<br>');
-  pasteHtmlAtCaret(string, false);
-}
-
-function btnvariable (styletype)
-{
-  var string = getSelectionHtml();
-
-  var arrayOfStrings = string.split('<br>')
-  string = "";
-  arrayOfStrings.forEach(element => {
-    element = element.fontStyle(styletype)
-    string = string + element + '<br>';
-  });
-  //string = arrayOfStrings.join('<br>');
-  pasteHtmlAtCaret(string, false);
-
-  /*
-  var string = getSelectionHtml();
-
-  var arrayOfStrings = string.split('<br>')
-  string = "";
-  arrayOfStrings.forEach(element => {
-    element = element.fontsize(100);
-    string = string + element + '<br>';
-  });
-  //string = arrayOfStrings.join('<br>');
-  pasteHtmlAtCaret(string, false);
-  */
-}
-
-function pasteHtmlAtCaret(html, selectPastedContent) {
-  var sel, range;
-  if (window.getSelection) {
-      // IE9 and non-IE
-      sel = window.getSelection();
-      if (sel.getRangeAt && sel.rangeCount) {
-          range = sel.getRangeAt(0);
-
-          if (!texteditorwindow.contains(range.commonAncestorContainer))
-          {
-            sel.removeAllRanges();
-            return;
-          }
-
-          range.deleteContents();
-
-          // Range.createContextualFragment() would be useful here but is
-          // only relatively recently standardized and is not supported in
-          // some browsers (IE9, for one)
-          var el = document.createElement("div");
-          el.innerHTML = html;
-          var frag = document.createDocumentFragment(), node, lastNode;
-          while ( (node = el.firstChild) ) {
-              lastNode = frag.appendChild(node);
-          }
-          var firstNode = frag.firstChild;
-          range.insertNode(frag);
-          
-          // Preserve the selection
-          if (lastNode) {
-              range = range.cloneRange();
-              range.setStartAfter(lastNode);
-              if (selectPastedContent) {
-                  range.setStartBefore(firstNode);
-              } else {
-                  range.collapse(true);
-              }
-              sel.removeAllRanges();
-              sel.addRange(range);
-          }
-      }
-  } else if ( (sel = document.selection) && sel.type != "Control") {
-      // IE < 9
-      var originalRange = sel.createRange();
-      originalRange.collapse(true);
-      sel.createRange().pasteHTML(html);
-      if (selectPastedContent) {
-          range = sel.createRange();
-          range.setEndPoint("StartToStart", originalRange);
-          range.select();
-      }
-  }
-}
-
-/**Handles replacing change of divs with <br> wwhich breaks the line without killing the ability to format them. */
-$('div[contenteditable]').keydown(function(e) {
-  // trap the return key being pressed
-  if (e.keyCode === 13) {
-      // insert 2 br tags (if only one br tag is inserted the cursor won't go to the next line)
-      if (texteditortitle.contains(window.getSelection().getRangeAt(0).commonAncestorContainer))
-      {
-        savetext();
-        return false;
-      }
-      // prevent the default behaviour of return key pressed
-      return false;
-  }
-});
-
-function getSelectionText() {
-	var text = "";
-	if (document.getSelection) {
-		text = document.getSelection().toString();
-	} else if (document.selection && document.selection.type != "Control") {
-		text = document.selection.createRange().text;
-	}
-	return text;
-}
-
-function getSelectionHtml() {
-  var html = "";
-  if (typeof window.getSelection != "undefined") {
-      var sel = window.getSelection();
-      if (sel.rangeCount) {
-          var container = document.createElement("div");
-          for (var i = 0, len = sel.rangeCount; i < len; ++i) {
-              container.appendChild(sel.getRangeAt(i).cloneContents());
-          }
-          html = container.innerHTML;
-      }
-  } else if (typeof document.selection != "undefined") {
-      if (document.selection.type == "Text") {
-          html = document.selection.createRange().htmlText;
-      }
-  }
-  return html;
-}
-/** -------------------- End region ---------------------  */
-
-
-
-
-
-
 
 
 
 /** -------------------- Helper Functions ---------------------  */
 
+/**
+ * Handles everything with scaling and changing the tabs for hirerarchy and text editor.
+ * @param {*The Sizes object to use as reference} sizes 
+ * @param {*Which object to open} index 
+ */
 function open(sizes, index)
 {
   if (index == 0)
   {
     if (sizes[0] > 10) {return;}
-    sizes = [previoushirearchysize, ((100 - previoushirearchysize) - sizes[2]), sizes[2]];
+    sizes = [previoushierarchysize, ((100 - previoushierarchysize) - sizes[2]), sizes[2]];
   }
   else if(index == 1)
   {
@@ -1312,31 +992,14 @@ function close(sizes, index)
 {
   splitinstance.collapse(index);
   resizetextwindow();
-  /*
-
-  if (index == 0)
-  {
-    sizes = [0, (99.5 - sizes[2]), sizes[2]];
-  }
-  else if(index == 1)
-  {
-    sizes[0.5,99,0.5];
-  }
-  else if (index == 2)
-  {
-    sizes = [sizes[0],(99.5 - sizes[0]), 0.5];
-  }
-  console.log(index);
-  splitinstance.setSizes((99.5 - sizes[0]) + "-----" + sizes);
-  */
 }
 
-function togglehirearchy()
+function togglehierarchy()
 {
   var sizes = splitinstance.getSizes();
   if (sizes[0] > 10)
   {
-    previoushirearchysize = sizes[0];
+    previoushierarchysize = sizes[0];
     close(sizes, 0);
   }
   else
@@ -1370,17 +1033,16 @@ function closetexteditor()
   close(sizes,2);
 }
 
+/**Wipes the title and the text of the text editor */
 function cleartexteditor()
 {
-  //closetexteditor();
   editor.setText('')
-  //texteditorwindow.innerHTML = null;
   texteditortitle.innerText = null;
   texteditortitle.setAttribute('db-path',null);
 }
 
 
-
+/**Loads a document into the text editor, also pulls the splines and renders them. */
 function loadtext(document)
 {
   lasttext = document.content;
@@ -1391,17 +1053,10 @@ function loadtext(document)
   freedrawing = false;
   isDrawing = false;
   currentdrawing = 0;
-  overrideindex = null;
-/*
-  console.log("----------- drawings initial import ------------");
-  console.log(document.drawing);
-  console.log("------------------------------------------------");
-  */
-  
+  overrideindex = null;  
 
   if (document.drawing != null && document.drawing.length > 0)
   {
-    //console.log(document.drawing[0]);
     for (var i = 0; i < document.drawing.length; i++)
     {
       drawings.push(new drawing(document.drawing[i].points, 
@@ -1414,35 +1069,21 @@ function loadtext(document)
   
   if (editorwindow)
   {
-      editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
+      editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings()); //updates the editor if it exists.
   }
 
 
   canvasRender()
   currentdrawing = drawings.length;
-  /*
-  console.log("----------- drawings final state ---------------");
-  console.log(drawings);
-  console.log("------------------------------------------------");
 
-*/
-
-  var buttons = retrievebuttons();
-
-  //console.log(buttons);
+  var buttons = retrievebuttons(); //Gets any doclinks and sets their onclick to select the given documents.
   for (var i = 0; i < buttons.length; i++)
   {
     buttons[i].innerHTML = retrievename(buttons[i].getAttribute('db-path'));
     
-    buttons[i].setAttribute('onclick', 'hirearchybuttonpressed(' + buttons[i].getAttribute('db-path') + ')')
+    buttons[i].setAttribute('onclick', 'hierarchybuttonpressed(' + buttons[i].getAttribute('db-path') + ')')
   }
 
-  /*
-  buttons.forEach(element => {
-    element.innerHTML = retrievename(element.getAttribute('db-path'));
-  });
-  */
-  //texteditorwindow.innerHTML = document.content;
   texteditortitle.innerText = document.name;
   texteditortitle.setAttribute('db-path',document.id);
   highlightdecider(document.id, null);
@@ -1453,20 +1094,12 @@ function retrievebuttons()
   return document.getElementsByClassName('quill-doclink');
 }
 
-function completerefresh ()
-{
-  ipcRenderer.send(REFRESH_DATABASE_COMPLETE);
-}
 
+/**Exports the currently edited document to the database. */
 function savetext (callback)
 {
   if (textchanged == false)
   {
-    if (callback != null)
-    {
-      callback();
-    }
-
     //console.log("nothing to save")
     return false;
   }
@@ -1476,15 +1109,6 @@ function savetext (callback)
   newdoc.content = editor.getHTML();
 
   newdoc.drawing = getexportabledrawings().drawings;
-  /*
-  console.log("----------- drawings initial export ------------");
-  console.log(newdoc.drawing);
-  console.log("------------------------------------------------");
-
-  console.log("----------- drawings initial state -------------");
-  console.log(drawings);
-  console.log("------------------------------------------------");
-  */
   lasttext = newdoc.content;
   textchanged = false;
 
@@ -1496,13 +1120,10 @@ function savetext (callback)
     else{
       //console.log("Unable to save document due to not valid id")
     }
-    if (callback != null)
-    {
-      callback();
-    }
   })
 }
 
+//Hides the launch page and opens the map.
 function switchtomap()
 {
   const nomapinfo = document.getElementById('no-map-info');
@@ -1512,6 +1133,7 @@ function switchtomap()
   mapdiv.style.display = 'block';
 }
 
+//Hides the map and opens the launch page.
 function switchtonomap()
 {
   const nomapinfo = document.getElementById('no-map-info');
@@ -1521,6 +1143,9 @@ function switchtonomap()
   mapdiv.style.display = 'none';
 }
 
+/**
+ * Resets the map to the center of the screen and zooms to allow it to fit.
+ */
 function resetmap()
 {
   if (instance == null)
@@ -1541,15 +1166,9 @@ function resetmap()
   zoom = test[0];
   canvas.width = map.width;
   canvas.height = map.height;
-    /*
-  instance.panTo({ 
-    originX: window.innerWidth / 2, 
-    originY: window.innerHeight / 2, 
-    zoom 
-  });
-  */
 }
 
+/**Given coordinates in world space it will pan the document to center those coordinates. */
 function panto(x,y)
 {
   var coords = convertdoctoworldcords(x,y);
@@ -1563,16 +1182,16 @@ function panto(x,y)
   });
 }
 
+
 function importnodes(CurrentContent)
 {
   //console.log(database.CurrentContent);
   CurrentContent.content.nodes.forEach(element => {
     createnode(element);
   });
-
-  //createnode(rightClickPosition.x,rightClickPosition.y,message);
 }
 
+/**Creates a node on the map from a saved node. */
 function createnode(node)
 {
   var img = document.createElement('button');
@@ -1639,28 +1258,7 @@ function createnode(node)
   nodelist.push(img);
 }
 
-function createdocument()
-{
-  ipcRenderer.send(NEW_DOCUMENT, selecteddocid);
-}
-
-function deletedocument()
-{
-  if (selecteddocid != null)
-  {
-    ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
-  }
-}
-
-function completedelete()
-{
-  texteditortitle.setAttribute('db-path', "");
-  texteditortitle.innerText = "";
-  editor.setText("");
-
-  selecteddocid = null;
-}
-
+/**Converts a Screen x and y to map coordinates */
 function convertworldtodoccords(x,y)
 {
   var modifiedzoom = 1 / zoom;
@@ -1682,6 +1280,7 @@ function convertworldtodoccords(x,y)
   return coords;
 }
 
+/**Converts map coordinates to a screen x and y */
 function convertdoctoworldcords(x,y)
 {
   var modifiedzoom = 1 / zoom;
@@ -1705,10 +1304,9 @@ function convertdoctoworldcords(x,y)
   return coords;
 }
 
-
+/**Creates a brand new node at a given x and y, with a docid and nodeid */
 function mousecreatenode(x,y, nodeid, docid)
-{
-  
+{  
   var img = document.createElement('button');
   img.onmouseenter = function(event){
     if (event.target.getAttribute("locked") == "true")
@@ -1733,20 +1331,7 @@ function mousecreatenode(x,y, nodeid, docid)
   img.setAttribute("node-icon", 0)
   img.setAttribute("locked", "false")
   img.className = "node-icon";
-  /*
-  var modifiedzoom = 1 / zoom;
 
-  
-  var originx = mapdiv.getBoundingClientRect().left;
-  var originy = mapdiv.getBoundingClientRect().top;
-  
-
-  var normalizedx = (x - originx);
-  var multipliednormalizedx = (normalizedx * modifiedzoom) - 32;
-
-  var normalizedy = (y - originy);
-  var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
-  */
   var coords = convertworldtodoccords(x,y);
   //console.log(coords);
   mapdiv.appendChild(img); 
@@ -1762,11 +1347,12 @@ function mousecreatenode(x,y, nodeid, docid)
     parentid:selecteddocid
   };
   
-  ipcRenderer.send(VERIFY_NODE, verifydata);
+  ipcRenderer.send(VERIFY_NODE, verifydata); //Sends the nodes location to the database
 
   nodelist.push(img);
 }
 
+/**Rescales every node by a percent, ignores nodes which have a personal scaled attribute. */
 function rescalenodes(scalepercent)
 {
   currentscale = scalepercent;
@@ -1786,6 +1372,7 @@ function rescalenodes(scalepercent)
   })
 }
 
+/**Rescales the currently selected node by a percent. */
 function rescaleselectednode(scalepercent)
 {
   if (!selectednodeid){return;}  
@@ -1811,6 +1398,7 @@ function rescaleselectednode(scalepercent)
   ipcRenderer.send(SCALE_ONE_NODE, nodescaledata);
 }
 
+/**Sets the selected node back to normal default scale. */
 function resetselectednode()
 {
   var nodescaledata = {
@@ -1821,6 +1409,7 @@ function resetselectednode()
   ipcRenderer.send(SCALE_ONE_NODE, nodescaledata);
 }
 
+/**Locks or unlocks the selected node. */
 function togglenode(id, locked)
 {
   //console.log(id + "----" + locked);
@@ -1837,6 +1426,7 @@ function togglenode(id, locked)
   }
 }
 
+/**Pulls data from the database and sets it to the text editor, if this is a new document (as per the newdoc variable) it will set the selection to the title */
 function selectdoc(docpath)
 {
   if (docpath == null)
@@ -1865,6 +1455,7 @@ function selectdoc(docpath)
   })
 }
 
+/**Same thing as doc but for the node. */
 function selectnode(buttonelmnt)
 {
   ipcRenderer.invoke(REQUEST_DOCUMENT_BYNODE, buttonelmnt.getAttribute("node-db-path")).then((result) => {
@@ -1880,29 +1471,18 @@ function selectnode(buttonelmnt)
     }
   })
 }
-var columnrowcount;
-var openednodes = [];
-function rebuildhirearchy(content)
-{
-  
-  hirearchylist.innerHTML = null;
-  /*
-  var bars = document.getElementsByClassName("sub-bar");
-  if (bars.length > 0)
-  {
-    for (var i = 0; i < bars.length; i++)
-    {
-      bars[i].parentNode.removeChild(bars[i]);
-    }
-  }
-  */
 
+/**Handles construction of the hierarchy */
+function rebuildhierarchy(content)
+{
+  //WipeVariables
+  hierarchylist.innerHTML = null;
   $('.sub-bar').remove();
   $('.sub-tiles').remove();
-  var textEntries = [];
-  textEntries = content.textEntries;
+  textEntries = [];
 
-  //console.log(textEntries);
+
+  textEntries = content.textEntries;
 
   newhtml = '';
   column = 0;
@@ -1922,15 +1502,15 @@ function rebuildhirearchy(content)
     {
       if (openednodes.includes(i))
       {
-        textinsert = "<div class='hirearchylist-close sub-tiles' onclick='closechildren(this,event," + i + ")'></div>";
+        textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + i + ")'></div>";
       }
       else
       {
-        textinsert = "<div class='hirearchylist-open sub-tiles' onclick='openchildren(event," + i + ")'></div>";
+        textinsert = "<div class='hierarchylist-open sub-tiles' onclick='openchildren(event," + i + ")'></div>";
       }
     }
     
-    newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[i].id + '" onclick="hirearchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + textinsert + '</li>';
+    newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[i].id + '" onclick="hierarchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + textinsert + '</li>';
 
     if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
     {
@@ -1941,14 +1521,13 @@ function rebuildhirearchy(content)
     //newhtml = newhtml + '</li>';
   }
 
-  hirearchylist.innerHTML = newhtml;
+  hierarchylist.innerHTML = newhtml;
   highlightdecider(selecteddocid, selectednodeid);
 
 
-
-  var x = hirearchylist.getElementsByClassName("itemchildren");
+  //Hides anything that is a child and the parent is not opened.
+  var x = hierarchylist.getElementsByClassName("itemchildren");
   for (var i = 0; i < x.length; i++) {
-    //console.log(openednodes + "--" + x[i].getAttribute("parent-index") + "--" + openednodes.includes(parseInt(x[i].getAttribute("parent-index"))));
     if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].getAttribute("parent-index"))))
     {
       x[i].style.display = "none";
@@ -1958,9 +1537,9 @@ function rebuildhirearchy(content)
     {
       x[i].style.display = "block";
     }
-    //console.log(x[i]);
   }
 
+  //Handles the bar height on the left side for unparenting docs.
   if (textEntries.length > 0)
   {
     firstbar.style.height = (row * rowheight) - (rowheight / 2) + "px";
@@ -1971,63 +1550,20 @@ function rebuildhirearchy(content)
   }
   row = 0;
 
+  //Rehighlights the selected document, if there is one.
   if (selecteddocid != null)
   {
-    hirearchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
+    hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
   }
+
 
   if (newdoc)
   {
-    hirearchybuttonpressed(textEntries[textEntries.length - 1].id);
+    hierarchybuttonpressed(textEntries[textEntries.length - 1].id);
   }
 }
 
-function openchildren(event, i)
-{
-  event.stopPropagation();
-  openednodes.push(i);
-  console.log(openednodes);
-  //refresh hirearchy
-  ipcRenderer.send(REQUEST_HIREARCHY_REFRESH,);
-}
-
-function closechildren(element, event, i)
-{
-  event.stopPropagation();
-  const index = openednodes.indexOf(i);
-  if (index > -1) {
-    openednodes.splice(index, 1);
-  }
-  iterateallchildren(i);
-  //refresh hirearchy
-  ipcRenderer.send(REQUEST_HIREARCHY_REFRESH,);
-}
-
-
-function iterateallchildren(index)
-{
-  var x = hirearchylist.getElementsByClassName("itemchildren");
-  for (var i = 0; i < x.length; i++) {
-    if (x[i].hasAttribute("parent-index") && x[i].getAttribute("parent-index") == index)
-    {
-      const index = openednodes.indexOf(i);
-      if (index > -1) {
-        openednodes.splice(index, 1);
-      }
-      iterateallchildren(x[i].getAttribute("this-index"));
-    }
-  }
-}
-
-
-function selectElementContents(el) {
-  var range = document.createRange();
-  range.selectNodeContents(el);
-  var sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
-
+/**Loops through all children recursively building the html up further as it goes with the new li. */
 function builddocs(textEntries, childEntries, parentindex)
 {
   column = column + 1;
@@ -2050,25 +1586,20 @@ function builddocs(textEntries, childEntries, parentindex)
       {
         if (openednodes.includes(j))
         {
-          textinsert = "<div class='hirearchylist-close sub-tiles' onclick='closechildren(this,event," + j + ")'></div>";
+          textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + j + ")'></div>";
         }
         else
         {
-          textinsert = "<div class='hirearchylist-open sub-tiles' onclick='openchildren(event," + j + ")'></div>";
+          textinsert = "<div class='hierarchylist-open sub-tiles' onclick='openchildren(event," + j + ")'></div>";
         }
       }
 
-      newhtml = newhtml + '<li class="itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" this-index="' + j + '" parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hirearchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
-
-
+      newhtml = newhtml + '<li class="itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" this-index="' + j + '" parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hierarchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
 
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
-        //newhtml = newhtml + '<ul class="hirearchylist-items">';
         builddocs(textEntries, textEntries[j].childdocuments, j)
-        //newhtml = newhtml + '</ul>';
       }
-      //newhtml = newhtml + '</li>';
       break;
     }
   }
@@ -2079,7 +1610,7 @@ function builddocs(textEntries, childEntries, parentindex)
   if (row > columnrowcount[columnrowcount.length - 1])
   {
     const newbar = document.createElement("div"); 
-    newbar.classList.add("hirearchylist-bar");
+    newbar.classList.add("hierarchylist-bar");
     newbar.classList.add("sub-bar");
     newbar.id = columnrowcount[columnrowcount.length - 1] + "--" + row;
     
@@ -2092,7 +1623,7 @@ function builddocs(textEntries, childEntries, parentindex)
 }
 
 /**
- * 
+ *  NOTES
  *   each bar will need to be offset 
   left: (-4 + (10 * column))
   top: 20 * integer down the array we are.
@@ -2101,17 +1632,58 @@ function builddocs(textEntries, childEntries, parentindex)
   height = children count * 20 - 10 (to account for only going half way down to the last one)
  */
 
-function sortList(ul) {
-  Array.from(ul.getElementsByTagName("li"))
-    .sort((a, b) => a.textContent.localeCompare(b.textContent))
-    .forEach(li => ul.appendChild(li));
+function openchildren(event, i)
+{
+  event.stopPropagation();
+  openednodes.push(i);
+  console.log(openednodes);
+  //refresh hierarchy
+  ipcRenderer.send(REQUEST_HIERARCHY_REFRESH,);
 }
 
-function hirearchybuttonpressed(id)
+function closechildren(element, event, i)
+{
+  event.stopPropagation();
+  const index = openednodes.indexOf(i);
+  if (index > -1) {
+    openednodes.splice(index, 1);
+  }
+  iterateallchildren(i);
+  //refresh hierarchy
+  ipcRenderer.send(REQUEST_HIERARCHY_REFRESH,);
+}
+
+
+function iterateallchildren(index)
+{
+  var x = hierarchylist.getElementsByClassName("itemchildren");
+  for (var i = 0; i < x.length; i++) {
+    if (x[i].hasAttribute("parent-index") && x[i].getAttribute("parent-index") == index)
+    {
+      const index = openednodes.indexOf(i);
+      if (index > -1) {
+        openednodes.splice(index, 1);
+      }
+      iterateallchildren(x[i].getAttribute("this-index"));
+    }
+  }
+}
+
+
+function selectElementContents(el) {
+  var range = document.createRange();
+  range.selectNodeContents(el);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/**Handles the functions of clicking a document, also handles double clicking. */
+function hierarchybuttonpressed(id)
 { 
   if (selecteddocid == id && doubleclick)
   {
-    var elementclicked = hirearchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
+    var elementclicked = hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
     var childNode = elementclicked.querySelector('.sub-tiles');
     if(childNode)
     {
@@ -2133,6 +1705,7 @@ function hirearchybuttonpressed(id)
   }
 }
 
+//Should handle dragging and dropping for the remove parent bar on the left, as well as document links within text.
 function allowDrop(ev) {
   ev.preventDefault();
 }
@@ -2161,13 +1734,13 @@ function parentlessdrop(ev){
   ipcRenderer.send(REMOVE_PARENT_DOCUMENT, data);
 }
 
+//Allows for doclinks within the text editor.
 function textdrop(ev){
   if (ev.dataTransfer.getData("Db-Path") != "")
   {
     ev.preventDefault();
   
-    //var range = editor.getSelection(true);
-  
+    //Uses the doclink quill ruby construct to make a link which will then be openable using the onclick to select the given document.
     if (caratindex != null)
     {
       editor.setSelection(caratindex.index, 0);
@@ -2178,20 +1751,11 @@ function textdrop(ev){
       editor.insertEmbed(0, 'doclink', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
     }
   }
-
-  
-  /*
-  editor.updateContents([
-    { insert: { doclink: ev.dataTransfer.getData("Db-Path") } },
-  ]);
-  */
-  //editor.insertEmbed(range.index, 'variable', ev.dataTransfer.getData("Db-Path"), Quill.sources.USER);
-  //editor.insertHTML(html);
 }
 
 function retrievename(id)
 {
-  var doc = hirearchylist.querySelector('*[Db-Path="' + id + '"]');
+  var doc = hierarchylist.querySelector('*[Db-Path="' + id + '"]');
   if (doc != null)
   {
     return doc.innerText;
@@ -2199,15 +1763,16 @@ function retrievename(id)
   return "Document has no name...";
 }
 
+/**Handles highlighting the selected document/node, and it's corrosponding binded document/node if they exist, also unhighlights the last one. */
 function highlightdecider(docid, nodeid)
 {
   if (selectednodeid != null)
   {
-    // -- UNHIGHLIGHT --//var oldnode = mapdiv.querySelector('*[node-db-path="' + selectednodeid + '"]');
+    // -- UNHIGHLIGHTS NODE --//var oldnode = mapdiv.querySelector('*[node-db-path="' + selectednodeid + '"]');
   }
   if (selecteddocid != null)
   {
-    hirearchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';
+    hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';
   }
 
   selectednodeid = nodeid;
@@ -2229,7 +1794,7 @@ function highlightdecider(docid, nodeid)
 
 function highlightdoc(docid)
 {
-  var doc = hirearchylist.querySelector('*[Db-Path="' + docid + '"]');
+  var doc = hierarchylist.querySelector('*[Db-Path="' + docid + '"]');
   doc.id = 'highlight';
 
   var foundnode = mapdiv.querySelector('*[doc-db-path="' + docid + '"]');
@@ -2252,7 +1817,7 @@ function highlightnode(nodeid)
 
   var docid = node.getAttribute('doc-db-path');
   if (docid){
-    var founddoc = hirearchylist.querySelector('*[Db-Path="' + docid + '"]');
+    var founddoc = hierarchylist.querySelector('*[Db-Path="' + docid + '"]');
     
     if (founddoc){
       founddoc.id = 'highlight';
@@ -2268,6 +1833,7 @@ function highlightnode(nodeid)
   selectionchanged(null,nodeid);
 }
 
+/**Handles Final part of setting the selected node/doc ids and sending that information to the toolbox. */
 function selectionchanged(docid, nodeid)
 {
   var data = {
@@ -2283,20 +1849,13 @@ function selectionchanged(docid, nodeid)
   {
     data.nodeinternalscale = mapdiv.querySelector('*[node-db-path="' + nodeid + '"]').getAttribute("scaled");
   }
-
-  //console.log(data)
-  //selecteddocid
-
-  //console.log(editorwindow);
-  editorwindow = remote.getGlobal ('editorwindow');
   
   if (editorwindow){
     editorwindow.webContents.send(EDITOR_SELECTION, data);
   }  
 }
 
-/** Maybe remove later and move to main.js */
-
+/**Loads the map on the render thread, probably needs to be moved to the Main thread.*/
 const getFileFromUser = async () => {
   let options = {
     title : "Load a Map image", 
@@ -2338,10 +1897,6 @@ const getFileFromUser = async () => {
 }
 
 /** -------------------- End region ---------------------  */
-
-
-
-
 
 
 /** -------------------- Drag functionality ---------------------  */
@@ -2476,7 +2031,7 @@ function dragNode(buttonelmnt, parentelmnt){
   }
 }
 
-function dragElement(elmnt, textelmnt, hirearchyelmnt) {
+function dragElement(elmnt, textelmnt, hierarchyelmnt) {
   instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
   resetmap();
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -2492,7 +2047,7 @@ function dragElement(elmnt, textelmnt, hirearchyelmnt) {
 
   // The function that will run when the events are triggered. 
   function DoSomething (e) {
-    if (e.pageX > textelmnt.getBoundingClientRect().left ||e.pageX < hirearchyelmnt.getBoundingClientRect().right || e.which === 1 || e.which === 3)
+    if (e.pageX > textelmnt.getBoundingClientRect().left ||e.pageX < hierarchyelmnt.getBoundingClientRect().right || e.which === 1 || e.which === 3)
     {
       return;
     }

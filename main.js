@@ -28,8 +28,8 @@ const {
    REFRESH_DATABASE,
    REFRESH_DATABASE_COMPLETE,
    REFRESH_PAGE,
-   REFRESH_HIREARCHY,
-   REQUEST_HIREARCHY_REFRESH,
+   REFRESH_HIERARCHY,
+   REQUEST_HIERARCHY_REFRESH,
    REFRESH_NODES,
    REQUEST_NODE_CONTEXT,
    REQUEST_EXTENDED_NODE_CONTEXT,
@@ -325,7 +325,7 @@ contextMenu({
 
                   win.webContents.send(DELETE_NODE, nodepath);
 
-                  win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+                  win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
                   dirtyproject = true;
                }
              });
@@ -563,7 +563,7 @@ const saveasproject = async () => {
          }
 
          dirtyproject = false;
-         win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+         win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
          win.webContents.send(NOTIFY_UPDATECOMPLETE, "gottem");
       }); 
    });
@@ -655,7 +655,7 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
             CurrentContent.content.textEntries[i].drawing = document.drawing;
             //console.log(document.drawing);
 
-            win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+            win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
             dirtyproject = true;
             
             return true;
@@ -692,7 +692,7 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
           console.log("An error ocurred creating the file "+ err.message)
       }
       dirtyproject = false;
-      win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
       console.log("The file has been succesfully saved");
 
       win.webContents.send(NOTIFY_UPDATECOMPLETE, "gottem");
@@ -734,7 +734,7 @@ ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
    addchild(huntdata);
 
    CurrentContent.content.textEntries.push(newdoc);
-   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+   win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
    dirtyproject = true;
 });
 
@@ -794,7 +794,7 @@ function setchild(data)
       }
    }   
 
-   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+   win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
    dirtyproject = true;
 }
 
@@ -819,7 +819,7 @@ ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
       }
    }   
 
-   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+   win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
    dirtyproject = true;
 });
 
@@ -846,7 +846,7 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
                }
                CurrentContent.content.textEntries.splice(i, 1);
                win.webContents.send(COMPLETE_DOCUMENT_DELETE);
-               win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+               win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
 
                return;
             }
@@ -885,7 +885,7 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
             return;
          }
 
-         win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+         win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
          dirtyproject = true;
          return; //Stop this loop, we found it!
       }
@@ -967,8 +967,8 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
    autoUpdater.quitAndInstall()
 });
 
-ipcMain.on(REQUEST_HIREARCHY_REFRESH, function(event) {
-   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event) {
+   win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
 });
 
 
@@ -1117,7 +1117,7 @@ function stresstest()
       CurrentContent.content.nodes.push(newnode);
    }
 
-   win.webContents.send(REFRESH_HIREARCHY, CurrentContent.content);
+   win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
 }
 
 

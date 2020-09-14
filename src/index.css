@@ -66,7 +66,7 @@
   margin:5px;
   }
 
-  .a #hirearchylist-container{
+  .a #hierarchylist-container{
     width:calc(100% - 10px);
     height:calc(100% - 40px);
     overflow:auto;
@@ -178,12 +178,12 @@ button {
   color: #000;
   }
   
-  #hirearchylist-container {
+  #hierarchylist-container {
   display:flex;
   position: relative;
   }
   
-  #hirearchylist-container .hirearchylist-bar {
+  #hierarchylist-container .hierarchylist-bar {
     position: absolute;
     background-image: url(./images/Hirearchybar.png);
     background-repeat: repeat-y;
@@ -193,7 +193,7 @@ button {
     z-index: 11;
   }
 
-  #hirearchylist-container .hirearchylist-open {
+  #hierarchylist-container .hierarchylist-open {
     position: absolute;
     background-image: url(./images/OpenBtn.png);
     width: 12px;
@@ -204,7 +204,7 @@ button {
     background-size: contain;
   }
 
-  #hirearchylist-container .hirearchylist-close {
+  #hierarchylist-container .hierarchylist-close {
     position: absolute;
     background-image: url(./images/CloseBtn.png);
     width: 12px;
@@ -431,7 +431,7 @@ button {
   display:block;
   }
   
-  .b,.hirearchylist-items {
+  .b,.hierarchylist-items {
   width:100%;
   margin-left: 5px;
   }
