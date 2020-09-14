@@ -149,6 +149,11 @@ var splitinstance = Split(['.a','.b', '.c'], {
   }
 })
 resizetextwindow(); //Ensures the text editor initializes at the correct size.
+/**Ensures it stays at that size. */
+window.addEventListener('resize', function(e){
+  resizetextwindow();
+})
+
 
 map.onload = function () {
   resetmap();
@@ -930,6 +935,7 @@ ipcRenderer.on(CHANGE_MAP, (event, message) => {
 
 ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
   newdoc = true;
+  console.log(message);
   mousecreatenode(rightClickPosition.x,rightClickPosition.y,message.id, message.documentref);
 })
 

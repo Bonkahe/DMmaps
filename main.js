@@ -68,7 +68,6 @@ const {
    DatabaseTextentry,
    SETGLOBAL_CHARGEN,
 } = require('./utils/constants');
-const { data } = require('jquery');
 
 var nodepath = "";
 var docpath = "";
@@ -263,12 +262,7 @@ contextMenu({
 
             //console.log(newnode);
 
-            var docnodepair = {
-               doc: newdoc,
-               node: newnode
-            }
-
-            win.webContents.send(CREATE_NEW_NODE , docnodepair);
+            win.webContents.send(CREATE_NEW_NODE , newnode);
             dirtyproject = true;
          }
       },
@@ -884,7 +878,7 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
             win.webContents.send(MAIN_TO_RENDER_SETFOCUS, docdata.child);
             return;
          }
-
+        
          win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
          dirtyproject = true;
          return; //Stop this loop, we found it!

@@ -20,12 +20,14 @@ Right click at any time and select reset map to center map.
 You can make nodes via right clicking the document, and selecting **Create Node** from the context menu.
 
 **Nodes**
+![](NodeControls.gif)
 You can drag them around with left mouse button.
 Lock/Unlock them via the context menu.
 
 Once you have a node you will notice that a corrosponding document has been created. Any time a document is created it will appear on the hirearchy to the left. Two rules for this, documents will appear as children of the document you have selected, if you do not wish for this press **Ctrl+D** to deselect the document prior to creating a new one. Also when a new document is created the title will automatically be selected on the text editor, allowing quick renaming of the document.
 
 **Documents**
+![](DocumentControls.gif)
 You can drag a document to the bar on the left to unparent it.
 Drag a document onto another document in the outliner to make it a child of that document.
 You can also create a link from one document to another by draggin a document onto the text editor window on the right.
@@ -35,6 +37,7 @@ Once you have documents and nodes created you can also interact between the two,
 Now that you have nodes and documents, if you open the toolbox you will have some options.
 
 **ToolBox**
+![](ToolboxControls.gif)
 Within the tool box is two sections, node tools and zone tools. 
 Node tools allow you to scale all nodes by a given amount, or an individually selected node by a seperate amount.
 Clicking clear will allow you to reset a node to the default size of the rest of them.
@@ -48,8 +51,10 @@ You can select splines from the menu on the left of the toolbox to delete them, 
 After all of this you can also use the character creator, to easily and quickly come up with NPCs.
 
 **Character Generator**
+![](ChargenControls.gif)
 The drop down menu at the top will allow you to select a region you wish to have the name from.
 Clicking rebuild on gender will rebuild name automatically, everything else is pretty straight forward.
+Whenever anything is rebuilt the entire results are saved to the clipboard.
 
 
 And that's it, you are good to go!
