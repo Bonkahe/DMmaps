@@ -961,8 +961,10 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
    autoUpdater.quitAndInstall()
 });
 
-ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event) {
+ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event, message) {
+   CurrentContent.opendocs = message;   
    win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+   dirtyproject = true;
 });
 
 
@@ -1026,6 +1028,7 @@ Databasetemplate.fromjson = function(json)
    db.backgroundurl = data.backgroundurl;
    db.name = data.name;
    db.nodescale = data.nodescale;
+   db.opendocs = data.opendocs;
 
    data.content.textEntries.forEach(jsondoc => {
       var newdoc = new DatabaseTextentry();

@@ -12,6 +12,7 @@ class Databasetemplate {
             nodes: []
         };
         this.nodescale = 1;
+        this.opendocs = [];
     }
 };
 
@@ -47,7 +48,8 @@ module.exports = {
     REFRESH_DATABASE_COMPLETE: 'refresh-database-complete',
     REFRESH_PAGE: 'refresh-page',
     REFRESH_HIERARCHY: 'refresh-hirearchy',
-    REQUEST_HIERARCHY_REFRESH: 'request-hirearchy-refrehs',
+    REQUEST_HIERARCHY_REFRESH: 'request-hirearchy-refresh',
+    UPDATE_HIERARCHY_ORDER: 'update-hierarchy-order',
     REFRESH_NODES: 'refresh-nodes',
     REQUEST_NODE_CONTEXT: 'request-node-context',
     REQUEST_EXTENDED_NODE_CONTEXT: 'request-extended-node-context',

@@ -109,6 +109,7 @@ var newdoc = false;
 var doubleclick = false;
 var hierarchylist = document.getElementById('hierarchylist');
 var firstbar = document.getElementById('hierarchylist-removeparent');
+var barsparent = document.getElementById('hierarchylist-container');
 var columnwidth = 10;
 var rowheight = 20;
 var selecteddocid;
@@ -884,13 +885,17 @@ ipcRenderer.on(REFRESH_NODES, (event, CurrentContent) =>{
 /**Called when booting up any project. */
 ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   //Clear old variables that need clearing.
-  openednodes = [];
+  openednodes = CurrentContent.opendocs;
+  if (openednodes == null){openednodes = [];}
+
   selecteddocid = null;
   selectednodeid = null;
   textchanged = false;
   overrideindex = null;
   currentscale = CurrentContent.nodescale;
   if ( currentscale == null){currentscale = 1.0;}
+
+
   //Clear nodes/text editor
   document.querySelectorAll('.node-icon').forEach(function(a) {
     a.remove()
@@ -1615,7 +1620,7 @@ function builddocs(textEntries, childEntries, parentindex)
   /*
   if (row > columnrowcount[columnrowcount.length - 1])
   {
-    const newbar = document.createElement("div"); 
+    var newbar = document.createElement("div"); 
     newbar.classList.add("hierarchylist-bar");
     newbar.classList.add("sub-bar");
     newbar.id = columnrowcount[columnrowcount.length - 1] + "--" + row;
@@ -1644,7 +1649,7 @@ function openchildren(event, i)
   openednodes.push(i);
   console.log(openednodes);
   //refresh hierarchy
-  ipcRenderer.send(REQUEST_HIERARCHY_REFRESH,);
+  ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
 }
 
 function closechildren(element, event, i)
@@ -1656,7 +1661,7 @@ function closechildren(element, event, i)
   }
   iterateallchildren(i);
   //refresh hierarchy
-  ipcRenderer.send(REQUEST_HIERARCHY_REFRESH,);
+  ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
 }
 
 
