@@ -59,7 +59,7 @@
     z-index: 25;
   }
   
-  .a #hirearchycontent {
+  .a #hierarchycontent {
   width:calc(100% - 10px);
   height:calc(100% - 10px);
   overflow: hidden;
@@ -71,10 +71,6 @@
     height:calc(100% - 40px);
     overflow:auto;
     margin:5px;
-  }
-
-  #hirearchycontentinner{
-    height: calc(100% - 30px);
   }
   
   .gutter {
@@ -215,11 +211,11 @@ button {
     background-size: contain;
   }
 
-  #hirearchycontent .btn-group {
+  #hierarchycontent .btn-group {
   height: 32px;
   }
   
-  #hirearchycontent .btn-group button {
+  #hierarchycontent .btn-group button {
   width: 32px;
   height: 100%;
   overflow:auto;
@@ -232,17 +228,17 @@ button {
   padding:0 5px;
   }
 
-  #hirearchycontent .btn-group #btn-newdoc:hover {
+  #hierarchycontent .btn-group #btn-newdoc:hover {
   background-color:var(--main-button-highlight);;
   }
 
 
-  #hirearchycontent .btn-group #btn-deletedoc {
+  #hierarchycontent .btn-group #btn-deletedoc {
   background-color:var(--neg-button-color);
   border:1px solid black;
   }
   
-  #hirearchycontent .btn-group #btn-deletedoc:hover {
+  #hierarchycontent .btn-group #btn-deletedoc:hover {
   background-color:var(--neg-button-highlight);
   }
   
@@ -436,17 +432,17 @@ button {
   margin-left: 5px;
   }
   
-  #hirearchycontent .btn-group button:not(:last-child),#texteditor-menu .btn-group button:not(:last-child) {
+  #hierarchycontent .btn-group button:not(:last-child),#texteditor-menu .btn-group button:not(:last-child) {
   border-right:none;
   }
   
-  #hirearchycontent .btn-group:after,#texteditor-menu .btn-group:after {
+  #hierarchycontent .btn-group:after,#texteditor-menu .btn-group:after {
   content:"";
   clear:both;
   display:table;
   }
   
-  #hirearchycontent .btn-group button:hover,#texteditor-menu .btn-group button:hover {
+  #hierarchycontent .btn-group button:hover,#texteditor-menu .btn-group button:hover {
   background-color:var(--neg-button-highlight);
   }
   
