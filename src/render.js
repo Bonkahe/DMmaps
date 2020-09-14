@@ -621,6 +621,20 @@ function resizetextwindow()
 
 /** -------------------------------- HOTKEYS ----------------------------- */
 
+/**Stops the enter key from working in the titlebar.*/
+$('div[contenteditable]').keydown(function(e) {
+  // trap the return key being pressed
+  if (e.keyCode === 13) {
+      if (texteditortitle.contains(window.getSelection().getRangeAt(0).commonAncestorContainer))
+      {
+        savetext();
+        return false;
+      }
+      // prevent the default behaviour of return key pressed
+      return false;
+  }
+});
+
 /**Had unwanted results, removed. */
 Mousetrap.bind(['pageup', 'pagedown'], function(){
   return false;
