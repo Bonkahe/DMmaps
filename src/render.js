@@ -14,6 +14,7 @@ const {
   CREATE_NEW_NODE,
   PROJECT_INITIALIZED,
   RESET_MAP,
+  NOT_ON_MAP,
   REFRESH_DATABASE,
   REFRESH_DATABASE_COMPLETE,
   REFRESH_PAGE,
@@ -98,6 +99,7 @@ var previoustexteditorsize = 30;
 var previoushierarchysize = 15;
 
 /**TextEditorVariables */
+var textelmnt = document.getElementById("textcontainer");
 var texteditortitle = document.getElementById('texteditor-title');
 var texteditortoolbar = document.getElementById('toolbar');
 var toolbarheight;
@@ -106,6 +108,7 @@ var texteditorcontainer = document.getElementById('textcontainer');
 var caratindex;
 
 /**hierarchyVariables */
+var hierarchyelmnt = document.getElementById("hierarchycontainer");
 var newdoc = false;
 var doubleclick = false;
 var hierarchylist = document.getElementById('hierarchylist');
@@ -167,7 +170,7 @@ map.onload = function () {
   resetmap();
 }
 /**Initializes Dragging the map */
-dragElement(mapdiv, document.getElementById("textcontainer"), document.getElementById("hierarchycontainer"));
+dragElement(mapdiv);
 
 /**Handles importing the token images*/
 var files = [
@@ -703,24 +706,35 @@ window.addEventListener('contextmenu', (e) => {
     finishdrawing(e);
     return;
   }
-  rightClickPosition = {x: e.x, y: e.y}
-  node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
-  if (node.className == "node-icon")
+  var notonmap = false;
+  if (e.pageX > textelmnt.getBoundingClientRect().left || e.pageX < hierarchyelmnt.getBoundingClientRect().right)
   {
-    if (selecteddocid != null)
+    notonmap = true;
+  }
+  if (!notonmap)
+  {
+    rightClickPosition = {x: e.x, y: e.y}
+    node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
+    if (node.className == "node-icon")
     {
-      var data = {
-        nodeid:node.getAttribute("node-db-path"),
-        docid:selecteddocid
+      if (selecteddocid != null)
+      {
+        var data = {
+          nodeid:node.getAttribute("node-db-path"),
+          docid:selecteddocid
+        }
+        
+        ipcRenderer.send(REQUEST_EXTENDED_NODE_CONTEXT, data);
+        return;
       }
-      
-      ipcRenderer.send(REQUEST_EXTENDED_NODE_CONTEXT, data);
-    }
-    else
-    {
-      ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("node-db-path"));
+      else
+      {
+        ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("node-db-path"));
+        return;
+      }
     }
   }
+  ipcRenderer.send(NOT_ON_MAP, notonmap);
 }, false)
 
 const backgroundload = document.getElementById('backgroundBtn');
@@ -1205,8 +1219,10 @@ function panto(x,y)
 {
   var coords = convertdoctoworldcords(x,y);
 
-  var newx = (window.innerWidth / 2) - coords.x;
+  var newx = (((textelmnt.getBoundingClientRect().left - hierarchyelmnt.getBoundingClientRect().right) / 2) + hierarchyelmnt.getBoundingClientRect().right) - coords.x;
   var newy = (window.innerHeight / 2) - coords.y;
+
+  //textelmnt.getBoundingClientRect().left || e.pageX < hierarchyelmnt.getBoundingClientRect().right
 
   instance.panBy({ 
     originX: newx, 
@@ -2070,7 +2086,7 @@ function dragNode(buttonelmnt, parentelmnt){
   }
 }
 
-function dragElement(elmnt, textelmnt, hierarchyelmnt) {
+function dragElement(elmnt) {
   instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
   resetmap();
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -2086,7 +2102,7 @@ function dragElement(elmnt, textelmnt, hierarchyelmnt) {
 
   // The function that will run when the events are triggered. 
   function DoSomething (e) {
-    if (e.pageX > textelmnt.getBoundingClientRect().left ||e.pageX < hierarchyelmnt.getBoundingClientRect().right || e.which === 1 || e.which === 3)
+    if (e.pageX > textelmnt.getBoundingClientRect().left || e.pageX < hierarchyelmnt.getBoundingClientRect().right || e.which === 1 || e.which === 3)
     {
       return;
     }

@@ -44,6 +44,7 @@ module.exports = {
     CREATE_NEW_NODE: 'create-new-node',
     PROJECT_INITIALIZED: 'project-initialized',
     RESET_MAP: 'reset-map',
+    NOT_ON_MAP: 'not-on-map',
     REFRESH_DATABASE: 'refresh-database',
     REFRESH_DATABASE_COMPLETE: 'refresh-database-complete',
     REFRESH_PAGE: 'refresh-page',

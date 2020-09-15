@@ -137,16 +137,19 @@ Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
     ipcRenderer.send(TITLEBAR_OPENWINDOW); 
     return false;
   });
-
-
+/*
+document.getElementById("distanceRange").oninput = function(){
+    document.getElementById("distanceOutput").value = Math.round(Math.exp((Math.log(1000)/100) * document.getElementById("distanceRange").value));
+};
+*/
 defaultnodesizeRange.addEventListener(
     'input',
-    function() { defaultnodesizeChange(this.value); },
+    function() { defaultnodesizeChange(Math.exp((Math.log(1000)/100) * this.value)); },
     false
 );
 currentnodesizeRange.addEventListener(
     'input',
-    function() { currentnodesizeChange(this.value); },
+    function() { currentnodesizeChange(Math.exp((Math.log(1000)/100) * this.value)); },
     false
 );
 
@@ -166,7 +169,7 @@ allowdrawingBtn.addEventListener(
 
 splinewidthRange.addEventListener(
     'input',
-    function() { splinewidthChange(this.value); },
+    function() { splinewidthChange(Math.exp((Math.log(1000)/100) * this.value)); },
     false
 );
 
@@ -198,6 +201,8 @@ deletesplineBtn.addEventListener(
 
 function defaultnodesizeChange(e)
 {
+    e = e / 4;
+    console.log(e);
     if (e === 0){e = 0.1;}
     var data = {
         currentdefaultnodescale: e,
@@ -207,6 +212,7 @@ function defaultnodesizeChange(e)
 
 function currentnodesizeChange(e)
 {
+    e = e / 4;
     if (e === 0){e = 0.1;}
     var data = {
         currentnodescale: e,
@@ -231,6 +237,7 @@ function allowdrawingChange(e)
 }
 function splinewidthChange(e)
 {
+    e = e / 4;
     if (e === 0){e = 0.1;}
 
     var data = {

@@ -25,6 +25,7 @@ const {
    CREATE_NEW_NODE,
    PROJECT_INITIALIZED,
    RESET_MAP,
+   NOT_ON_MAP,
    REFRESH_DATABASE,
    REFRESH_DATABASE_COMPLETE,
    REFRESH_PAGE,
@@ -74,6 +75,7 @@ var docpath = "";
 var extendedcontext = false;
 
 var nodemenu = false;
+var notonmap = false;
 //var debugmode = false;
 //var downloadcomplete = false;
 //var downloadstatus = "version: " + app.getVersion();
@@ -203,13 +205,14 @@ contextMenu({
       */
 		{
          label: 'Load Background Image',
+         visible: !notonmap,
          click: () => {
             win.webContents.send(CHANGE_MAP , );
          }
       },
       {
          label: 'Create Node',
-         visible: CurrentContent.backgroundurl != "",
+         visible: (CurrentContent.backgroundurl != "" && !notonmap),
          click: () => {
             var newnode = new DatabaseNodeentry();
             //console.log(CurrentContent);
@@ -268,7 +271,7 @@ contextMenu({
       },
       {
          label: 'Reset Map',
-         visible: CurrentContent.backgroundurl != "",
+         visible: (CurrentContent.backgroundurl != "" && !notonmap),
          click: () => {
             win.webContents.send(RESET_MAP , );
          }
@@ -853,13 +856,19 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
 ipcMain.on(REQUEST_EXTENDED_NODE_CONTEXT, function(event, data) {
    nodepath = data.nodeid;
    docpath = data.docid;
-   extendedcontext = true;
-   nodemenu = true;
+   if (!notonmap)
+   {
+      extendedcontext = true;
+      nodemenu = true;
+   }
 })
 
 ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
    nodepath = message;
-   nodemenu = true;
+   if (!notonmap)
+   {
+      nodemenu = true;
+   }
 });
 
 ipcMain.on(VERIFY_NODE, function(event, data) {
@@ -970,6 +979,15 @@ ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event, message) {
 
 ipcMain.on(SETGLOBAL_CHARGEN, function(event) {
    updatechargenset = true;
+})
+
+ipcMain.on(NOT_ON_MAP, function(event,message) {
+   notonmap = message;
+   if (notonmap)
+   {
+      extendedcontext = false;
+      nodemenu = false;
+   }
 })
 
 
