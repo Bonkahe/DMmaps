@@ -1243,6 +1243,12 @@ function importnodes(CurrentContent)
 function createnode(node)
 {
   var img = document.createElement('button');
+
+  if (node.documentref == 3106.5563661542183)
+  {
+    console.log(node);
+  }
+  /*
   img.onmouseenter = function(event){
     if (event.target.getAttribute("locked") == "true")
     {
@@ -1253,7 +1259,7 @@ function createnode(node)
   img.onmouseout = function(){
     deactivatepanning = false
   };
-
+  */
   if (node.nodetoken != null)
   {
     if (isNaN(node.nodetoken))
@@ -1283,13 +1289,10 @@ function createnode(node)
   img.style.left = (node.location.x  + "px");
   img.style.top = (node.location.y  + "px");
   
-  var myscale = node.nodescale;
-  if (myscale === void(0)){
-    myscale = currentscale;
-  }
-  else
-  {
-    img.setAttribute("scaled", myscale);
+  var myscale = currentscale;
+  if (node.individualnodescale != null){
+    myscale = node.individualnodescale;
+    img.setAttribute("scaled",  myscale);
   }
 
   //console.log(myscale);
@@ -1356,6 +1359,7 @@ function convertdoctoworldcords(x,y)
 function mousecreatenode(x,y, nodeid, docid)
 {  
   var img = document.createElement('button');
+  /*
   img.onmouseenter = function(event){
     if (event.target.getAttribute("locked") == "true")
     {
@@ -1366,7 +1370,7 @@ function mousecreatenode(x,y, nodeid, docid)
   img.onmouseout = function(){
     deactivatepanning = false
   };
-
+  */
   if (nodetokenlist.length > 0)
   {
     img.style.backgroundImage  = "url('" + nodetokenlist[0] + "')";
@@ -1442,7 +1446,6 @@ function rescaleselectednode(scalepercent)
     id: selectednodeid,
     scale: scalepercent
   }
-
   ipcRenderer.send(SCALE_ONE_NODE, nodescaledata);
 }
 
@@ -1578,20 +1581,30 @@ function rebuildhierarchy(content)
   for (var i = 0; i < x.length; i++) {
     if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].getAttribute("parent-index"))))
     {
-      
-      const index = openednodes.indexOf(parseInt(x[i].getAttribute("this-index")));
-      if (index > -1) {
-        console.log("test");
-        openednodes.splice(index, 1);
-      }
-
       x[i].style.display = "none";
       row--;
     }
-    else
+    /*
+    if (x[i].hasAttribute("this-index") && !openednodes.includes(parseInt(x[i].getAttribute("this-index"))))
     {
-      x[i].style.display = "block";
+      hidechildren(parseInt(x[i].getAttribute("this-index")),x);
+      
+      //openednodes.splice(index, 1);
+      
+      
+      x[i].style.display = "none";
+      row--;
     }
+    else if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].hasAttribute("parent-index"))))
+    {
+      if (x[i].hasAttribute("this-index") && !openednodes.includes(parseInt(x[i].getAttribute("this-index"))))
+      {
+        hidechildren(parseInt(x[i].getAttribute("this-index")),x);
+      }
+      x[i].style.display = "none";
+      row--;
+    }
+    */
   }
 
   //Handles the bar height on the left side for unparenting docs.
@@ -1617,7 +1630,22 @@ function rebuildhierarchy(content)
     hierarchybuttonpressed(textEntries[textEntries.length - 1].id);
   }
 }
-
+/*
+function hidechildren(parentid, x)
+{
+  for (var i = 0; i < x.length; i++) {
+    if (x[i].hasAttribute("parent-index") && parseInt(x[i].hasAttribute("parent-index")) == parentid)
+    {
+      if (x[i].hasAttribute("this-index") && !openednodes.includes(parseInt(x[i].getAttribute("this-index"))))
+      {
+        hidechildren(parseInt(x[i].getAttribute("this-index")),x);
+      }
+      x[i].style.display = "none";
+      row--;
+    }
+  }
+}
+*/
 /**Loops through all children recursively building the html up further as it goes with the new li. */
 function builddocs(textEntries, childEntries, parentindex)
 {
@@ -1637,8 +1665,10 @@ function builddocs(textEntries, childEntries, parentindex)
       row = row + 1;
 
       var textinsert = '';
+      var thisindex = '';
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
+        thisindex = "this-index=" + j;
         if (openednodes.includes(j))
         {
           textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + j + ")'></div>";
@@ -1649,7 +1679,7 @@ function builddocs(textEntries, childEntries, parentindex)
         }
       }
 
-      newhtml = newhtml + '<li class="itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" this-index="' + j + '" parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hierarchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
+      newhtml = newhtml + '<li class="itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" ' + thisindex + ' parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hierarchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
 
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
@@ -1713,13 +1743,16 @@ function iterateallchildren(index)
 {
   var x = hierarchylist.getElementsByClassName("itemchildren");
   for (var i = 0; i < x.length; i++) {
-    if (x[i].hasAttribute("parent-index") && x[i].getAttribute("parent-index") == index)
+    if (x[i].hasAttribute("parent-index") && parseInt(x[i].getAttribute("parent-index")) == index)
     {
-      const index = openednodes.indexOf(i);
-      if (index > -1) {
-        openednodes.splice(index, 1);
+      if (x[i].hasAttribute("this-index"))
+      {
+        const index = openednodes.indexOf(parseInt(x[i].getAttribute("this-index")));
+        if (index > -1) {
+          openednodes.splice(index, 1);
+        }
+        iterateallchildren(parseInt(x[i].getAttribute("this-index")));
       }
-      iterateallchildren(x[i].getAttribute("this-index"));
     }
   }
 }
@@ -1965,7 +1998,7 @@ function dragNode(buttonelmnt, parentelmnt){
   function dragMouseDown(e) {
     e = e || window.event;
 
-    if ((e.keyCode || e.which) == 3)
+    if (e.which == 2 || e.which == 3)
     {
       return;
     }
@@ -1975,7 +2008,7 @@ function dragNode(buttonelmnt, parentelmnt){
 
     if (buttonelmnt.getAttribute("locked") == "true")
     {
-      selectnode(buttonelmnt);
+        selectnode(buttonelmnt);
       return;
     }
 
@@ -2045,7 +2078,7 @@ function dragNode(buttonelmnt, parentelmnt){
 
     if (nodelocked)
     {
-      selectnode(buttonelmnt);
+      selectnode(buttonelmnt);      
       return;
     }
 
@@ -2087,6 +2120,7 @@ function dragNode(buttonelmnt, parentelmnt){
 }
 
 function dragElement(elmnt) {
+  
   instance = renderer({ scaleSensitivity: 10, minScale: .1, maxScale: 5, element: elmnt });
   resetmap();
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -2130,7 +2164,6 @@ function dragElement(elmnt) {
   document.addEventListener('DOMMouseScroll', DoSomething);
 
   function dragMouseDown(e) {
-
     if (deactivatepanning || e.which === 1 || e.which === 3) {return;}
     e = e || window.event;
     e.preventDefault();

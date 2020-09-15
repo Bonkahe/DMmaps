@@ -841,6 +841,17 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
                      }
                   }
                }
+
+               if (CurrentContent.content.textEntries[i].parentid != null)
+               {
+                  var huntdata = {
+                     child: CurrentContent.content.textEntries[i].id,
+                     parent: CurrentContent.content.textEntries[i].parentid
+                  }
+      
+                  removechild(huntdata);
+               }
+
                CurrentContent.content.textEntries.splice(i, 1);
                win.webContents.send(COMPLETE_DOCUMENT_DELETE);
                win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
@@ -856,20 +867,23 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
 ipcMain.on(REQUEST_EXTENDED_NODE_CONTEXT, function(event, data) {
    nodepath = data.nodeid;
    docpath = data.docid;
-   if (!notonmap)
-   {
-      extendedcontext = true;
-      nodemenu = true;
-   }
+   extendedcontext = true;
+   nodemenu = true;
+   notonmap = false;
 })
 
 ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
    nodepath = message;
-   if (!notonmap)
-   {
-      nodemenu = true;
-   }
+   extendedcontext = false;
+   nodemenu = true;
+   notonmap = false;
 });
+
+ipcMain.on(NOT_ON_MAP, function(event,message) {
+   notonmap = message;
+   extendedcontext = false;
+   nodemenu = false;
+})
 
 ipcMain.on(VERIFY_NODE, function(event, data) {
    for (var i in CurrentContent.content.nodes) {
@@ -980,17 +994,6 @@ ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event, message) {
 ipcMain.on(SETGLOBAL_CHARGEN, function(event) {
    updatechargenset = true;
 })
-
-ipcMain.on(NOT_ON_MAP, function(event,message) {
-   notonmap = message;
-   if (notonmap)
-   {
-      extendedcontext = false;
-      nodemenu = false;
-   }
-})
-
-
 
 /** ---------------------------   Document editor functions   ----------------------------- */
 
