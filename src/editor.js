@@ -294,19 +294,12 @@ primarywindow.webContents.send (EDITOR_DRAWINGSETTINGS, initialdata);
 
 ipcRenderer.on(EDITOR_IMPORTSPLINES, (event, data) => {
     currentsplines = data.drawings;
-    rebuildsplinelist(data.drawings);
     selectedindex = data.index;
+    rebuildsplinelist(data.drawings);    
 })
 
 ipcRenderer.on(EDITOR_REQUEST_REFRESH, (event, message) => {
-    var senddata = {
-        alloweddrawing: allowdrawingBtn.checked,
-        currentcolor: splinecolorSelector.value,
-        currentwidth: splinewidthRange.value,
-        currentisfill: enablefillBtn.checked,
-        currentfillstyle: fillcolorSelector.value
-    }
-    primarywindow.webContents.send (EDITOR_DRAWINGSETTINGS, senddata);
+    updatestatus();
 })
 
 
@@ -334,9 +327,23 @@ ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
     {
         currentnodesizeRange.value = data.nodeinternalscale;
     }
+
+    updatestatus();
 })
 
 /** ---------------- HELPER FUNCTIONS --------------------- */
+
+function updatestatus()
+{
+    var senddata = {
+        alloweddrawing: allowdrawingBtn.checked,
+        currentcolor: splinecolorSelector.value,
+        currentwidth: splinewidthRange.value,
+        currentisfill: enablefillBtn.checked,
+        currentfillstyle: fillcolorSelector.value
+    }
+    primarywindow.webContents.send (EDITOR_DRAWINGSETTINGS, senddata);
+}
 
 function rebuildsplinelist(splineentries){
     splinelist.innerHTML = null;
@@ -362,6 +369,7 @@ function rebuildsplinelist(splineentries){
 
 function splinebuttonpressed(index)
 {
+    allowdrawingBtn.checked = false;
     splinewidthRange.value = currentsplines[index].width;
     splinecolorSelector.jscolor.fromString(currentsplines[index].color);
     enablefillBtn.checked = currentsplines[index].isfill;

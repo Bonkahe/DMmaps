@@ -121,7 +121,7 @@ function createWindow() {
       }
    });
 
-   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  parent: win, frame: false, show:false, webPreferences: {
+   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxWidth:400,  parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
    }});
    editorwindow.loadURL(url.format ({
@@ -138,7 +138,7 @@ function createWindow() {
       e.preventDefault();        
    });
 
-   generatorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600,  parent: win, frame: false, show:false, webPreferences: {
+   generatorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxWidth:400,  parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
    }});
    generatorwindow.loadURL(url.format ({
