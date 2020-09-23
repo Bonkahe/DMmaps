@@ -1133,6 +1133,18 @@ function loadtext(document)
   texteditortitle.innerText = document.name;
   texteditortitle.setAttribute('db-path',document.id);
   highlightdecider(document.id, null);
+
+  var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
+  //console.log(highlighteddoc);
+  if (highlighteddoc.hasAttribute("parent-index"))
+  {
+    //console.log("test");
+    if (iterateallparents(parseInt(highlighteddoc.getAttribute("parent-index"))))
+    {
+      //rebuildhierarchy(content);
+      ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
+    }
+  }
 }
 
 function retrievebuttons()
@@ -1467,13 +1479,18 @@ function togglenode(id, locked)
   var nodetotoggle = document.querySelector('[node-db-path="' + id +'"]');
   nodetotoggle.setAttribute("locked", locked)
 
+  var myscale = currentscale;
+  if (nodetotoggle.hasAttribute("scaled")){
+    myscale = nodetotoggle.getAttribute("scaled");
+  }
+
   if (locked)
   {
-    nodetotoggle.style.transform = 'matrix(' + (currentscale * basenodescalelocked) +', 0, 0, ' + (currentscale * basenodescalelocked) +', 0, 0)';
+    nodetotoggle.style.transform = 'matrix(' + (myscale * basenodescalelocked) +', 0, 0, ' + (myscale * basenodescalelocked) +', 0, 0)';
   }
   else
   {
-    nodetotoggle.style.transform = 'matrix(' + (currentscale * basenodescaleunlocked) +', 0, 0, ' + (currentscale * basenodescaleunlocked) +', 0, 0)';
+    nodetotoggle.style.transform = 'matrix(' + (myscale * basenodescaleunlocked) +', 0, 0, ' + (myscale * basenodescaleunlocked) +', 0, 0)';
   }
 }
 
@@ -1561,7 +1578,7 @@ function rebuildhierarchy(content)
       }
     }
     
-    newhtml = newhtml + '<li draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" Db-Path="' + textEntries[i].id + '" onclick="hierarchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + textinsert + '</li>';
+    newhtml = newhtml + '<li class="item" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" this-index="' + i + '" Db-Path="' + textEntries[i].id + '" onclick="hierarchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + textinsert + '</li>';
 
     if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
     {
@@ -1584,27 +1601,6 @@ function rebuildhierarchy(content)
       x[i].style.display = "none";
       row--;
     }
-    /*
-    if (x[i].hasAttribute("this-index") && !openednodes.includes(parseInt(x[i].getAttribute("this-index"))))
-    {
-      hidechildren(parseInt(x[i].getAttribute("this-index")),x);
-      
-      //openednodes.splice(index, 1);
-      
-      
-      x[i].style.display = "none";
-      row--;
-    }
-    else if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].hasAttribute("parent-index"))))
-    {
-      if (x[i].hasAttribute("this-index") && !openednodes.includes(parseInt(x[i].getAttribute("this-index"))))
-      {
-        hidechildren(parseInt(x[i].getAttribute("this-index")),x);
-      }
-      x[i].style.display = "none";
-      row--;
-    }
-    */
   }
 
   //Handles the bar height on the left side for unparenting docs.
@@ -1618,16 +1614,16 @@ function rebuildhierarchy(content)
   }
   row = 0;
 
-  //Rehighlights the selected document, if there is one.
-  if (selecteddocid != null)
-  {
-    hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
-  }
-
-
   if (newdoc)
   {
     hierarchybuttonpressed(textEntries[textEntries.length - 1].id);
+  }
+
+  //Rehighlights the selected document, if there is one.
+  if (selecteddocid != null)
+  {
+    var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
+    highlighteddoc.id = 'highlight';
   }
 }
 /*
@@ -1668,7 +1664,7 @@ function builddocs(textEntries, childEntries, parentindex)
       var thisindex = '';
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
-        thisindex = "this-index=" + j;
+        thisindex = 'this-index="' + j + '"';
         if (openednodes.includes(j))
         {
           textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + j + ")'></div>";
@@ -1679,7 +1675,7 @@ function builddocs(textEntries, childEntries, parentindex)
         }
       }
 
-      newhtml = newhtml + '<li class="itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" ' + thisindex + ' parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hierarchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
+      newhtml = newhtml + '<li class="item itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" ' + thisindex + ' parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hierarchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
 
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
@@ -1755,6 +1751,33 @@ function iterateallchildren(index)
       }
     }
   }
+}
+
+function iterateallparents(index)
+{
+  var thisreturn = false;
+  var x = hierarchylist.getElementsByClassName("item");
+  for (var i = 0; i < x.length; i++) {
+    if (x[i].hasAttribute("this-index") && parseInt(x[i].getAttribute("this-index")) == index)
+    {
+      const index = openednodes.indexOf(parseInt(x[i].getAttribute("this-index")));
+      if (index == -1) {
+        openednodes.push(parseInt(x[i].getAttribute("this-index")));
+        thisreturn = true;
+      }
+
+      if (x[i].hasAttribute("parent-index"))
+      {
+        if (iterateallparents(parseInt(x[i].getAttribute("parent-index"))))
+        {
+          thisreturn = true;
+        }
+      }
+
+      break;
+    }
+  }
+  return thisreturn;
 }
 
 
@@ -2051,6 +2074,7 @@ function dragNode(buttonelmnt, parentelmnt){
 
         
         parentelmnt.style.pointerEvents = 'none';
+        buttonelmnt.style.opacity= '0.6';
 
         document.body.appendChild(buttonelmnt);
         buttonelmnt.style.left = (e.clientX - 32) + "px";
@@ -2075,6 +2099,7 @@ function dragNode(buttonelmnt, parentelmnt){
     document.onmouseup = null;
     document.onmousemove = null;
     parentelmnt.style.pointerEvents = 'auto';
+    buttonelmnt.style.opacity= '1.0';
 
     if (nodelocked)
     {

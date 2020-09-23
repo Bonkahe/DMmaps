@@ -432,6 +432,9 @@ function copytext()
     if (document.getElementById('Name-output').innerText != ''){
         text = text + "\nName: " + document.getElementById('Name-output').innerText;
     }    
+    if (document.getElementById('Height-output').innerText != ''){
+        text = text + "\nHeight: " + document.getElementById('Height-output').innerText;
+    }   
 
     for (var i = 0; i < data.length; i++)
     {

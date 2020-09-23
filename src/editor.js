@@ -201,9 +201,9 @@ deletesplineBtn.addEventListener(
 
 function defaultnodesizeChange(e)
 {
-    e = e / 4;
+    e = e / 10;
     console.log(e);
-    if (e === 0){e = 0.1;}
+    if (e === 0){e = 0.01;}
     var data = {
         currentdefaultnodescale: e,
     }
@@ -212,8 +212,8 @@ function defaultnodesizeChange(e)
 
 function currentnodesizeChange(e)
 {
-    e = e / 4;
-    if (e === 0){e = 0.1;}
+    e = e / 10;
+    if (e === 0){e = 0.01;}
     var data = {
         currentnodescale: e,
     }
