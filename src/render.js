@@ -14,6 +14,7 @@ const {
   CREATE_NEW_NODE,
   PROJECT_INITIALIZED,
   RESET_MAP,
+  SET_MOUSEMODE,
   NOT_ON_MAP,
   REFRESH_DATABASE,
   REFRESH_DATABASE_COMPLETE,
@@ -53,6 +54,7 @@ const {
   EDITOR_SELECTION,
   EDITOR_INITIALIZED,  
   EDITOR_DRAWINGSETTINGS,
+  EDITOR_MEASUREMENTSETTINGS,
   EDITOR_NODESETTINGS,
   EDITOR_IMPORTSPLINES,
   EDITOR_SET_OVERRIDEINDEX,
@@ -64,6 +66,7 @@ const {
 const { start } = require('repl');
 const { Titlebar } = require('custom-electron-titlebar');
 const { data } = require('jquery');
+const { measure } = require('custom-electron-titlebar/lib/common/dom');
 //const { map } = require('jquery');
 /** -------------------- Variables --------------------- */
 
@@ -78,6 +81,14 @@ var restartavailable = false;
 var downloaddisplay;
 
 /**MapVariables */
+
+/**
+ * 0 - select mode
+ * 1 - measure mode
+ */
+var mousemode = 0;
+/** */
+
 var rightClickPosition;
 var zoom = 1;
 var textchanged = false;
@@ -129,6 +140,23 @@ var newhtml;
 const canvas = document.getElementById('canvaswindow');
 const canvascontext = canvas.getContext('2d');
 var drawings = [];
+var measurement = {
+  points: [],
+  endpoint: null,
+  render: false,
+  active: false
+};
+var shiftheld = false;
+
+var milesdistancescale = 1;
+var distancetype = {
+  Mi: 1,
+  Km: 1.60934,
+  M: 1609.34
+}
+
+var currentdistancetype = 0;
+
 let alloweddrawing = false;
 let freedrawing = false;
 let isDrawing = false;
@@ -536,6 +564,14 @@ function finishdrawing(e)
 
 /**Handles Actually drawing when moveing your mouse and clicking and dragging on the canvas */
 canvas.addEventListener('mousedown', e => {
+  if (mousemode == 1 && e.which == 1)
+  {
+    measurement.render = true;
+    measurement.active = true;
+    measurement.points.push(convertworldtodoccords(e.pageX,e.pageY));
+    return;
+  }
+
   if (e.which != 1 || selecteddocid === null || alloweddrawing === false || overrideindex != null) { return;}
 
   var coords = convertworldtodoccords(e.pageX,e.pageY);
@@ -554,9 +590,24 @@ canvas.addEventListener('mousedown', e => {
 
 canvas.addEventListener('mouseup', e => {
   freedrawing = false;
+
+  if (mousemode == 1 && measurement.active && !shiftheld)
+  {
+    measurement.active = false;
+    measurement.endpoint = convertworldtodoccords(e.pageX,e.pageY);
+    return;
+  }
 });
 
 canvas.addEventListener('mousemove', e => {
+  if (mousemode == 1 && measurement.active)
+  {
+    measurement.endpoint = convertworldtodoccords(e.pageX,e.pageY);
+
+    canvasRender();
+    return;
+  }
+
   if (freedrawing === true){
     textchanged = true;
     var coords = convertworldtodoccords(e.pageX,e.pageY);
@@ -589,7 +640,76 @@ function canvasRender()
   {
     drawings[i].draw();
   }
+
+  if (measurement.render)
+  {
+    renderMeasurement();
+  }
 }
+
+function renderMeasurement()
+{
+  if ( measurement.endpoint == null) {return;}
+
+  console.log("test");
+  var angleDeg = Math.atan2(measurement.points[0].y - measurement.endpoint.y, measurement.points[0].x - measurement.endpoint.x) * 180 / Math.PI;
+
+  if (angleDeg > 90 || angleDeg < -90)
+  {
+    angleDeg += 180;
+  }
+  var label = "test";//getoutputdistance(measurement.points[0].x, measurement.endpoint.x, measurement.points[0].y, measurement.endpoint.y);
+
+  canvascontext.strokeStyle = '#1a1a1a';
+  
+  canvascontext.beginPath();
+  canvascontext.lineWidth = 10;
+  canvascontext.moveTo(measurement.points[0].x, measurement.points[0].y);
+
+  if ( measurement.points.length > 0)
+  {    
+    for (var i = 1; i < measurement.points.length; i++)
+    {
+      canvascontext.lineTo(measurement.points[i].x, measurement.points[i].y);
+    }
+  }
+  canvascontext.lineTo(measurement.endpoint.x, measurement.endpoint.y);
+
+  canvascontext.stroke();
+  canvascontext.closePath();
+
+  
+
+  canvascontext.save();
+
+  canvascontext.textAlign = "center";
+  canvascontext.textBaseline = "middle";
+  canvascontext.translate((measurement.points[0].x + measurement.endpoint.x) / 2, (measurement.points[0].y + measurement.endpoint.y) / 2 - 25);
+  canvascontext.font = 'bold 40pt Ariel';
+  canvascontext.rotate(angleDeg * Math.PI / 180);
+  canvascontext.lineWidth = 5;
+  canvascontext.strokeText(label, 0, 0);
+
+
+  canvascontext.fillStyle = 'white';
+  canvascontext.fillText(label, 0, 0);
+  canvascontext.restore();
+}
+
+function getoutputdistance(x1,x2,y1,y2)
+{
+  var distance = round(getdistance(x1,x2,y1,y2) * (Object.values(distancetype)[currentdistancetype] * milesdistancescale), 2);
+  return distance.toString() + " " + Object.keys(distancetype)[currentdistancetype];
+}
+
+function getdistance(x1,x2,y1,y2)
+{
+  return Math.sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2)); 
+}
+
+function round(value, decimals) {
+  return Number(Math.round(value+'e'+decimals)+'e-'+decimals);
+}   
 
 /** ------------------  END DRAWING ---------------------  */
 
@@ -642,6 +762,18 @@ $('div[contenteditable]').keydown(function(e) {
       }
       // prevent the default behaviour of return key pressed
       return false;
+  }
+});
+
+$(document).keydown(function (e) {
+  if (e.keyCode == 16) {
+      shiftheld = true;
+  }
+});
+
+$(document).keyup(function (e) {
+  if (e.keyCode == 16) {
+      shiftheld = false;
   }
 });
 
@@ -875,6 +1007,30 @@ ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
   }
 })
 
+ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) =>{
+  if (measurement.render)
+  {
+    if (message.type != null){currentdistancetype = message.type;}
+    console.log(currentdistancetype);
+
+    if (message.length != null){
+      var distance = getdistance(measurement.startpoint.x, measurement.endpoint.x, measurement.startpoint.y, measurement.endpoint.y);
+      console.log(distance);
+      
+      milesdistancescale = (message.length / distance) / Object.values(distancetype)[currentdistancetype];
+    }
+
+    var newdata = {
+      length: milesdistancescale,
+      type: message.type
+    }
+
+    
+    ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS, newdata);
+    canvasRender();
+  }
+})
+
 ipcRenderer.on(EDITOR_SET_OVERRIDEINDEX, (event, newoverride) => {
   if (isDrawing)
   {
@@ -930,6 +1086,14 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   currentscale = CurrentContent.nodescale;
   if ( currentscale == null){currentscale = 1.0;}
 
+  milesdistancescale = CurrentContent.measurementscale;
+  currentdistancetype = CurrentContent.measurementtype;
+
+
+  editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, currentdistancetype);
+
+  console.log(CurrentContent.measurementscale);
+
 
   //Clear nodes/text editor
   document.querySelectorAll('.node-icon').forEach(function(a) {
@@ -963,6 +1127,23 @@ ipcRenderer.on(REFRESH_DATABASE, (event, message) => {
 
 ipcRenderer.on(RESET_MAP, (event, message) => {
   resetmap(); 
+})
+
+ipcRenderer.on(SET_MOUSEMODE, (event, message) =>{
+  mousemode = message;
+  if (mousemode != 1 && measurement.render)
+  {
+    measurement.render = false;
+    canvasRender();
+  }
+  if (mousemode == 1)
+  {
+    document.getElementById("cursorcontrol").style.cursor = "url(images/CursorMeasuringtool.png), help  ";
+  }
+  else
+  {
+    document.getElementById("cursorcontrol").style.cursor = "auto";
+  }
 })
 
 ipcRenderer.on(REFRESH_HIERARCHY, (event, message) =>{
@@ -2021,7 +2202,7 @@ function dragNode(buttonelmnt, parentelmnt){
   function dragMouseDown(e) {
     e = e || window.event;
 
-    if (e.which == 2 || e.which == 3)
+    if (e.which == 2 || e.which == 3 || mousemode != 0)
     {
       return;
     }

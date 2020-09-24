@@ -1,0 +1,14 @@
+<svg id="MeasureingStick" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #1a1a1a;
+        stroke: #1a1a1a;
+        stroke-width: 1px;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <path class="cls-1" d="M4,4l7.636,7.636V24.364H18L13,19V13L32,32H4V4Z"/>
+  <image x="4" y="7" width="25" height="24" xlink:href="data:img/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAYCAYAAAAPtVbGAAAAvElEQVRIicWVYQ7DIAiFn8tOofc/Guegoekaq5QVxY0fJtbGx+cDTcwMADIkLIpXtS3/QmSZUCuyROgtQynl/EBEiPaoNr5bCxPJOXcCB02YiBxXIqJllQWN5KDAv0iGi0FI0Bp/48nnH7eQp7rYWDPjrk/UhCoh19GN9ImbqCOBTYMRopmOf0zk8URL4hFRxN31lWjEEy0Zk8gimYmL0IwnVlyJhISrkAszcL7vfz6/rS9B890G7Y2PDYA3EQyrivo7JkwAAAAASUVORK5CYII="/>
+</svg>

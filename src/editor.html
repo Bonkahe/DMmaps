@@ -29,7 +29,7 @@
                     </div>
                     <div class="toolbarline">
                         <img id="nodeiconholder" src="" alt="">
-                        <div id="nodeiconcontrols"> 
+                        <div id="nodeiconcontrols" class="dropdown"> 
                             <button onclick="myFunction()" class="basebtn dropbtn" >Dropdown</button>
                             <div id="nodeicondropdown" class="dropdown-content">
                                 <ul id="nodeicons">
@@ -91,6 +91,32 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div class="container">
+            <h1>Measurement tools:</h1>
+            <p>To change the measurement distance, activate calibration mode.</p>
+            <button onclick="displaycalibrationtools()" class="basebtn" >Calibration</button>
+            <p>Current measurement type:</p>
+            <select id="currenttype" onchange="currenttypechanged()" class="basebtn">
+                <option value="0" selected="selected">Miles</option>
+                <option value="1">Kilometers</option>
+                <option value="2">Meters</option>
+            </select>
+
+            <div class="container hiddenoptions" id="calibration-tools">
+                <p>Select a distance using the measurement mode, then type the distance here, and select the corrosponding measurement type.</p>
+                    
+                <label for="distance">Distance:</label>
+                <input type="text" id="distance" name="distance">
+                
+                <select id="calibrationtype"  class="basebtn">
+                    <option value="0" selected="selected">Miles</option>
+                    <option value="1">Kilometers</option>
+                    <option value="2">Meters</option>
+                </select>
+
+                <button onclick="confirmCalibration()" class="basebtn" >Confirm Calibration.</button>
             </div>
         </div>
     </div>

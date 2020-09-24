@@ -13,6 +13,8 @@ class Databasetemplate {
         };
         this.nodescale = 1;
         this.opendocs = [];
+        this.measurementscale = 1;
+        this.measurementtype = 0;
     }
 };
 
@@ -44,6 +46,7 @@ module.exports = {
     CREATE_NEW_NODE: 'create-new-node',
     PROJECT_INITIALIZED: 'project-initialized',
     RESET_MAP: 'reset-map',
+    SET_MOUSEMODE: 'set-mousemode',
     NOT_ON_MAP: 'not-on-map',
     REFRESH_DATABASE: 'refresh-database',
     REFRESH_DATABASE_COMPLETE: 'refresh-database-complete',
@@ -84,6 +87,7 @@ module.exports = {
     EDITOR_SELECTION: 'editor-docselected',
     EDITOR_INITIALIZED: 'editor-initialized',
     EDITOR_DRAWINGSETTINGS: 'editor-drawingsettings',
+    EDITOR_MEASUREMENTSETTINGS: 'editor-measurementsettings',
     EDITOR_NODESETTINGS: 'editor-nodesettings',
     EDITOR_IMPORTSPLINES: 'editor-importsplines',
     EDITOR_SET_OVERRIDEINDEX: 'editor-setoverrideindex',

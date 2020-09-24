@@ -25,6 +25,7 @@ const {
    CREATE_NEW_NODE,
    PROJECT_INITIALIZED,
    RESET_MAP,
+   SET_MOUSEMODE,
    NOT_ON_MAP,
    REFRESH_DATABASE,
    REFRESH_DATABASE_COMPLETE,
@@ -63,6 +64,7 @@ const {
    NOTIFY_CURRENTVERSION,
    EDITOR_DOCSELECTED,
    EDITOR_DESELECT,
+   EDITOR_MEASUREMENTSETTINGS,
    TITLEBAR_OPEN_GENERATOR_WINDOW,
    Databasetemplate,
    DatabaseNodeentry,
@@ -203,6 +205,23 @@ contextMenu({
          }
       },
       */
+      {
+         label: 'Select Mode',
+         click: () => {
+            win.webContents.send(SET_MOUSEMODE,0);
+            //win.webContents.send(CHANGE_MAP , );
+         }
+      },
+      {
+         label: 'Measure Mode',
+         click: () => {
+            win.webContents.send(SET_MOUSEMODE,1);
+            //win.webContents.send(CHANGE_MAP , );
+         }
+      },
+      {
+         type: 'separator',
+      },
 		{
          label: 'Load Background Image',
          visible: !notonmap,
@@ -995,6 +1014,12 @@ ipcMain.on(SETGLOBAL_CHARGEN, function(event) {
    updatechargenset = true;
 })
 
+ipcMain.on(EDITOR_MEASUREMENTSETTINGS, function(event, message) {
+   CurrentContent.measurementscale = message.length;
+   CurrentContent.measurementtype = message.type;
+   dirtyproject = true;
+})
+
 /** ---------------------------   Document editor functions   ----------------------------- */
 
 function addchild(data)
@@ -1050,6 +1075,12 @@ Databasetemplate.fromjson = function(json)
    db.name = data.name;
    db.nodescale = data.nodescale;
    db.opendocs = data.opendocs;
+   db.measurementscale = data.measurementscale;
+   db.measurementtype = data.measurementtype;
+
+   if (data.measurementscale == null){db.measurementscale = 1;}
+   if (data.measurementtype == null){db.measurementtype = 0;}
+
 
    data.content.textEntries.forEach(jsondoc => {
       var newdoc = new DatabaseTextentry();

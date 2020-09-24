@@ -27,6 +27,7 @@ const {
     EDITOR_SELECTION,  
     EDITOR_INITIALIZED,
     EDITOR_DRAWINGSETTINGS,
+    EDITOR_MEASUREMENTSETTINGS,
     EDITOR_NODESETTINGS,
     EDITOR_IMPORTSPLINES,
     EDITOR_SET_OVERRIDEINDEX,
@@ -94,21 +95,49 @@ nodetokenlist.push(element);
 toggle between hiding and showing the dropdown content */
 function myFunction() {
     document.getElementById("nodeicondropdown").classList.toggle("show");
-  }
-  
-  // Close the dropdown menu if the user clicks outside of it
-  window.onclick = function(event) {
-    if (!event.target.matches('.dropbtn')) {
-      var dropdowns = document.getElementsByClassName("dropdown-content");
-      var i;
-      for (i = 0; i < dropdowns.length; i++) {
-        var openDropdown = dropdowns[i];
-        if (openDropdown.classList.contains('show')) {
-          openDropdown.classList.remove('show');
-        }
-      }
+}
+
+function displaycalibrationtools() {
+    document.getElementById("calibration-tools").classList.toggle("displayhiddenoptions");
+}
+
+
+function confirmCalibration()
+{
+    var measurementtype = document.getElementById("calibrationtype").selectedIndex;
+    var calibratedlength = parseFloat(document.getElementById("distance").value);
+    if (calibratedlength == 0){calibratedlength = 1;}
+    var measurementdata = {
+        type: measurementtype,
+        length: calibratedlength
     }
-  }
+    displaycalibrationtools();
+    primarywindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, measurementdata);
+    //send scale and scale type to render
+}
+
+function currenttypechanged()
+{
+    var measurementtype = parseFloat(document.getElementById("currenttype").value);
+    var measurementdata = {
+        type: measurementtype
+    }
+    primarywindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, measurementdata);
+}
+  
+// Close the dropdown menu if the user clicks outside of it
+window.onclick = function(event) {
+    if (!event.target.matches('.dropbtn')) {
+        var dropdowns = document.getElementsByClassName("dropdown-content");
+        var i;
+        for (i = 0; i < dropdowns.length; i++) {
+            var openDropdown = dropdowns[i];
+            if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+            }
+        }
+    }
+}
 
 
 
@@ -300,6 +329,11 @@ ipcRenderer.on(EDITOR_IMPORTSPLINES, (event, data) => {
 
 ipcRenderer.on(EDITOR_REQUEST_REFRESH, (event, message) => {
     updatestatus();
+})
+
+ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
+    document.getElementById("currenttype").selectedIndex = message;
+    document.getElementById("calibrationtype").selectedIndex = message;
 })
 
 
