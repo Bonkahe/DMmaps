@@ -27,16 +27,18 @@
                         <input type="range" id="currentnodeRange" step="0.1" value="10" min="0" max="100">
                         <button class="basebtn" id="clearbtn">Clear</button>                        
                     </div>
-                    <div class="toolbarline">
+                    <div class="toolbarline" style="align-items: normal;">
                         <img id="nodeiconholder" src="" alt="">
                         <div id="nodeiconcontrols" class="dropdown"> 
-                            <button onclick="myFunction()" class="basebtn dropbtn" >Dropdown</button>
+                            <div class="toolbarline">
+                                <button onclick="importIcon()"  class="basebtn dropbtn" >Import Icon</button>
+                            </div>
+                            <div class="toolbarline">
+                                <button onclick="toggledropdown()" class="basebtn dropbtn" >Select Icon</button>
+                                
+                            </div>
                             <div id="nodeicondropdown" class="dropdown-content">
-                                <ul id="nodeicons">
-                                    <li><img src="./images/Tokens/home.png" alt=""> </li>
-                                    <li>test</li>
-                                    <li>test</li>
-                                    <li>test</li>
+                                <ul id="nodeicons"> 
                                 </ul>
                             </div>
                         </div>

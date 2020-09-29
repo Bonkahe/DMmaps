@@ -300,16 +300,37 @@ button {
   }
   
   .node-icon {
-  pointer-events:auto;
-  width:64px;
-  height:64px;
-  background-size:100% 100%;
-  background-image:url(./images/NodeIcon.png);
-  background-color:transparent;
-  border:none;
-  outline:none;
-  position:absolute;
-  z-index:3;
+    -webkit-filter: brightness(100%) sepia(1) var(--node-token-hue) var(--node-token-saturate) var(--node-token-brightness);
+      
+    pointer-events:auto;
+    width:64px;
+    height:64px;
+    background-size:100% 100%;
+    background-image:url(./images/Tokens/home.png);
+    background-color:transparent;
+    border:none;
+    outline:none;
+    position:absolute;
+    z-index:4;
+  }
+
+  .node-compass {
+    pointer-events:none;
+    width:80px;
+    height:80px;
+    background-size:100% 100%;
+    background-image:url(./images/compass.png);
+    background-color:transparent;    
+    border:none;
+    outline:none;
+    position:absolute;
+    top: -8px;
+    left: -8px;
+    display: none;
+  }
+
+  .node-compass-show{
+    display: block;
   }
   
   #mapdiv {

@@ -24,8 +24,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
 const {
     DatabaseTextentry,
+    CHANGE_NODE_ICON,
     EDITOR_SELECTION,  
     EDITOR_INITIALIZED,
+    EDITOR_UPDATEICONS,
     EDITOR_DRAWINGSETTINGS,
     EDITOR_MEASUREMENTSETTINGS,
     EDITOR_NODESETTINGS,
@@ -79,21 +81,92 @@ var initialdata = {
 
 var nodetokenlist = [];
 var nodeiconholder = document.getElementById('nodeiconholder');
+var nodeiconlist = document.getElementById('nodeicons');
 
-var files = [
-'./images/Tokens/home.png',
-'./images/Tokens/PersonofInterest.png'
-]
+var files = []
 
-files.forEach(element => {
-nodetokenlist.push(element);
-    nodeiconholder.src = nodetokenlist[0];
-});
+function initializeicons(){
+    nodeiconlist.innerHTML = "";
+
+    var originallength = files.length;
+    for (var i = 0; i < files.length; i++)
+    {
+        files[i] = files[i].replace(/\\/g,"/");
+        var li = document.createElement('li');
+        li.innerHTML = '<img src="' + files[i] +'"> ' + (files[i].substring(files[i].lastIndexOf('/')+1)).split('.').slice(0, -1).join('.');
+        li.setAttribute( 'onclick', 'nodeiconclicked("' + files[i] + '")');
+
+        nodeiconlist.appendChild(li);
+
+        imageExists(files[i], i);   
+    }
+
+    if (originallength != files.length)
+    {
+        ipcRenderer.send(EDITOR_UPDATEICONS, files);
+    }
+
+    nodeiconholder.src = files[0];
+}
+
+function nodeiconclicked(element)
+{
+    //send selected token url to renderer then from there to main.
+    primarywindow.webContents.send (CHANGE_NODE_ICON, element);
+}
+
+function imageExists(url, index, callback) {
+  var img = new Image();
+  img.onload = function() { 
+      //callback(true); 
+    };
+  img.onerror = function() { 
+      files.splice(index,1);
+      //callback(false);
+     };
+  img.src = url;
+}
   
 
   /* When the user clicks on the button,
 toggle between hiding and showing the dropdown content */
-function myFunction() {
+function importIcon(){
+    getFileFromUser();
+}
+
+const getFileFromUser = async () => {
+    let options = {
+      title : "Load a Token", 
+  
+      defaultPath : ".",
+      
+      buttonLabel : "Import image",
+      
+      filters :[
+        {name: 'Images', extensions: ['jpg', 'png', 'gif', 'svg']}
+      ],
+      properties: ['openFile']
+    }
+    let Remotewin = BrowserWindow.getFocusedWindow();
+  
+    //This operation is asynchronous and needs to be awaited
+    const pickedfiles = await dialog.showOpenDialog(Remotewin, options, {
+        // The Configuration object sets different properties on the Open File Dialog 
+        properties: ['openFile']
+    });
+  
+    // If we don't have any files, return early from the function
+    if (!pickedfiles.filePaths[0]) {
+        return;
+    }
+    
+    
+    files.push(pickedfiles.filePaths[0]);
+    
+    ipcRenderer.send(EDITOR_UPDATEICONS, files);
+  }
+
+function toggledropdown() {
     document.getElementById("nodeicondropdown").classList.toggle("show");
 }
 
@@ -314,6 +387,8 @@ function senddata(data)
 
 primarywindow.webContents.send (EDITOR_INITIALIZED, );
 
+ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS);
+
 
 
 primarywindow.webContents.send (EDITOR_DRAWINGSETTINGS, initialdata);
@@ -328,12 +403,22 @@ ipcRenderer.on(EDITOR_IMPORTSPLINES, (event, data) => {
 })
 
 ipcRenderer.on(EDITOR_REQUEST_REFRESH, (event, message) => {
-    updatestatus();
+    updanodeiconclickedatus();
 })
 
 ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
-    document.getElementById("currenttype").selectedIndex = message;
-    document.getElementById("calibrationtype").selectedIndex = message;
+    if (message.currentdistancetype != null)
+    {
+        document.getElementById("currenttype").selectedIndex = message.currentdistancetype;
+        document.getElementById("calibrationtype").selectedIndex = message.currentdistancetype;
+    }
+    
+    if (message.icons != null)
+    {
+        files = message.icons;
+        console.log(files);
+        initializeicons();
+    }
 })
 
 
@@ -362,12 +447,12 @@ ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
         currentnodesizeRange.value = data.nodeinternalscale;
     }
 
-    updatestatus();
+    updanodeiconclickedatus();
 })
 
 /** ---------------- HELPER FUNCTIONS --------------------- */
 
-function updatestatus()
+function updanodeiconclickedatus()
 {
     var senddata = {
         alloweddrawing: allowdrawingBtn.checked,

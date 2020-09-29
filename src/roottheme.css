@@ -1,4 +1,9 @@
 :root{
+    /* --- Set to HSL of the desired tint https://codepen.io/sosuke/pen/Pjoqqp gets you closer than anything else ---*/
+    --node-token-hue: hue-rotate(348deg); 
+    --node-token-saturate: saturate(300%); 
+    --node-token-brightness: brightness(80%); 
+
     --main-button-color: #E6A255;
     --main-button-highlight: #f5a64c;
 

@@ -25,6 +25,7 @@ const {
   REQUEST_EXTENDED_NODE_CONTEXT,
   DELETE_NODE,
   VERIFY_NODE,
+  CHANGE_NODE_ICON,
   SCALE_ALL_NODES,
   SCALE_ONE_NODE,
   CLEAR_NODE_SCALE,
@@ -89,6 +90,12 @@ var downloaddisplay;
 var mousemode = 0;
 /** */
 
+var dragselect = {
+  startpoint: null,
+  endpoint: null,
+  render: false
+}
+
 var rightClickPosition;
 var zoom = 1;
 var textchanged = false;
@@ -100,7 +107,7 @@ var nodelist = [];
 var basenodescalelocked = 1.0;
 var basenodescaleunlocked = 1.1;
 var currentscale = 1.0;
-var nodetokenlist = [];
+//var nodetokenlist = [];
 
 var mapdiv = document.getElementById('mapdiv');
 var map = document.getElementById('map');
@@ -129,6 +136,7 @@ var columnwidth = 10;
 var rowheight = 20;
 var selecteddocid;
 var selectednodeid;
+var selectednodes = [];
 var column;
 var row;
 var columnrowcount;
@@ -201,6 +209,7 @@ map.onload = function () {
 dragElement(mapdiv);
 
 /**Handles importing the token images*/
+/*
 var files = [
   './images/Tokens/home.png',
   './images/Tokens/PersonofInterest.png'
@@ -209,7 +218,7 @@ var files = [
 files.forEach(element => {
   nodetokenlist.push(element);
 });
-
+*/
 ipcRenderer.send(REFRESH_PAGE);
 
 
@@ -564,12 +573,36 @@ function finishdrawing(e)
 
 /**Handles Actually drawing when moveing your mouse and clicking and dragging on the canvas */
 canvas.addEventListener('mousedown', e => {
-  if (mousemode == 1 && e.which == 1)
+  if (e.which == 1) //left mousebutton
   {
-    measurement.render = true;
-    measurement.active = true;
-    measurement.points.push(convertworldtodoccords(e.pageX,e.pageY));
-    return;
+    if(mousemode == 0) //select mode
+    {
+      if (!dragselect.render)
+      {
+        dragselect.startpoint = convertworldtodoccords(e.pageX,e.pageY);
+        dragselect.endpoint = convertworldtodoccords(e.pageX,e.pageY);
+        dragselect.render = true;
+        return;
+      }
+    }
+    else if (mousemode == 1) //measure mode
+    {
+      if (!measurement.active)
+      {
+        measurement.points = [];
+
+        measurement.render = true;    
+        measurement.active = true;
+      }
+
+      if (measurement.points.length > 1 && !shiftheld)
+      {
+        measurement.active = false;
+        return;
+      }
+      measurement.points.push(convertworldtodoccords(e.pageX,e.pageY));
+      return;
+    }    
   }
 
   if (e.which != 1 || selecteddocid === null || alloweddrawing === false || overrideindex != null) { return;}
@@ -588,19 +621,33 @@ canvas.addEventListener('mousedown', e => {
   textchanged = true;
 });
 
-canvas.addEventListener('mouseup', e => {
+mapdiv.addEventListener('mouseup', e => {
   freedrawing = false;
 
-  if (mousemode == 1 && measurement.active && !shiftheld)
+  if(mousemode == 0 && dragselect.render) //select mode
+  {
+    dragselect.render = false;
+    dragselect.endpoint = convertworldtodoccords(e.pageX,e.pageY);
+    //select what is contained.
+    selectarea();
+    canvasRender();
+  }  
+  else if (mousemode == 1 && measurement.active && !shiftheld)
   {
     measurement.active = false;
     measurement.endpoint = convertworldtodoccords(e.pageX,e.pageY);
-    return;
   }
 });
 
-canvas.addEventListener('mousemove', e => {
-  if (mousemode == 1 && measurement.active)
+mapdiv.addEventListener('mousemove', e => {
+  if(mousemode == 0 && dragselect.render) //select mode
+  {
+    dragselect.endpoint = convertworldtodoccords(e.pageX,e.pageY);
+
+    canvasRender();
+    return;
+  }  
+  else if (mousemode == 1 && measurement.active)
   {
     measurement.endpoint = convertworldtodoccords(e.pageX,e.pageY);
 
@@ -635,10 +682,15 @@ canvas.addEventListener('mousemove', e => {
 /**Helper that re-renders the entire canvas. */
 function canvasRender()
 {
-  canvascontext.clearRect(0,0, canvas.width, canvas.height);
+  canvascontext.clearRect(0,0, canvas.width, canvas.height); //clears canvas prior to everything else.
   for(var i = 0; i < drawings.length; i++)
   {
     drawings[i].draw();
+  }
+
+  if (dragselect.render)
+  {
+    renderSelection();
   }
 
   if (measurement.render)
@@ -647,45 +699,79 @@ function canvasRender()
   }
 }
 
+function renderSelection()
+{
+  if (dragselect.endpoint == null) {return;}
+  canvascontext.strokeStyle = '#ffffff';
+  canvascontext.beginPath();
+  canvascontext.lineWidth = 1 * (1 / zoom);
+  canvascontext.moveTo(dragselect.startpoint.x, dragselect.startpoint.y);
+  canvascontext.lineTo(dragselect.startpoint.x, dragselect.endpoint.y);
+  canvascontext.lineTo(dragselect.endpoint.x, dragselect.endpoint.y);
+  canvascontext.lineTo(dragselect.endpoint.x, dragselect.startpoint.y);
+  canvascontext.lineTo(dragselect.startpoint.x, dragselect.startpoint.y);
+  canvascontext.stroke();
+  canvascontext.closePath();  
+}
+
 function renderMeasurement()
 {
   if ( measurement.endpoint == null) {return;}
-
-  console.log("test");
-  var angleDeg = Math.atan2(measurement.points[0].y - measurement.endpoint.y, measurement.points[0].x - measurement.endpoint.x) * 180 / Math.PI;
-
-  if (angleDeg > 90 || angleDeg < -90)
-  {
-    angleDeg += 180;
-  }
-  var label = "test";//getoutputdistance(measurement.points[0].x, measurement.endpoint.x, measurement.points[0].y, measurement.endpoint.y);
 
   canvascontext.strokeStyle = '#1a1a1a';
   
   canvascontext.beginPath();
   canvascontext.lineWidth = 10;
   canvascontext.moveTo(measurement.points[0].x, measurement.points[0].y);
-
+  var totaldistance = 0;
   if ( measurement.points.length > 0)
   {    
     for (var i = 1; i < measurement.points.length; i++)
     {
+      totaldistance += getdistance(measurement.points[i - 1].x,measurement.points[i].x,measurement.points[i - 1].y,measurement.points[i].y);
       canvascontext.lineTo(measurement.points[i].x, measurement.points[i].y);
     }
+    
+    totaldistance += getdistance(measurement.points[measurement.points.length - 1].x,measurement.endpoint.x,measurement.points[measurement.points.length - 1].y,measurement.endpoint.y);
   }
+  else
+  {
+    totaldistance += getdistance(measurement.points[0].x,measurement.endpoint.x,measurement.points[0].y,measurement.endpoint.y);
+  }
+
   canvascontext.lineTo(measurement.endpoint.x, measurement.endpoint.y);
-
   canvascontext.stroke();
-  canvascontext.closePath();
+  canvascontext.closePath();  
 
-  
+  totaldistance = round(totaldistance * (Object.values(distancetype)[currentdistancetype] * milesdistancescale), 2); 
 
+  if (measurement.points.length > 1)
+  {
+    var textindex = measurement.points.length - 1;
+    writeText(totaldistance,measurement.points[textindex].x, measurement.points[textindex].y,  measurement.endpoint.x, measurement.endpoint.y);
+    writeText(totaldistance,measurement.points[0].x, measurement.points[0].y,  measurement.points[1].x, measurement.points[1].y);
+  }
+  else
+  {
+    writeText(totaldistance,measurement.points[0].x, measurement.points[0].y,  measurement.endpoint.x, measurement.endpoint.y);
+  }
+}
+
+function writeText(distance, x1,y1,x2,y2)
+{
+  var angleDeg = Math.atan2(y1 - y2, x1 - x2) * 180 / Math.PI;
+  if (angleDeg > 90 || angleDeg < -90)
+  {
+    angleDeg += 180;
+  }
+
+  var label = distance.toString() + " " + Object.keys(distancetype)[currentdistancetype];
   canvascontext.save();
-
+  canvascontext.strokeStyle = '#1a1a1a';
   canvascontext.textAlign = "center";
   canvascontext.textBaseline = "middle";
-  canvascontext.translate((measurement.points[0].x + measurement.endpoint.x) / 2, (measurement.points[0].y + measurement.endpoint.y) / 2 - 25);
-  canvascontext.font = 'bold 40pt Ariel';
+  canvascontext.translate((x1 + x2) / 2, (y1 + y2) / 2 - 25);
+  canvascontext.font = 'bold 30pt Ariel';
   canvascontext.rotate(angleDeg * Math.PI / 180);
   canvascontext.lineWidth = 5;
   canvascontext.strokeText(label, 0, 0);
@@ -694,12 +780,6 @@ function renderMeasurement()
   canvascontext.fillStyle = 'white';
   canvascontext.fillText(label, 0, 0);
   canvascontext.restore();
-}
-
-function getoutputdistance(x1,x2,y1,y2)
-{
-  var distance = round(getdistance(x1,x2,y1,y2) * (Object.values(distancetype)[currentdistancetype] * milesdistancescale), 2);
-  return distance.toString() + " " + Object.keys(distancetype)[currentdistancetype];
 }
 
 function getdistance(x1,x2,y1,y2)
@@ -984,6 +1064,21 @@ ipcRenderer.on(EDITOR_NODESETTINGS, (event, data) => {
   }
 })
 
+ipcRenderer.on(CHANGE_NODE_ICON, (event, data) =>{
+  if (selectednodeid != null)
+  {
+    var nodeelement = document.querySelector('[node-db-path="' + selectednodeid +'"]');
+    nodeelement.style.backgroundImage = 'url('+ data +')';
+
+    var maindata = {
+      node: selectednodeid,
+      url: data
+    }
+
+    ipcRenderer.send(CHANGE_NODE_ICON, maindata);
+  }
+})
+
 ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
   if (data.alloweddrawing != null){ 
     alloweddrawing = data.alloweddrawing;
@@ -1014,10 +1109,23 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) =>{
     console.log(currentdistancetype);
 
     if (message.length != null){
-      var distance = getdistance(measurement.startpoint.x, measurement.endpoint.x, measurement.startpoint.y, measurement.endpoint.y);
-      console.log(distance);
+      var totaldistance = 0;
+      if ( measurement.points.length > 0)
+      {    
+        for (var i = 1; i < measurement.points.length; i++)
+        {
+          totaldistance += getdistance(measurement.points[i - 1].x,measurement.points[i].x,measurement.points[i - 1].y,measurement.points[i].y);
+          canvascontext.lineTo(measurement.points[i].x, measurement.points[i].y);
+        }
+        
+        totaldistance += getdistance(measurement.points[measurement.points.length - 1].x,measurement.endpoint.x,measurement.points[measurement.points.length - 1].y,measurement.endpoint.y);
+      }
+      else
+      {
+        totaldistance += getdistance(measurement.points[0].x,measurement.endpoint.x,measurement.points[0].y,measurement.endpoint.y);
+      }
       
-      milesdistancescale = (message.length / distance) / Object.values(distancetype)[currentdistancetype];
+      milesdistancescale = (message.length / totaldistance) / Object.values(distancetype)[currentdistancetype];
     }
 
     var newdata = {
@@ -1025,8 +1133,13 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) =>{
       type: message.type
     }
 
+    var editorupdatedata = {
+      currentdistancetype: currentdistancetype
+    }
+
     
     ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS, newdata);
+    editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
     canvasRender();
   }
 })
@@ -1081,6 +1194,7 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
 
   selecteddocid = null;
   selectednodeid = null;
+  selectednodes = [];
   textchanged = false;
   overrideindex = null;
   currentscale = CurrentContent.nodescale;
@@ -1089,8 +1203,11 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   milesdistancescale = CurrentContent.measurementscale;
   currentdistancetype = CurrentContent.measurementtype;
 
+  var editorinitializationdata = {
+    currentdistancetype: currentdistancetype
+  };
 
-  editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, currentdistancetype);
+  editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
 
   console.log(CurrentContent.measurementscale);
 
@@ -1161,11 +1278,23 @@ ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
 })
 
 ipcRenderer.on(DELETE_NODE, (event, message) => {
+  /*
+  if (selectednodes.length > 0)
+  {
+    for (var i = 0; i < selectednodes.length; i++)
+    {
+      selectednodes[i].parentNode.removeChild(selectednodes[i]);
+    }
+    selectednodes = [];
+  }
+  */
+  
   if (selectednodeid == node.getAttribute('node-db-path'))
   {
     selectednodeid = null;
   }
   node.parentNode.removeChild(node);
+  
   mapdiv.style.pointerEvents = 'auto';
 })
 
@@ -1176,7 +1305,7 @@ ipcRenderer.on(COMPLETE_DOCUMENT_DELETE, (event, message) => {
 
 ipcRenderer.on(MAIN_TO_RENDER_SETFOCUS, (event, message) =>
 {
-  selectionchanged(message, null);
+  highlightdecider(message, null);
 })
 
 ipcRenderer.on(TOGGLE_NODE, (event, message) => {
@@ -1313,9 +1442,9 @@ function loadtext(document)
 
   texteditortitle.innerText = document.name;
   texteditortitle.setAttribute('db-path',document.id);
-  highlightdecider(document.id, null);
+  //highlightdecider(document.id, null);
 
-  var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
+  var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + document.id + '"]');
   //console.log(highlighteddoc);
   if (highlighteddoc.hasAttribute("parent-index"))
   {
@@ -1436,11 +1565,10 @@ function importnodes(CurrentContent)
 function createnode(node)
 {
   var img = document.createElement('button');
+  var compass = document.createElement('div');
+  compass.className = "node-compass";
+  img.appendChild(compass);
 
-  if (node.documentref == 3106.5563661542183)
-  {
-    console.log(node);
-  }
   /*
   img.onmouseenter = function(event){
     if (event.target.getAttribute("locked") == "true")
@@ -1453,22 +1581,15 @@ function createnode(node)
     deactivatepanning = false
   };
   */
-  if (node.nodetoken != null)
+
+  console.log(node);
+  if (node.tokenurl != null)
   {
-    if (isNaN(node.nodetoken))
-    {
-      img.style.backgroundImage  = "url('" + node.nodetoken + "')";
-    }
-    else
-    {
-      img.style.backgroundImage  = "url('" + nodetokenlist[node.nodetoken] + "')";
-    }
-    img.setAttribute("node-icon", node.nodetoken)
+    img.style.backgroundImage  = "url('" + node.tokenurl + "')";
   }
   else
   {
-    img.style.backgroundImage  = "url('" + nodetokenlist[0] + "')";
-    img.setAttribute("node-icon", 0)
+    img.style.backgroundImage  = "url('./images/Tokens/House.png')";
   }
   dragNode(img, mapdiv);
   //img.id = "node-icon";
@@ -1552,6 +1673,9 @@ function convertdoctoworldcords(x,y)
 function mousecreatenode(x,y, nodeid, docid)
 {  
   var img = document.createElement('button');
+  var compass = document.createElement('div');
+  compass.className = "node-compass";
+  img.appendChild(compass);
   /*
   img.onmouseenter = function(event){
     if (event.target.getAttribute("locked") == "true")
@@ -1564,10 +1688,7 @@ function mousecreatenode(x,y, nodeid, docid)
     deactivatepanning = false
   };
   */
-  if (nodetokenlist.length > 0)
-  {
-    img.style.backgroundImage  = "url('" + nodetokenlist[0] + "')";
-  }
+  img.style.backgroundImage  = "url('./images/Tokens/House.png')";
 
   dragNode(img, mapdiv);
   //img.id = "node-icon";
@@ -1589,7 +1710,8 @@ function mousecreatenode(x,y, nodeid, docid)
     x:coords.x,
     y:coords.y,
     id:nodeid,
-    parentid:selecteddocid
+    parentid:selecteddocid,
+
   };
   
   ipcRenderer.send(VERIFY_NODE, verifydata); //Sends the nodes location to the database
@@ -1704,9 +1826,87 @@ function selectdoc(docpath)
   })
 }
 
+function selectarea()
+{
+  var lowcoords = {
+    x: getlowest(dragselect.startpoint.x, dragselect.endpoint.x),
+    y: getlowest(dragselect.startpoint.y, dragselect.endpoint.y)
+  }
+
+  var highcoords = {
+    x: gethighest(dragselect.startpoint.x, dragselect.endpoint.x),
+    y: gethighest(dragselect.startpoint.y, dragselect.endpoint.y)
+  }
+
+  var node_els = Array.from(document.querySelectorAll(".node-icon")).filter(el => 
+    parseFloat(el.style.left) > lowcoords.x && 
+    parseFloat(el.style.top) > lowcoords.y &&
+    parseFloat(el.style.left) < highcoords.x &&
+    parseFloat(el.style.top) < highcoords.y);
+    
+  selectnodes(node_els);  
+}
+
+function selectnodes(newnodes)
+{
+  if (selectednodes.length > 0)
+  {
+    for (var i = 0; i < selectednodes.length; i++)
+    {
+      selectednodes[i].firstChild.classList.remove("node-compass-show");
+      //unhighlight selectednodes[i]
+    }
+  }
+
+  selectednodes = newnodes;
+
+  if (selectednodes.length > 0)
+  {
+    for (var i = 0; i < selectednodes.length; i++)
+    {
+      selectednodes[i].firstChild.classList.add("node-compass-show");
+      //highlight selectednodes[i]
+    }
+
+    if (selectednodes.length == 1)
+    {
+      selectionnodechanged(selectednodes[0]);
+    }
+  }
+}
+
+function getlowest(num1, num2)
+{
+  if (num1 < num2)
+  {
+    return num1;
+  }
+  else
+  {
+    return num2;
+  }
+}
+
+function gethighest(num1, num2)
+{
+  if (num1 > num2)
+  {
+    return num1;
+  }
+  else
+  {
+    return num2;
+  }
+}
+
 /**Same thing as doc but for the node. */
 function selectnode(buttonelmnt)
 {
+  var wipe = [];
+  selectnodes(wipe);
+  buttonelmnt.firstChild.classList.add("node-compass-show");
+  selectednodes.push(buttonelmnt);
+  
   ipcRenderer.invoke(REQUEST_DOCUMENT_BYNODE, buttonelmnt.getAttribute("node-db-path")).then((result) => {
     if (result != null)
     {
@@ -1714,11 +1914,7 @@ function selectnode(buttonelmnt)
       savetext();
       loadtext(result);
     }
-    else
-    {
-      highlightdecider(null, buttonelmnt.getAttribute("node-db-path"));
-    }
-  })
+  })  
 }
 
 /**Handles construction of the hierarchy */
@@ -2060,7 +2256,9 @@ function highlightdecider(docid, nodeid)
 {
   if (selectednodeid != null)
   {
-    // -- UNHIGHLIGHTS NODE --//var oldnode = mapdiv.querySelector('*[node-db-path="' + selectednodeid + '"]');
+    var oldnode = mapdiv.querySelector('*[node-db-path="' + selectednodeid + '"]');
+    var currentcompass = oldnode.firstChild;
+    if (currentcompass != null){currentcompass.classList.remove("node-compass-show");}
   }
   if (selecteddocid != null)
   {
@@ -2093,6 +2291,9 @@ function highlightdoc(docid)
   if(foundnode){
 
     // HIGHLIGHT NODE ----
+    var currentcompass = foundnode.firstChild;
+    if (currentcompass != null){currentcompass.classList.add("node-compass-show");}
+
     panto(foundnode.style.left, foundnode.style.top);
     
     selectionchanged(docid,foundnode.getAttribute('node-db-path'));
@@ -2106,6 +2307,8 @@ function highlightnode(nodeid)
 {
   var node = mapdiv.querySelector('*[node-db-path="' + nodeid + '"]');
   // HIGHLIGHT NODE ----
+  var currentcompass = node.firstChild;
+  if (currentcompass != null){currentcompass.classList.add("node-compass-show");}
 
   var docid = node.getAttribute('doc-db-path');
   if (docid){
@@ -2123,6 +2326,27 @@ function highlightnode(nodeid)
   }
 
   selectionchanged(null,nodeid);
+}
+
+function selectionnodechanged(node)
+{
+  if (node == null)
+  {
+    if (editorwindow){
+      editorwindow.webContents.send(EDITOR_SELECTION, null);
+      return;
+    }  
+  }
+
+  var data = {
+    docid: node.getAttribute('doc-db-path'),
+    nodeid: node.getAttribute('node-db-path'),
+    nodeinternalscale: node.getAttribute('scaled')
+  }
+  
+  if (editorwindow){
+    editorwindow.webContents.send(EDITOR_SELECTION, data);
+  }  
 }
 
 /**Handles Final part of setting the selected node/doc ids and sending that information to the toolbox. */

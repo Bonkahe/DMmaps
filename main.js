@@ -37,6 +37,7 @@ const {
    REQUEST_EXTENDED_NODE_CONTEXT,
    DELETE_NODE,
    VERIFY_NODE,
+   CHANGE_NODE_ICON,
    SCALE_ALL_NODES,
    SCALE_ONE_NODE,
    CLEAR_NODE_SCALE,
@@ -64,6 +65,7 @@ const {
    NOTIFY_CURRENTVERSION,
    EDITOR_DOCSELECTED,
    EDITOR_DESELECT,
+   EDITOR_UPDATEICONS,
    EDITOR_MEASUREMENTSETTINGS,
    TITLEBAR_OPEN_GENERATOR_WINDOW,
    Databasetemplate,
@@ -123,7 +125,7 @@ function createWindow() {
       }
    });
 
-   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxWidth:400,  parent: win, frame: false, show:false, webPreferences: {
+   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 1000, maxWidth: 500, parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
    }});
    editorwindow.loadURL(url.format ({
@@ -140,7 +142,7 @@ function createWindow() {
       e.preventDefault();        
    });
 
-   generatorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxWidth:400,  parent: win, frame: false, show:false, webPreferences: {
+   generatorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxWidth: 500, parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
    }});
    generatorwindow.loadURL(url.format ({
@@ -928,6 +930,16 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
     }
 });
 
+ipcMain.on(CHANGE_NODE_ICON, function(event, data) {
+   for (var i in CurrentContent.content.nodes) {
+      if (CurrentContent.content.nodes[i].id == data.node) {
+         CurrentContent.content.nodes[i].tokenurl = data.url;
+         dirtyproject = true;
+         return; //Stop this loop, we found it!
+      }
+   }
+})
+
 ipcMain.on(SCALE_ALL_NODES, function(event, scale) {
    CurrentContent.nodescale = scale;
    dirtyproject = true;
@@ -1015,9 +1027,28 @@ ipcMain.on(SETGLOBAL_CHARGEN, function(event) {
 })
 
 ipcMain.on(EDITOR_MEASUREMENTSETTINGS, function(event, message) {
-   CurrentContent.measurementscale = message.length;
-   CurrentContent.measurementtype = message.type;
-   dirtyproject = true;
+
+   if (message != null)
+   {
+      CurrentContent.measurementscale = message.length;
+      CurrentContent.measurementtype = message.type;
+      dirtyproject = true;
+   }
+   else
+   {
+      var editorinitializationdata = {
+         icons: CurrentContent.availableicons
+       };
+      editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
+   }
+})
+
+ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
+   CurrentContent.availableicons = message;
+   var editorinitializationdata = {
+      icons: CurrentContent.availableicons
+    };
+   editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
 })
 
 /** ---------------------------   Document editor functions   ----------------------------- */
@@ -1074,12 +1105,27 @@ Databasetemplate.fromjson = function(json)
    db.backgroundurl = data.backgroundurl;
    db.name = data.name;
    db.nodescale = data.nodescale;
+   db.availableicons = data.availableicons;
    db.opendocs = data.opendocs;
    db.measurementscale = data.measurementscale;
    db.measurementtype = data.measurementtype;
 
+   //backwards compatible;
    if (data.measurementscale == null){db.measurementscale = 1;}
    if (data.measurementtype == null){db.measurementtype = 0;}
+   if (data.availableicons == null || data.availableicons.length < 10){db.availableicons = [
+      './images/Tokens/House.png',
+      './images/Tokens/PersonofInterest.png',
+      './images/Tokens/Party.png',
+      './images/Tokens/City.png',
+      './images/Tokens/Outpost.png',
+      './images/Tokens/Fortress.png',
+      './images/Tokens/Ruins.png',
+      './images/Tokens/Camp.png',
+      './images/Tokens/Town.png',
+      './images/Tokens/Flag.png',
+      './images/Tokens/Cave.png'
+   ];}
 
 
    data.content.textEntries.forEach(jsondoc => {
@@ -1100,7 +1146,13 @@ Databasetemplate.fromjson = function(json)
       newnode.documentref = jsonnode.documentref;
       newnode.locked = jsonnode.locked;
       newnode.individualnodescale = jsonnode.individualnodescale;
-      newnode.nodetoken = jsonnode.nodetoken;
+      newnode.tokenurl = jsonnode.tokenurl;
+      
+      console.log(db.availableicons);
+      console.log(newnode.tokenurl);
+      //backwards compatible
+      if (newnode.tokenurl == null || !db.availableicons.includes(newnode.tokenurl)){newnode.tokenurl = db.availableicons[0];}
+
       db.content.nodes.push(newnode);
       //console.log(newnode);
    });

@@ -12,9 +12,22 @@ class Databasetemplate {
             nodes: []
         };
         this.nodescale = 1;
+        this.availableicons = [
+            './images/Tokens/House.png',
+            './images/Tokens/PersonofInterest.png',
+            './images/Tokens/Party.png',
+            './images/Tokens/City.png',
+            './images/Tokens/Outpost.png',
+            './images/Tokens/Fortress.png',
+            './images/Tokens/Ruins.png',
+            './images/Tokens/Camp.png',
+            './images/Tokens/Town.png',
+            './images/Tokens/Flag.png',
+            './images/Tokens/Cave.png'
+        ];
         this.opendocs = [];
         this.measurementscale = 1;
-        this.measurementtype = 0;
+        this.measurementtype = 0;        
     }
 };
 
@@ -25,7 +38,7 @@ class DatabaseNodeentry {
         this.documentref = "";
         this.locked = false;
         this.individualnodescale = null;
-        this.tokenurl = "internaltoken0";
+        this.tokenurl = './images/Tokens/House.png';
         this.nodetoken;
     }
 }
@@ -59,6 +72,7 @@ module.exports = {
     REQUEST_EXTENDED_NODE_CONTEXT: 'request-extended-node-context',
     DELETE_NODE: 'delete-node',
     VERIFY_NODE: 'verify-node',
+    CHANGE_NODE_ICON: 'change-node-icon',
     SCALE_ALL_NODES: 'scale-all-nodes',
     SCALE_ONE_NODE: 'scale-one-node',
     CLEAR_NODE_SCALE: 'clear-node-scale',
@@ -86,6 +100,7 @@ module.exports = {
     NOTIFY_CURRENTVERSION: 'notify-currentversion',
     EDITOR_SELECTION: 'editor-docselected',
     EDITOR_INITIALIZED: 'editor-initialized',
+    EDITOR_UPDATEICONS: 'editor-updateicons',
     EDITOR_DRAWINGSETTINGS: 'editor-drawingsettings',
     EDITOR_MEASUREMENTSETTINGS: 'editor-measurementsettings',
     EDITOR_NODESETTINGS: 'editor-nodesettings',
