@@ -424,7 +424,7 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
 
 ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
     allowdrawingBtn.checked = false;
-    if (data.docid != null)
+    if (data.docactive)
     {
         setzoneisplayactive();
     }
@@ -433,7 +433,7 @@ ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
         setzoneisplayinactive();
     }
 
-    if (data.nodeid != null)
+    if (data.nodeactive)
     {
         setnodedisplayactive();
     }
@@ -441,12 +441,12 @@ ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
     {
         setnodedisplayinactive();
     }
-
+    /*
     if (data.nodeinternalscale != null)
     {
         currentnodesizeRange.value = data.nodeinternalscale;
     }
-
+*/
     updanodeiconclickedatus();
 })
 

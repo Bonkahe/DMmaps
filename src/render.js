@@ -135,7 +135,7 @@ var barsparent = document.getElementById('hierarchylist-container');
 var columnwidth = 10;
 var rowheight = 20;
 var selecteddocid;
-var selectednodeid;
+//var selectednodeid;
 var selectednodes = [];
 var column;
 var row;
@@ -152,7 +152,8 @@ var measurement = {
   points: [],
   endpoint: null,
   render: false,
-  active: false
+  active: false,
+  shiftheld: false
 };
 var shiftheld = false;
 
@@ -587,6 +588,22 @@ canvas.addEventListener('mousedown', e => {
     }
     else if (mousemode == 1) //measure mode
     {
+      if (!doubleclick)
+      {
+        var delayInMilliseconds = 500; //1 second
+        doubleclick = true;
+        setTimeout(function() {
+          doubleclick = false;
+        }, delayInMilliseconds);
+      }
+      else if (measurement.shiftheld)
+      {
+        measurement.active = false;
+        measurement.shiftheld = false;
+        //measurement.endpoint = convertworldtodoccords(e.pageX,e.pageY);
+        return;
+      }
+
       if (!measurement.active)
       {
         measurement.points = [];
@@ -595,7 +612,7 @@ canvas.addEventListener('mousedown', e => {
         measurement.active = true;
       }
 
-      if (measurement.points.length > 1 && !shiftheld)
+      if (measurement.points.length > 1 && !measurement.shiftheld)
       {
         measurement.active = false;
         return;
@@ -632,7 +649,7 @@ mapdiv.addEventListener('mouseup', e => {
     selectarea();
     canvasRender();
   }  
-  else if (mousemode == 1 && measurement.active && !shiftheld)
+  else if (mousemode == 1 && measurement.active && !measurement.shiftheld)
   {
     measurement.active = false;
     measurement.endpoint = convertworldtodoccords(e.pageX,e.pageY);
@@ -847,13 +864,13 @@ $('div[contenteditable]').keydown(function(e) {
 
 $(document).keydown(function (e) {
   if (e.keyCode == 16) {
-      shiftheld = true;
+      if (measurement.active){measurement.shiftheld = true;}
   }
 });
 
 $(document).keyup(function (e) {
   if (e.keyCode == 16) {
-      shiftheld = false;
+      //if (measurement.active){measurement.shiftheld = true;}
   }
 });
 
@@ -883,7 +900,7 @@ Mousetrap.bind(['command+b', 'ctrl+b', 'f1'], function() {
 });
 
 Mousetrap.bind(['command+d', 'ctrl+d'], function() {
-  highlightdecider(null, null);
+  //highlightdecider(null);
   savetext();
   drawings = [];
   freedrawing = false;
@@ -933,7 +950,13 @@ window.addEventListener('contextmenu', (e) => {
       {
         var data = {
           nodeid:node.getAttribute("node-db-path"),
-          docid:selecteddocid
+          docid:selecteddocid,
+          nodes:[]
+        }
+
+        for (var i in selectednodes)
+        {
+          data.nodes.push(selectednodes[i].getAttribute("node-db-path"));
         }
         
         ipcRenderer.send(REQUEST_EXTENDED_NODE_CONTEXT, data);
@@ -941,7 +964,16 @@ window.addEventListener('contextmenu', (e) => {
       }
       else
       {
-        ipcRenderer.send(REQUEST_NODE_CONTEXT, node.getAttribute("node-db-path"));
+        var data = {
+          nodes:[]
+        }
+
+        for (var i in selectednodes)
+        {
+          data.nodes.push(selectednodes[i].getAttribute("node-db-path"));
+        }
+
+        ipcRenderer.send(REQUEST_NODE_CONTEXT, data);
         return;
       }
     }
@@ -1054,27 +1086,29 @@ ipcRenderer.on(EDITOR_NODESETTINGS, (event, data) => {
     rescalenodes(data.currentdefaultnodescale);
     ipcRenderer.send(SCALE_ALL_NODES, data.currentdefaultnodescale);
   }
+  
   if (data.currentnodescale != null){
     rescaleselectednode(data.currentnodescale);
   }
 
   if (data.clear != null){
     resetselectednode();
-    ipcRenderer.send(CLEAR_NODE_SCALE);
+    //ipcRenderer.send(CLEAR_NODE_SCALE);
   }
 })
 
 ipcRenderer.on(CHANGE_NODE_ICON, (event, data) =>{
-  if (selectednodeid != null)
+  if (selectednodes.length > 0)
   {
-    var nodeelement = document.querySelector('[node-db-path="' + selectednodeid +'"]');
-    nodeelement.style.backgroundImage = 'url('+ data +')';
-
     var maindata = {
-      node: selectednodeid,
+      nodes: [],
       url: data
+    };
+    for (var i = 0; i < selectednodes.length; i++)
+    {
+      selectednodes[i].style.backgroundImage = 'url('+ data +')';
+      maindata.nodes.push(selectednodes[i].getAttribute('node-db-path'));
     }
-
     ipcRenderer.send(CHANGE_NODE_ICON, maindata);
   }
 })
@@ -1165,7 +1199,7 @@ ipcRenderer.on(EDITOR_DELETE_SPLINE, (event, message) => {
 })
 
 ipcRenderer.on(EDITOR_INITIALIZED, (event) => {
-  selectionchanged(selecteddocid, selectednodeid);
+  //selectionchanged(selecteddocid, selectednodeid);
   editorwindow = remote.getGlobal ('editorwindow');
 
   if (editorwindow)
@@ -1183,6 +1217,8 @@ ipcRenderer.on(REFRESH_NODES, (event, CurrentContent) =>{
   
   importnodes(CurrentContent);
 
+  //selectnodes(selectednodes);
+
   rebuildhierarchy(CurrentContent.content);
 })
 
@@ -1193,7 +1229,7 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   if (openednodes == null){openednodes = [];}
 
   selecteddocid = null;
-  selectednodeid = null;
+  //selectednodeid = null;
   selectednodes = [];
   textchanged = false;
   overrideindex = null;
@@ -1204,12 +1240,12 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   currentdistancetype = CurrentContent.measurementtype;
 
   var editorinitializationdata = {
-    currentdistancetype: currentdistancetype
+    currentdistancetype: currentdistancetype,
+    icons: CurrentContent.availableicons
   };
 
   editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
 
-  console.log(CurrentContent.measurementscale);
 
 
   //Clear nodes/text editor
@@ -1273,7 +1309,7 @@ ipcRenderer.on(CHANGE_MAP, (event, message) => {
 
 ipcRenderer.on(CREATE_NEW_NODE, (event, message) => {
   newdoc = true;
-  console.log(message);
+  //console.log(message);
   mousecreatenode(rightClickPosition.x,rightClickPosition.y,message.id, message.documentref);
 })
 
@@ -1288,13 +1324,17 @@ ipcRenderer.on(DELETE_NODE, (event, message) => {
     selectednodes = [];
   }
   */
-  
+  for (var i in selectednodes)
+  {
+    selectednodes[i].parentNode.removeChild(selectednodes[i]);
+  }
+  /*
   if (selectednodeid == node.getAttribute('node-db-path'))
   {
     selectednodeid = null;
   }
   node.parentNode.removeChild(node);
-  
+  */
   mapdiv.style.pointerEvents = 'auto';
 })
 
@@ -1305,7 +1345,7 @@ ipcRenderer.on(COMPLETE_DOCUMENT_DELETE, (event, message) => {
 
 ipcRenderer.on(MAIN_TO_RENDER_SETFOCUS, (event, message) =>
 {
-  highlightdecider(message, null);
+  //highlightdecider(message);
 })
 
 ipcRenderer.on(TOGGLE_NODE, (event, message) => {
@@ -1401,7 +1441,10 @@ function cleartexteditor()
 /**Loads a document into the text editor, also pulls the splines and renders them. */
 function loadtext(document)
 {
+
+  //console.log(selecteddocid + "--" + document.id);
   lasttext = document.content;
+  //highlightdecider(document.id);
   opentexteditor();
   editor.setHTML(document.content);
 
@@ -1442,7 +1485,68 @@ function loadtext(document)
 
   texteditortitle.innerText = document.name;
   texteditortitle.setAttribute('db-path',document.id);
-  //highlightdecider(document.id, null);
+  
+
+  var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + document.id + '"]');
+  //console.log(highlighteddoc);
+  if (highlighteddoc.hasAttribute("parent-index"))
+  {
+    //console.log("test");
+    if (iterateallparents(parseInt(highlighteddoc.getAttribute("parent-index"))))
+    {
+      //rebuildhierarchy(content);
+      ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
+    }
+  }
+}
+
+function loadtextsoft(document)
+{
+  
+  lasttext = document.content;
+  cleartexteditor();
+  opentexteditor();
+  editor.setHTML(document.content);
+
+  drawings = [];
+  freedrawing = false;
+  isDrawing = false;
+  currentdrawing = 0;
+  overrideindex = null;  
+
+  if (document.drawing != null && document.drawing.length > 0)
+  {
+    for (var i = 0; i < document.drawing.length; i++)
+    {
+      drawings.push(new drawing(document.drawing[i].points, 
+        document.drawing[i].color, 
+        document.drawing[i].width, 
+        document.drawing[i].fillstyle, 
+        document.drawing[i].isfill));
+    }
+  }
+  
+  if (editorwindow)
+  {
+      editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings()); //updates the editor if it exists.
+  }
+
+
+  canvasRender()
+  currentdrawing = drawings.length;
+
+  var buttons = retrievebuttons(); //Gets any doclinks and sets their onclick to select the given documents.
+  for (var i = 0; i < buttons.length; i++)
+  {
+    buttons[i].innerHTML = retrievename(buttons[i].getAttribute('db-path'));
+    
+    buttons[i].setAttribute('onclick', 'hierarchybuttonpressed(' + buttons[i].getAttribute('db-path') + ')')
+  }
+
+  texteditortitle.innerText = document.name;
+  texteditortitle.setAttribute('db-path',document.id);
+  selectionchanged(document.id,null);
+  
 
   var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + document.id + '"]');
   //console.log(highlighteddoc);
@@ -1581,8 +1685,8 @@ function createnode(node)
     deactivatepanning = false
   };
   */
+  console.log(node.tokenurl);
 
-  console.log(node);
   if (node.tokenurl != null)
   {
     img.style.backgroundImage  = "url('" + node.tokenurl + "')";
@@ -1742,34 +1846,72 @@ function rescalenodes(scalepercent)
 /**Rescales the currently selected node by a percent. */
 function rescaleselectednode(scalepercent)
 {
-  if (!selectednodeid){return;}  
-  var nodetoscale = document.querySelector('[node-db-path="' + selectednodeid +'"]');
+  if (selectednodes.length == 0){return;}  
 
-  if (!nodetoscale){return;}
-  if (nodetoscale.getAttribute("locked"))
-  {
-    nodetoscale.style.transform = 'matrix(' + (scalepercent * basenodescalelocked) +', 0, 0, ' + (scalepercent * basenodescalelocked) +', 0, 0)';
-  }
-  else
-  {
-    nodetoscale.style.transform = 'matrix(' + (scalepercent * basenodescaleunlocked) +', 0, 0, ' + (scalepercent * basenodescaleunlocked) +', 0, 0)';
-  }
-
-  nodetoscale.setAttribute("scaled", scalepercent);
-  
   var nodescaledata = {
-    id: selectednodeid,
+    nodes: [],
     scale: scalepercent
   }
+
+  for (var i in selectednodes)
+  {
+    nodescaledata.nodes.push(selectednodes[i].getAttribute('node-db-path'));
+
+    if (selectednodes[i].getAttribute("locked"))
+    {
+      selectednodes[i].style.transform = 'matrix(' + (scalepercent * basenodescalelocked) +', 0, 0, ' + (scalepercent * basenodescalelocked) +', 0, 0)';
+    }
+    else
+    {
+      selectednodes[i].style.transform = 'matrix(' + (scalepercent * basenodescaleunlocked) +', 0, 0, ' + (scalepercent * basenodescaleunlocked) +', 0, 0)';
+    }
+
+    selectednodes[i].setAttribute("scaled", scalepercent);
+  }
+  /*
+    var nodetoscale = document.querySelector('[node-db-path="' + selectednodeid +'"]');
+
+    if (!nodetoscale){return;}
+    if (nodetoscale.getAttribute("locked"))
+    {
+      nodetoscale.style.transform = 'matrix(' + (scalepercent * basenodescalelocked) +', 0, 0, ' + (scalepercent * basenodescalelocked) +', 0, 0)';
+    }
+    else
+    {
+      nodetoscale.style.transform = 'matrix(' + (scalepercent * basenodescaleunlocked) +', 0, 0, ' + (scalepercent * basenodescaleunlocked) +', 0, 0)';
+    }
+
+    nodetoscale.setAttribute("scaled", scalepercent);
+    
+    var nodescaledata = {
+      id: selectednodeid,
+      scale: scalepercent
+    }
+  */
   ipcRenderer.send(SCALE_ONE_NODE, nodescaledata);
 }
 
 /**Sets the selected node back to normal default scale. */
 function resetselectednode()
-{
+{  
   var nodescaledata = {
-    id: selectednodeid,
+    nodes: [],
     scale: null
+  }
+  for (var i in selectednodes)
+  {
+    nodescaledata.nodes.push(selectednodes[i].getAttribute('node-db-path'));
+
+    if (selectednodes[i].locked)
+    {
+      selectednodes[i].style.transform = 'matrix(' + (currentscale * basenodescalelocked) +', 0, 0, ' + (currentscale * basenodescalelocked) +', 0, 0)';
+    }
+    else
+    {
+      selectednodes[i].style.transform = 'matrix(' + (currentscale * basenodescaleunlocked) +', 0, 0, ' + (currentscale * basenodescaleunlocked) +', 0, 0)';
+    }
+
+    selectednodes[i].removeAttribute("scaled");
   }
 
   ipcRenderer.send(SCALE_ONE_NODE, nodescaledata);
@@ -1779,51 +1921,25 @@ function resetselectednode()
 function togglenode(id, locked)
 {
   //console.log(id + "----" + locked);
-  var nodetotoggle = document.querySelector('[node-db-path="' + id +'"]');
-  nodetotoggle.setAttribute("locked", locked)
-
-  var myscale = currentscale;
-  if (nodetotoggle.hasAttribute("scaled")){
-    myscale = nodetotoggle.getAttribute("scaled");
-  }
-
-  if (locked)
+  //var selectednodes[i] = document.querySelector('[node-db-path="' + id +'"]');
+  for (var i in selectednodes)
   {
-    nodetotoggle.style.transform = 'matrix(' + (myscale * basenodescalelocked) +', 0, 0, ' + (myscale * basenodescalelocked) +', 0, 0)';
-  }
-  else
-  {
-    nodetotoggle.style.transform = 'matrix(' + (myscale * basenodescaleunlocked) +', 0, 0, ' + (myscale * basenodescaleunlocked) +', 0, 0)';
-  }
-}
+    selectednodes[i].setAttribute("locked", locked)
 
-/**Pulls data from the database and sets it to the text editor, if this is a new document (as per the newdoc variable) it will set the selection to the title */
-function selectdoc(docpath)
-{
-  if (docpath == null)
-  {
-    //ipcRenderer.send(EDITOR_DESELECT,);
-    return;
-  }
+    var myscale = currentscale;
+    if (selectednodes[i].hasAttribute("scaled")){
+      myscale = selectednodes[i].getAttribute("scaled");
+    }
 
-  ipcRenderer.invoke(REQUEST_DOCUMENT_BYDOC,docpath).then((result) => {
-    if (result != null)
+    if (locked)
     {
-      //console.log(result.content);
-      savetext();
-      loadtext(result);
-
-      if (newdoc)
-      {
-        selectElementContents(texteditortitle);
-        newdoc = false;
-      }
+      selectednodes[i].style.transform = 'matrix(' + (myscale * basenodescalelocked) +', 0, 0, ' + (myscale * basenodescalelocked) +', 0, 0)';
     }
     else
     {
-      console.log("No document attached to node.")
+      selectednodes[i].style.transform = 'matrix(' + (myscale * basenodescaleunlocked) +', 0, 0, ' + (myscale * basenodescaleunlocked) +', 0, 0)';
     }
-  })
+  }
 }
 
 function selectarea()
@@ -1839,11 +1955,32 @@ function selectarea()
   }
 
   var node_els = Array.from(document.querySelectorAll(".node-icon")).filter(el => 
-    parseFloat(el.style.left) > lowcoords.x && 
-    parseFloat(el.style.top) > lowcoords.y &&
-    parseFloat(el.style.left) < highcoords.x &&
-    parseFloat(el.style.top) < highcoords.y);
+    parseFloat(el.style.left) + 32 > lowcoords.x && 
+    parseFloat(el.style.top) + 32  > lowcoords.y &&
+    parseFloat(el.style.left) + 32 < highcoords.x &&
+    parseFloat(el.style.top) + 32 < highcoords.y);
     
+  if (node_els.length == 1 && node_els[0].getAttribute("doc-db-path") != null)
+  {
+      clearDocumentSelection();
+      selectDocument(node_els[0].getAttribute("doc-db-path"));
+      loadDocument();
+      return;
+  }
+  else if (node_els.length == 0)
+  {
+    if (selectednodes.length > 0)
+    {
+      for (var i = 0; i < selectednodes.length; i++)
+      {
+        selectednodes[i].firstChild.classList.remove("node-compass-show");
+        //unhighlight selectednodes[i]
+        
+      }
+    }
+    selectednodes = [];
+    clearDocumentSelection();
+  }
   selectnodes(node_els);  
 }
 
@@ -1868,10 +2005,17 @@ function selectnodes(newnodes)
       //highlight selectednodes[i]
     }
 
-    if (selectednodes.length == 1)
-    {
-      selectionnodechanged(selectednodes[0]);
+    var data = {
+      nodeactive: (selectednodes.length > 0)
     }
+  
+    editorwindow.webContents.send(EDITOR_SELECTION, data); 
+
+    //clearDocumentSelection();
+  }
+  else
+  {
+    //clearDocumentSelection();
   }
 }
 
@@ -1901,18 +2045,13 @@ function gethighest(num1, num2)
 
 /**Same thing as doc but for the node. */
 function selectnode(buttonelmnt)
-{
-  var wipe = [];
-  selectnodes(wipe);
-  buttonelmnt.firstChild.classList.add("node-compass-show");
-  selectednodes.push(buttonelmnt);
-  
+{  
   ipcRenderer.invoke(REQUEST_DOCUMENT_BYNODE, buttonelmnt.getAttribute("node-db-path")).then((result) => {
     if (result != null)
     {
       //console.log(result.content);
       savetext();
-      loadtext(result);
+      loadtextsoft(result);
     }
   })  
 }
@@ -1967,7 +2106,9 @@ function rebuildhierarchy(content)
   }
 
   hierarchylist.innerHTML = newhtml;
-  highlightdecider(selecteddocid, selectednodeid);
+  
+  //clearDocumentSelection()
+  selectDocument(selecteddocid);
 
 
   //Hides anything that is a child and the parent is not opened.
@@ -2183,7 +2324,9 @@ function hierarchybuttonpressed(id)
   {
     if (selecteddocid != id)
     {
-      selectdoc(id);
+      clearDocumentSelection();
+      selectDocument(id)
+      loadDocument();
     }
     var delayInMilliseconds = 500; //1 second
     doubleclick = true;
@@ -2251,34 +2394,99 @@ function retrievename(id)
   return "Document has no name...";
 }
 
-/**Handles highlighting the selected document/node, and it's corrosponding binded document/node if they exist, also unhighlights the last one. */
-function highlightdecider(docid, nodeid)
+
+
+function clearDocumentSelection()
 {
-  if (selectednodeid != null)
+  if (selecteddocid != null)
   {
-    var oldnode = mapdiv.querySelector('*[node-db-path="' + selectednodeid + '"]');
-    var currentcompass = oldnode.firstChild;
-    if (currentcompass != null){currentcompass.classList.remove("node-compass-show");}
+    hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';    
+    selecteddocid = null;
+  }  
+  var data = {
+    docactive: false,
+    nodeactive: (selectednodes.length > 0)
   }
+
+  editorwindow.webContents.send(EDITOR_SELECTION, data); 
+  savetext();
+  cleartexteditor();
+}
+
+function selectDocument(id)
+{
+  if(id == null){return;}
+  selecteddocid = id;
+  hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
+
+  var data = {
+    docactive: true
+  }
+  var foundnode = mapdiv.querySelector('*[doc-db-path="' + selecteddocid + '"]');
+  if(foundnode){
+    selectnodes([foundnode]);
+    panto(foundnode.style.left, foundnode.style.top);
+  }
+  else
+  {
+    selectnodes([]);
+  }
+  
+  var data = {
+    docactive: true,
+    nodeactive: (selectednodes.length > 0)
+  }
+  
+  editorwindow.webContents.send(EDITOR_SELECTION, data);   
+}
+
+/**Pulls data from the database and sets it to the text editor, if this is a new document (as per the newdoc variable) it will set the selection to the title */
+function loadDocument()
+{
+  if (selecteddocid == null)
+  {
+    return;
+  }
+  //console.log(selecteddocid);
+  ipcRenderer.invoke(REQUEST_DOCUMENT_BYDOC, selecteddocid).then((result) => {
+    if (result != null)
+    {
+      loadtext(result);
+
+      if (newdoc)
+      {
+        selectElementContents(texteditortitle);
+        newdoc = false;
+      }
+    }
+    else
+    {
+      console.log("No document attached to node.")
+    }
+  })
+}
+
+
+
+/**Handles highlighting the selected document/node, and it's corrosponding binded document/node if they exist, also unhighlights the last one. */
+/*
+function highlightdecider(docid)
+{
+
   if (selecteddocid != null)
   {
     hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';
+    cleartexteditor();
   }
 
-  selectednodeid = nodeid;
   selecteddocid = docid;
 
-  if (nodeid != null)
-  {
-    highlightnode(nodeid);
-    return;
-  }
   if (docid != null)
   {
     highlightdoc(docid);
     return;
   }
-
+  cleartexteditor();
   selectionchanged(null,null);
 }
 
@@ -2291,8 +2499,10 @@ function highlightdoc(docid)
   if(foundnode){
 
     // HIGHLIGHT NODE ----
-    var currentcompass = foundnode.firstChild;
-    if (currentcompass != null){currentcompass.classList.add("node-compass-show");}
+    selectnodes([foundnode]);
+
+    //var currentcompass = foundnode.firstChild;
+    //if (currentcompass != null){currentcompass.classList.add("node-compass-show");}
 
     panto(foundnode.style.left, foundnode.style.top);
     
@@ -2337,6 +2547,7 @@ function selectionnodechanged(node)
       return;
     }  
   }
+  console.log("test");
 
   var data = {
     docid: node.getAttribute('doc-db-path'),
@@ -2348,29 +2559,31 @@ function selectionnodechanged(node)
     editorwindow.webContents.send(EDITOR_SELECTION, data);
   }  
 }
-
+*/
 /**Handles Final part of setting the selected node/doc ids and sending that information to the toolbox. */
+/*
 function selectionchanged(docid, nodeid)
 {
   var data = {
     docid: docid,
-    nodeid: nodeid,
-    nodeinternalscale: null
+    nodeid: nodeid
+    
   }
 
-  selectednodeid = nodeid;
+  //selectednodeid = nodeid;
   selecteddocid = docid;
-
-  if(nodeid != null)
+  
+  if (selectednodes.length > 0)
   {
-    data.nodeinternalscale = mapdiv.querySelector('*[node-db-path="' + nodeid + '"]').getAttribute("scaled");
+    console.log(selectednodes);
+    data.nodeid = selectednodes;
   }
   
   if (editorwindow){
     editorwindow.webContents.send(EDITOR_SELECTION, data);
   }  
 }
-
+*/
 /**Loads the map on the render thread, probably needs to be moved to the Main thread.*/
 const getFileFromUser = async () => {
   let options = {
@@ -2420,7 +2633,7 @@ const getFileFromUser = async () => {
 function dragNode(buttonelmnt, parentelmnt){
   buttonelmnt.onmousedown = dragMouseDown;
   
-  var mouseorigin, nodelocked = true, softlockdistance;
+  var mouseorigin, nodelocked = true, softlockdistance, selectednodesinfo;
   var scale;
 
   function dragMouseDown(e) {
@@ -2432,15 +2645,25 @@ function dragNode(buttonelmnt, parentelmnt){
     }
     //console.log(buttonelmnt.getAttribute("locked"));
     
+    e.preventDefault();
 
 
     if (buttonelmnt.getAttribute("locked") == "true")
     {
-        selectnode(buttonelmnt);
+      if (buttonelmnt.getAttribute("doc-db-path") != null)
+      {
+        clearDocumentSelection();
+        selectDocument(buttonelmnt.getAttribute("doc-db-path"));
+        loadDocument();
+      }
+      else
+      {
+        selectnodes([buttonelmnt]);
+      }
       return;
     }
-
-    e.preventDefault();
+    
+    selectednodesinfo = [];
 
     mouseorigin = {
       x: (e.clientX - 32),
@@ -2451,7 +2674,6 @@ function dragNode(buttonelmnt, parentelmnt){
 
     if (!scale){scale = currentscale;}
   
-    console.log(scale + "--" + zoom);
     softlockdistance = (32 * scale) * zoom;
 
     document.onmouseup = closeDragElement;
@@ -2508,7 +2730,16 @@ function dragNode(buttonelmnt, parentelmnt){
 
     if (nodelocked)
     {
-      selectnode(buttonelmnt);      
+      if (buttonelmnt.getAttribute("doc-db-path") != null)
+      {
+        clearDocumentSelection();
+        selectDocument(buttonelmnt.getAttribute("doc-db-path"));
+        loadDocument();
+      }
+      else
+      {
+        selectnodes([buttonelmnt]);
+      }
       return;
     }
 

@@ -74,7 +74,7 @@ const {
    SETGLOBAL_CHARGEN,
 } = require('./utils/constants');
 
-var nodepath = "";
+var nodepath = [];
 var docpath = "";
 var extendedcontext = false;
 
@@ -193,8 +193,8 @@ let deleteoptions  = {
   }
 
 let nodedeleteoptions  = {
-   buttons: ["Yes","No", "Cancel"],
-   message: "Do you want to delete the attached document as well?"
+   buttons: ["Documents and Nodes","Just Nodes", "Cancel"],
+   message: "Do you want to delete the attached documents as well?"
 }
 
 contextMenu({
@@ -308,36 +308,39 @@ contextMenu({
             dialog.showMessageBox(null, nodedeleteoptions).then( (data) => {
                if (data.response != 2)
                {
-                  for (var i = 0; i < CurrentContent.content.nodes.length; i++)
+                  for (var o in nodepath)
                   {
-                     if (CurrentContent.content.nodes[i].id == nodepath)
+                     for (var i = 0; i < CurrentContent.content.nodes.length; i++)
                      {
-                        if (data.response == 0 && CurrentContent.content.nodes[i].documentref != "")
+                        if (CurrentContent.content.nodes[i].id == nodepath[o])
                         {
-                           for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
+                           if (data.response == 0 && CurrentContent.content.nodes[i].documentref != "")
                            {
-                              if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
+                              for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
                               {
-                                 if (CurrentContent.content.textEntries[j].childdocuments.length > 0)
+                                 if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
                                  {
-                                    for (var k = 0; k < CurrentContent.content.textEntries[j].childdocuments.length; k++)
+                                    if (CurrentContent.content.textEntries[j].childdocuments.length > 0)
                                     {
-                                       for (var l = 0; l < CurrentContent.content.textEntries.length; l++)
+                                       for (var k = 0; k < CurrentContent.content.textEntries[j].childdocuments.length; k++)
                                        {
-                                          if (CurrentContent.content.textEntries[l].id == CurrentContent.content.textEntries[j].childdocuments[k])
+                                          for (var l = 0; l < CurrentContent.content.textEntries.length; l++)
                                           {
-                                             CurrentContent.content.textEntries[l].parentid = "";
+                                             if (CurrentContent.content.textEntries[l].id == CurrentContent.content.textEntries[j].childdocuments[k])
+                                             {
+                                                CurrentContent.content.textEntries[l].parentid = "";
+                                             }
                                           }
                                        }
                                     }
+                                    CurrentContent.content.textEntries.splice(j, 1);
                                  }
-                                 CurrentContent.content.textEntries.splice(j, 1);
                               }
                            }
-                        }
 
-                        CurrentContent.content.nodes.splice(i, 1);
-                        break;
+                           CurrentContent.content.nodes.splice(i, 1);
+                           break;
+                        }
                      }
                   }
 
@@ -361,13 +364,16 @@ contextMenu({
          click: () => {
             var locked = false;
 
-            for (var i = 0; i < CurrentContent.content.nodes.length; i++)
+            for (var j in nodepath)
             {
-               if (CurrentContent.content.nodes[i].id == nodepath)
+               for (var i = 0; i < CurrentContent.content.nodes.length; i++)
                {
-                  CurrentContent.content.nodes[i].locked = !CurrentContent.content.nodes[i].locked;
-                  locked = CurrentContent.content.nodes[i].locked;
-                  break;
+                  if (CurrentContent.content.nodes[i].id == nodepath[j])
+                  {
+                     CurrentContent.content.nodes[i].locked = !CurrentContent.content.nodes[i].locked;
+                     locked = CurrentContent.content.nodes[i].locked;
+                     break;
+                  }
                }
             }
 
@@ -405,7 +411,7 @@ contextMenu({
                   continue;
                }
 
-               if (CurrentContent.content.nodes[i].id == nodepath)
+               if (CurrentContent.content.nodes[i].id == nodepath[0])
                {
                   CurrentContent.content.nodes[i].documentref = docpath;
                   count = count + 1;
@@ -429,7 +435,7 @@ function iscurrentdoc()
 {
    for (var i = 0; i < CurrentContent.content.nodes.length; i++)
    {
-      if (CurrentContent.content.nodes[i].id == nodepath)
+      if (CurrentContent.content.nodes[i].id == nodepath[0])
       {
          if (CurrentContent.content.nodes[i].documentref == docpath)
          {
@@ -886,15 +892,16 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
 });
 
 ipcMain.on(REQUEST_EXTENDED_NODE_CONTEXT, function(event, data) {
-   nodepath = data.nodeid;
+   nodepath = data.nodes;
    docpath = data.docid;
    extendedcontext = true;
    nodemenu = true;
    notonmap = false;
+   //data.nodes = selectednodeids
 })
 
-ipcMain.on(REQUEST_NODE_CONTEXT, function(event, message) {
-   nodepath = message;
+ipcMain.on(REQUEST_NODE_CONTEXT, function(event, data) {
+   nodepath = data.nodes;
    extendedcontext = false;
    nodemenu = true;
    notonmap = false;
@@ -931,11 +938,16 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
 });
 
 ipcMain.on(CHANGE_NODE_ICON, function(event, data) {
-   for (var i in CurrentContent.content.nodes) {
-      if (CurrentContent.content.nodes[i].id == data.node) {
-         CurrentContent.content.nodes[i].tokenurl = data.url;
-         dirtyproject = true;
-         return; //Stop this loop, we found it!
+   for (var n in data.nodes)
+   {
+      for (var i in CurrentContent.content.nodes) {
+         if (CurrentContent.content.nodes[i].id == data.nodes[n]) {
+            //console.log(CurrentContent.content.nodes[i].tokenurl + "---" + data.url)
+            CurrentContent.content.nodes[i].tokenurl = data.url;
+            
+            dirtyproject = true;
+            break; //Stop this loop, we found it!
+         }
       }
    }
 })
@@ -946,20 +958,24 @@ ipcMain.on(SCALE_ALL_NODES, function(event, scale) {
 })
 
 ipcMain.on(SCALE_ONE_NODE, function(event, data) {
-   for (var i in CurrentContent.content.nodes) {
-      if (CurrentContent.content.nodes[i].id == data.id) {
-         
-         CurrentContent.content.nodes[i].individualnodescale = data.scale;
-         dirtyproject = true;
-         return; //Stop this loop, we found it!
+   for (var n in data.nodes)
+   {
+      for (var i in CurrentContent.content.nodes) {
+         if (CurrentContent.content.nodes[i].id == data.nodes[n]) {
+            
+            CurrentContent.content.nodes[i].individualnodescale = data.scale;
+            dirtyproject = true;
+            break; //Stop this loop, we found it!
+         }
       }
-    }
+   }
+   //win.webContents.send(REFRESH_NODES, CurrentContent);
 })
-
+/*
 ipcMain.on(CLEAR_NODE_SCALE, function(event, data) {
    win.webContents.send(REFRESH_NODES, CurrentContent);
 })
-
+*/
 /** ---------------------------   TITLE BAR IPCS   ----------------------------- */
 
 ipcMain.on(TITLEBAR_NEWPROJECT, function(event) {
@@ -1047,8 +1063,9 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
    CurrentContent.availableicons = message;
    var editorinitializationdata = {
       icons: CurrentContent.availableicons
-    };
+   };
    editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
+   dirtyproject = true;
 })
 
 /** ---------------------------   Document editor functions   ----------------------------- */
@@ -1105,6 +1122,7 @@ Databasetemplate.fromjson = function(json)
    db.backgroundurl = data.backgroundurl;
    db.name = data.name;
    db.nodescale = data.nodescale;
+   
    db.availableicons = data.availableicons;
    db.opendocs = data.opendocs;
    db.measurementscale = data.measurementscale;
@@ -1127,6 +1145,8 @@ Databasetemplate.fromjson = function(json)
       './images/Tokens/Cave.png'
    ];}
 
+   //console.log(db.availableicons+"---"+data.availableicons)
+
 
    data.content.textEntries.forEach(jsondoc => {
       var newdoc = new DatabaseTextentry();
@@ -1148,11 +1168,12 @@ Databasetemplate.fromjson = function(json)
       newnode.individualnodescale = jsonnode.individualnodescale;
       newnode.tokenurl = jsonnode.tokenurl;
       
-      console.log(db.availableicons);
-      console.log(newnode.tokenurl);
+      //console.log(db.availableicons);
+      //console.log(newnode.tokenurl);
       //backwards compatible
-      if (newnode.tokenurl == null || !db.availableicons.includes(newnode.tokenurl)){newnode.tokenurl = db.availableicons[0];}
+      if (newnode.tokenurl == null){newnode.tokenurl = db.availableicons[0];}
 
+      
       db.content.nodes.push(newnode);
       //console.log(newnode);
    });
