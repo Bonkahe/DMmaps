@@ -36,6 +36,9 @@
   height: 20px;
   z-index: 12;
   white-space: nowrap;
+  border-width: 0 0 0 0;
+  border-style: solid;
+  border-color: rgb(125, 128, 128);
   }
   
   .option {

@@ -2,7 +2,7 @@
 
 class Databasetemplate {
     constructor() {
-        this.versionnumber = 0.1;
+        this.versionnumber = 0.2;
         this.__type = "Databasetemplate";
         this.projecturl = "";
         this.name = "Default Database";
@@ -42,6 +42,7 @@ class DatabaseNodeentry {
         this.nodetoken;
     }
 }
+
 class DatabaseTextentry {
     constructor() {
         this.parentid = "";
@@ -78,6 +79,7 @@ module.exports = {
     CLEAR_NODE_SCALE: 'clear-node-scale',
     REQUEST_DOCUMENT_BYNODE: 'request-document-bynode',
     REQUEST_DOCUMENT_BYDOC: 'request-document-bydoc',
+    SELECT_DOCUMENT: 'select-document',
     SAVE_DOCUMENT: 'save-document',
     NEW_DOCUMENT: 'new-document',
     CHILD_DOCUMENT: 'child-document',

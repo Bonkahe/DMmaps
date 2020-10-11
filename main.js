@@ -46,6 +46,7 @@ const {
    SAVE_DOCUMENT,
    NEW_DOCUMENT,
    CHILD_DOCUMENT,
+   SELECT_DOCUMENT,
    MAIN_TO_RENDER_SETFOCUS,
    REMOVE_PARENT_DOCUMENT,
    DELETE_DOCUMENT,
@@ -73,10 +74,12 @@ const {
    DatabaseTextentry,
    SETGLOBAL_CHARGEN,
 } = require('./utils/constants');
+const { dir } = require('console');
 
 var nodepath = [];
 var docpath = "";
 var extendedcontext = false;
+var docselected = false;
 
 var nodemenu = false;
 var notonmap = false;
@@ -121,6 +124,10 @@ function createWindow() {
          });
          if (choice === 1) {
          e.preventDefault();
+         }
+         else
+         {
+            cleanproject();
          }
       }
    });
@@ -197,6 +204,47 @@ let nodedeleteoptions  = {
    message: "Do you want to delete the attached documents as well?"
 }
 
+let backupoptions  = {
+   buttons: ["Attempt project recovery.","Continue"],
+   message: "DMmaps closed unexpectedly last time, would you like to recover your project?"
+}
+
+function checkbackup()
+{
+   if (fs.existsSync(path.join( app.getAppPath(), '/backup.dmdb' ))) {
+      dialog.showMessageBox(null, backupoptions).then( (data) => {
+         if (data.response == 0) // load backup
+         {
+            fs.readFile(path.join( app.getAppPath(), '/backup.dmdb' ), 'utf-8', (err, data) => {
+               if(err){
+                  console.log("An error ocurred reading the file :" + err.message);
+                   return;
+               }
+               Databasetemplate.fromjson(data);
+               //CurrentContent.projecturl = filename.filePaths[0];
+               updaterenderer();
+               updateproject();
+            }); 
+         }
+         else // delete backup
+         {
+            fs.unlink(path.join( app.getAppPath(), '/backup.dmdb' ), (err) => {
+               if (err) {
+                  //alert("An error ocurred updating the file" + err.message);
+                  console.log(err);
+                  return;
+               }
+               //console.log("File succesfully deleted");
+            });
+         }
+      });
+   } 
+   else {
+      //alert("This file doesn't exist, cannot delete");
+      console.log("File doesn't exist.");
+   }
+}
+
 contextMenu({
 	prepend: (defaultActions, params, browserWindow) => [
       /*
@@ -218,6 +266,14 @@ contextMenu({
          label: 'Measure Mode',
          click: () => {
             win.webContents.send(SET_MOUSEMODE,1);
+            //win.webContents.send(CHANGE_MAP , );
+         }
+      },
+      {
+         label: 'Spline Mode',
+         visible: docselected,
+         click: () => {
+            win.webContents.send(SET_MOUSEMODE,2);
             //win.webContents.send(CHANGE_MAP , );
          }
       },
@@ -287,7 +343,7 @@ contextMenu({
             //console.log(newnode);
 
             win.webContents.send(CREATE_NEW_NODE , newnode);
-            dirtyproject = true;
+            updateproject();
          }
       },
       {
@@ -347,7 +403,7 @@ contextMenu({
                   win.webContents.send(DELETE_NODE, nodepath);
 
                   win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-                  dirtyproject = true;
+                  updateproject();
                }
              });
             /*
@@ -407,7 +463,7 @@ contextMenu({
                {
                   CurrentContent.content.nodes[i].documentref = "";
                   count = count + 1;
-                  dirtyproject = true;
+                  updateproject();
                   continue;
                }
 
@@ -415,7 +471,7 @@ contextMenu({
                {
                   CurrentContent.content.nodes[i].documentref = docpath;
                   count = count + 1;
-                  dirtyproject = true;
+                  updateproject();
                   continue;
                }
                
@@ -586,7 +642,7 @@ const saveasproject = async () => {
              return;
          }
 
-         dirtyproject = false;
+         cleanproject();
          win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
          win.webContents.send(NOTIFY_UPDATECOMPLETE, "gottem");
       }); 
@@ -597,6 +653,38 @@ const saveasproject = async () => {
 function updaterenderer()
 {
    win.webContents.send(PROJECT_INITIALIZED , CurrentContent);
+}
+
+function updateproject()
+{
+   dirtyproject = true;
+   
+   fs.writeFile(path.join( app.getAppPath(), '/backup.dmdb' ), JSON.stringify(CurrentContent, null, 2), (err) => {
+      if(err){
+          console.log("An error ocurred creating the file "+ err.message)
+          return;
+      }
+      //console.log("File succesfully created")
+   });
+}
+
+function cleanproject()
+{
+   dirtyproject = false;
+
+   if (fs.existsSync(path.join( app.getAppPath(), '/backup.dmdb' ))) {
+      fs.unlink(path.join( app.getAppPath(), '/backup.dmdb' ), (err) => {
+          if (err) {
+              //alert("An error ocurred updating the file" + err.message);
+              console.log(err);
+              return;
+          }
+          //console.log("File succesfully deleted");
+      });
+  } else {
+      //alert("This file doesn't exist, cannot delete");
+      //console.log("File doesn't exist.");
+  }
 }
 
 ipcMain.handle(REQUEST_DOCUMENT_BYDOC, async (event, docid) =>
@@ -680,7 +768,7 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
             //console.log(document.drawing);
 
             win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-            dirtyproject = true;
+            updateproject();
             
             return true;
          }
@@ -693,7 +781,7 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
 ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) =>
 {
    CurrentContent.backgroundurl = mappath;
-   dirtyproject = true;
+   updateproject();
    return true;
 })
 
@@ -715,7 +803,7 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
       if(err){
           console.log("An error ocurred creating the file "+ err.message)
       }
-      dirtyproject = false;
+      cleanproject();
       win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
       console.log("The file has been succesfully saved");
 
@@ -759,13 +847,67 @@ ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
 
    CurrentContent.content.textEntries.push(newdoc);
    win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-   dirtyproject = true;
+   updateproject();
 });
 
 ipcMain.on(CHILD_DOCUMENT, function(event, data) 
 {
-   setchild(data);
+   if (data.delta < 5)
+   {
+      reorder(CurrentContent.content.textEntries, getlocation(data.child), getlocation(data.parent))
+      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+      updateproject();
+      //setupperchild(data);
+   }
+   else if (data.delta > 15)
+   {
+      reorder(CurrentContent.content.textEntries, getlocation(data.child), getlocation(data.parent) + 1)
+      //setupperchild(data);
+      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+      updateproject();
+   }
+   else
+   {
+      setchild(data);
+   }
 });
+
+function getlocation(id)
+{
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == id)
+      {
+         return i;
+      }
+   }
+}
+
+function reorder(input, from, to) {
+   let numberOfDeletedElm = 1;
+   if (from < to){
+      to -= 1;
+      if (to < 0){to = 0;}
+   }
+ 
+   const elm = input.splice(from, numberOfDeletedElm)[0];
+ 
+   numberOfDeletedElm = 0;
+ 
+   input.splice(to, numberOfDeletedElm, elm);
+ }
+
+function setupperchild(data)
+{
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == data.parent)
+      {
+         data.parent = CurrentContent.content.textEntries[i].parentid;
+         setchild(data);
+      }
+   }
+}
 
 function setchild(data)
 {
@@ -819,7 +961,7 @@ function setchild(data)
    }   
 
    win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-   dirtyproject = true;
+   updateproject();
 }
 
 ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
@@ -844,7 +986,7 @@ ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
    }   
 
    win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-   dirtyproject = true;
+   updateproject();
 });
 
 ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
@@ -891,6 +1033,10 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
    
 });
 
+ipcMain.on(SELECT_DOCUMENT, function(event, value) {
+   docselected = value;
+})
+
 ipcMain.on(REQUEST_EXTENDED_NODE_CONTEXT, function(event, data) {
    nodepath = data.nodes;
    docpath = data.docid;
@@ -931,7 +1077,7 @@ ipcMain.on(VERIFY_NODE, function(event, data) {
          }
         
          win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-         dirtyproject = true;
+         updateproject();
          return; //Stop this loop, we found it!
       }
     }
@@ -945,7 +1091,7 @@ ipcMain.on(CHANGE_NODE_ICON, function(event, data) {
             //console.log(CurrentContent.content.nodes[i].tokenurl + "---" + data.url)
             CurrentContent.content.nodes[i].tokenurl = data.url;
             
-            dirtyproject = true;
+            updateproject();
             break; //Stop this loop, we found it!
          }
       }
@@ -954,7 +1100,7 @@ ipcMain.on(CHANGE_NODE_ICON, function(event, data) {
 
 ipcMain.on(SCALE_ALL_NODES, function(event, scale) {
    CurrentContent.nodescale = scale;
-   dirtyproject = true;
+   updateproject();
 })
 
 ipcMain.on(SCALE_ONE_NODE, function(event, data) {
@@ -964,7 +1110,7 @@ ipcMain.on(SCALE_ONE_NODE, function(event, data) {
          if (CurrentContent.content.nodes[i].id == data.nodes[n]) {
             
             CurrentContent.content.nodes[i].individualnodescale = data.scale;
-            dirtyproject = true;
+            updateproject();
             break; //Stop this loop, we found it!
          }
       }
@@ -1034,7 +1180,7 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
 ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event, message) {
    CurrentContent.opendocs = message;   
    win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-   dirtyproject = true;
+   updateproject();
 });
 
 
@@ -1048,7 +1194,7 @@ ipcMain.on(EDITOR_MEASUREMENTSETTINGS, function(event, message) {
    {
       CurrentContent.measurementscale = message.length;
       CurrentContent.measurementtype = message.type;
-      dirtyproject = true;
+      updateproject();
    }
    else
    {
@@ -1065,7 +1211,7 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
       icons: CurrentContent.availableicons
    };
    editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
-   dirtyproject = true;
+   updateproject();
 })
 
 /** ---------------------------   Document editor functions   ----------------------------- */
@@ -1144,6 +1290,12 @@ Databasetemplate.fromjson = function(json)
       './images/Tokens/Flag.png',
       './images/Tokens/Cave.png'
    ];}
+
+   
+   if (data.versionnumber == 0.1)
+   {
+      data.opendocs = [];
+   }
 
    //console.log(db.availableicons+"---"+data.availableicons)
 
@@ -1253,5 +1405,6 @@ ipcMain.on('app_version', (event) => {
 
 app.on('ready', () => {
    autoUpdater.checkForUpdatesAndNotify();
+   checkbackup();
 })
 app.on('ready', createWindow)

@@ -33,6 +33,7 @@ const {
   REQUEST_DOCUMENT_BYDOC,
   SAVE_DOCUMENT,
   NEW_DOCUMENT,
+  SELECT_DOCUMENT,
   MAIN_TO_RENDER_SETFOCUS,
   CHILD_DOCUMENT,
   REMOVE_PARENT_DOCUMENT,
@@ -622,7 +623,7 @@ canvas.addEventListener('mousedown', e => {
     }    
   }
 
-  if (e.which != 1 || selecteddocid === null || alloweddrawing === false || overrideindex != null) { return;}
+  if (e.which != 1 || selecteddocid === null || overrideindex != null) { return;}
 
   var coords = convertworldtodoccords(e.pageX,e.pageY);
 
@@ -738,7 +739,7 @@ function renderMeasurement()
   canvascontext.strokeStyle = '#1a1a1a';
   
   canvascontext.beginPath();
-  canvascontext.lineWidth = 10;
+  canvascontext.lineWidth = 10 * (1 / zoom);
   canvascontext.moveTo(measurement.points[0].x, measurement.points[0].y);
   var totaldistance = 0;
   if ( measurement.points.length > 0)
@@ -788,7 +789,7 @@ function writeText(distance, x1,y1,x2,y2)
   canvascontext.textAlign = "center";
   canvascontext.textBaseline = "middle";
   canvascontext.translate((x1 + x2) / 2, (y1 + y2) / 2 - 25);
-  canvascontext.font = 'bold 30pt Ariel';
+  canvascontext.font = 'bold ' + (30 * (1 / zoom)) +'pt Ariel';
   canvascontext.rotate(angleDeg * Math.PI / 180);
   canvascontext.lineWidth = 5;
   canvascontext.strokeText(label, 0, 0);
@@ -1114,12 +1115,14 @@ ipcRenderer.on(CHANGE_NODE_ICON, (event, data) =>{
 })
 
 ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
+  /*
   if (data.alloweddrawing != null){ 
     alloweddrawing = data.alloweddrawing;
     if (!alloweddrawing && isDrawing){
       finishdrawing();
     }
   }
+  */
   if (data.currentcolor != null){currentcolor = data.currentcolor;}
   if (data.currentwidth != null){currentwidth = (data.currentwidth);}
   if (data.currentisfill != null){currentisfill = data.currentisfill;}
@@ -1286,12 +1289,18 @@ ipcRenderer.on(SET_MOUSEMODE, (event, message) =>{
   mousemode = message;
   if (mousemode != 1 && measurement.render)
   {
-    measurement.render = false;
+    measurement.render = false;    
+    if (isDrawing){finishdrawing();}
     canvasRender();
   }
   if (mousemode == 1)
   {
     document.getElementById("cursorcontrol").style.cursor = "url(images/CursorMeasuringtool.png), help  ";
+    if (isDrawing){finishdrawing();}
+  }
+  else if (mousemode == 2)
+  {
+    document.getElementById("cursorcontrol").style.cursor = "url(images/CursorSpline.png), help  ";
   }
   else
   {
@@ -1435,6 +1444,7 @@ function cleartexteditor()
   editor.setText('')
   texteditortitle.innerText = null;
   texteditortitle.setAttribute('db-path',null);
+  ipcRenderer.send(SELECT_DOCUMENT, false);
 }
 
 
@@ -1492,12 +1502,13 @@ function loadtext(document)
   if (highlighteddoc.hasAttribute("parent-index"))
   {
     //console.log("test");
-    if (iterateallparents(parseInt(highlighteddoc.getAttribute("parent-index"))))
+    if (iterateallparents(parseFloat(highlighteddoc.getAttribute("parent-index"))))
     {
       //rebuildhierarchy(content);
       ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
     }
   }
+  ipcRenderer.send(SELECT_DOCUMENT, true);
 }
 
 function loadtextsoft(document)
@@ -1553,7 +1564,7 @@ function loadtextsoft(document)
   if (highlighteddoc.hasAttribute("parent-index"))
   {
     //console.log("test");
-    if (iterateallparents(parseInt(highlighteddoc.getAttribute("parent-index"))))
+    if (iterateallparents(parseFloat(highlighteddoc.getAttribute("parent-index"))))
     {
       //rebuildhierarchy(content);
       ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
@@ -1581,6 +1592,7 @@ function savetext (callback)
   newdoc.content = editor.getHTML();
 
   newdoc.drawing = getexportabledrawings().drawings;
+  
   lasttext = newdoc.content;
   textchanged = false;
 
@@ -2084,26 +2096,28 @@ function rebuildhierarchy(content)
     var textinsert = '';
     if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
     {
-      if (openednodes.includes(i))
+      if (openednodes.includes(textEntries[i].id))
       {
-        textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + i + ")'></div>";
+        textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + textEntries[i].id + ")'></div>";
       }
       else
       {
-        textinsert = "<div class='hierarchylist-open sub-tiles' onclick='openchildren(event," + i + ")'></div>";
+        textinsert = "<div class='hierarchylist-open sub-tiles' onclick='openchildren(event," + textEntries[i].id + ")'></div>";
       }
     }
     
-    newhtml = newhtml + '<li class="item" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" this-index="' + i + '" Db-Path="' + textEntries[i].id + '" onclick="hierarchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + textinsert + '</li>';
+    newhtml = newhtml + '<li class="item" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragleave="leave(event)" ondragover="allowDrop(event)" this-index="' + textEntries[i].id + '" Db-Path="' + textEntries[i].id + '" onclick="hierarchybuttonpressed(' + textEntries[i].id + ')">' +  textEntries[i].name + textinsert + '</li>';
 
     if (textEntries[i].childdocuments != null && textEntries[i].childdocuments.length > 0)
     {
-      builddocs(textEntries, textEntries[i].childdocuments, i);
+      builddocs(textEntries, textEntries[i].childdocuments, textEntries[i].id);
     }
 
     column = 0;
     //newhtml = newhtml + '</li>';
   }
+
+  //console.log(openednodes);
 
   hierarchylist.innerHTML = newhtml;
   
@@ -2114,7 +2128,7 @@ function rebuildhierarchy(content)
   //Hides anything that is a child and the parent is not opened.
   var x = hierarchylist.getElementsByClassName("itemchildren");
   for (var i = 0; i < x.length; i++) {
-    if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseInt(x[i].getAttribute("parent-index"))))
+    if (x[i].hasAttribute("parent-index") && !openednodes.includes(parseFloat(x[i].getAttribute("parent-index"))))
     {
       x[i].style.display = "none";
       row--;
@@ -2159,19 +2173,43 @@ function hidechildren(parentid, x)
     }
   }
 }
+
 */
+function checkcontents(input, id)
+{
+  for (var i in input)
+  {
+    if (input[i] == id){return true;}
+  }
+  return false;
+}
+
 /**Loops through all children recursively building the html up further as it goes with the new li. */
 function builddocs(textEntries, childEntries, parentindex)
 {
   column = column + 1;
   columnrowcount.push(row);
+  var newchildren = [];
 
-  for (var i = 0; i < childEntries.length; i++)
-  {   
+  for(var i in childEntries)
+  {
+    var tempindex = textEntries.findIndex(x => x.id === parseFloat(childEntries[i]));
+    if (tempindex > -1)
+    {      
+      newchildren.push(
+        {index: tempindex,
+         child: parseFloat(childEntries[i])});
+    }
+  }
+  newchildren.sort(function(a, b) {
+    return ((a.index < b.index) ? -1 : ((a.index == b.index) ? 0 : 1));
+  });
 
+  for (var i in newchildren)
+  {
     for (var j = 0; j < textEntries.length; j++)
     {
-      if (textEntries[j].id != childEntries[i])
+      if (j != newchildren[i].index)
       {
         continue;
       }
@@ -2182,26 +2220,28 @@ function builddocs(textEntries, childEntries, parentindex)
       var thisindex = '';
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
-        thisindex = 'this-index="' + j + '"';
-        if (openednodes.includes(j))
+        thisindex = 'this-index="' + textEntries[j].id + '"';
+        if (openednodes.includes(textEntries[j].id))
         {
-          textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + j + ")'></div>";
+          textinsert = "<div class='hierarchylist-close sub-tiles' onclick='closechildren(this,event," + textEntries[j].id + ")'></div>";
         }
         else
         {
-          textinsert = "<div class='hierarchylist-open sub-tiles' onclick='openchildren(event," + j + ")'></div>";
+          textinsert = "<div class='hierarchylist-open sub-tiles' onclick='openchildren(event," + textEntries[j].id + ")'></div>";
         }
       }
 
-      newhtml = newhtml + '<li class="item itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragover="allowDrop(event)" ' + thisindex + ' parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hierarchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
+      newhtml = newhtml + '<li class="item itemchildren" draggable="true" ondragstart="drag(event)" ondrop="drop(event)" ondragleave="leave(event)" ondragover="allowDrop(event)"  ' + thisindex + ' parent-index="'+ parentindex + '" Db-Path="' + textEntries[j].id + '" onclick="hierarchybuttonpressed(' + textEntries[j].id + ')" style="margin-left: ' + ((column * columnwidth) + 10) + 'px;">' +  textEntries[j].name + textinsert + '</li>';
 
       if (textEntries[j].childdocuments != null && textEntries[j].childdocuments.length > 0)
       {
-        builddocs(textEntries, textEntries[j].childdocuments, j)
+        builddocs(textEntries, textEntries[j].childdocuments, textEntries[j].id)
       }
-      break;
+      
+      break;      
     }
   }
+  
   //console.log(childEntries.length);
   column = column - 1;
   columnrowcount.pop();
@@ -2235,7 +2275,7 @@ function openchildren(event, i)
 {
   event.stopPropagation();
   openednodes.push(i);
-  console.log(openednodes);
+  //console.log(i);
   //refresh hierarchy
   ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
 }
@@ -2243,11 +2283,12 @@ function openchildren(event, i)
 function closechildren(element, event, i)
 {
   event.stopPropagation();
+  //console.log(i + " --- " + openednodes);
   const index = openednodes.indexOf(i);
   if (index > -1) {
     openednodes.splice(index, 1);
   }
-  iterateallchildren(i);
+  iterateallchildren(i); 
   //refresh hierarchy
   ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
 }
@@ -2257,15 +2298,15 @@ function iterateallchildren(index)
 {
   var x = hierarchylist.getElementsByClassName("itemchildren");
   for (var i = 0; i < x.length; i++) {
-    if (x[i].hasAttribute("parent-index") && parseInt(x[i].getAttribute("parent-index")) == index)
+    if (x[i].hasAttribute("parent-index") && parseFloat(x[i].getAttribute("parent-index")) == index)
     {
       if (x[i].hasAttribute("this-index"))
       {
-        const index = openednodes.indexOf(parseInt(x[i].getAttribute("this-index")));
+        const index = openednodes.indexOf(parseFloat(x[i].getAttribute("this-index")));
         if (index > -1) {
           openednodes.splice(index, 1);
         }
-        iterateallchildren(parseInt(x[i].getAttribute("this-index")));
+        iterateallchildren(parseFloat(x[i].getAttribute("this-index")));
       }
     }
   }
@@ -2276,17 +2317,17 @@ function iterateallparents(index)
   var thisreturn = false;
   var x = hierarchylist.getElementsByClassName("item");
   for (var i = 0; i < x.length; i++) {
-    if (x[i].hasAttribute("this-index") && parseInt(x[i].getAttribute("this-index")) == index)
+    if (x[i].hasAttribute("this-index") && parseFloat(x[i].getAttribute("this-index")) == index)
     {
-      const index = openednodes.indexOf(parseInt(x[i].getAttribute("this-index")));
+      const index = openednodes.indexOf(parseFloat(x[i].getAttribute("this-index")));
       if (index == -1) {
-        openednodes.push(parseInt(x[i].getAttribute("this-index")));
+        openednodes.push(parseFloat(x[i].getAttribute("this-index")));
         thisreturn = true;
       }
 
       if (x[i].hasAttribute("parent-index"))
       {
-        if (iterateallparents(parseInt(x[i].getAttribute("parent-index"))))
+        if (iterateallparents(parseFloat(x[i].getAttribute("parent-index"))))
         {
           thisreturn = true;
         }
@@ -2338,7 +2379,29 @@ function hierarchybuttonpressed(id)
 
 //Should handle dragging and dropping for the remove parent bar on the left, as well as document links within text.
 function allowDrop(ev) {
+  var delta = ev.clientY - ev.target.getBoundingClientRect().top;
+  if (delta < 5)
+  {
+    ev.target.style.borderWidth  = "3px 0 0 0";
+    ev.target.style.backgroundColor = "";
+  }
+  else if(delta > 15)
+  {
+    ev.target.style.borderWidth  = "0 0 3px 0";
+    ev.target.style.backgroundColor = "";
+  }
+  else
+  {
+    ev.target.style.backgroundColor = "rgb(125, 128, 128)";
+    ev.target.style.borderWidth  = "0 0 0 0";
+  }
+  
   ev.preventDefault();
+}
+
+function leave(ev) {
+  ev.target.style.backgroundColor = "";
+  ev.target.style.borderWidth  = "0 0 0 0";
 }
 
 function drag(ev) {
@@ -2347,9 +2410,13 @@ function drag(ev) {
 
 function drop(ev) {
   ev.preventDefault();
+  ev.target.style.backgroundColor = "";
+  ev.target.style.borderWidth  = "0 0 0 0";
+
   var data = {
-    child: ev.dataTransfer.getData("Db-Path"),
-    parent: ev.target.getAttribute("Db-Path")
+    child: parseFloat(ev.dataTransfer.getData("Db-Path")),
+    parent: parseFloat(ev.target.getAttribute("Db-Path")),
+    delta: ev.clientY - ev.target.getBoundingClientRect().top
   }
 
   if (data.child != data.parent)
@@ -2403,6 +2470,7 @@ function clearDocumentSelection()
     hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';    
     selecteddocid = null;
   }  
+
   var data = {
     docactive: false,
     nodeactive: (selectednodes.length > 0)
@@ -2411,6 +2479,12 @@ function clearDocumentSelection()
   editorwindow.webContents.send(EDITOR_SELECTION, data); 
   savetext();
   cleartexteditor();
+
+  drawings = [];
+  freedrawing = false;
+  isDrawing = false;
+  currentdrawing = 0;
+  overrideindex = null;  
 }
 
 function selectDocument(id)

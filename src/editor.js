@@ -64,7 +64,7 @@ var nodescaleclearbtn = document.getElementById('clearbtn');
 
 var splinelist = document.getElementById('drawinglist');
 
-var allowdrawingBtn = document.getElementById('allowdrawingbtn');
+//var allowdrawingBtn = document.getElementById('allowdrawingbtn');
 var splinewidthRange = document.getElementById('Splinewidth');
 var splinecolorSelector = document.getElementById('splinecolorbtn');
 var enablefillBtn = document.getElementById('enablefillbtn');
@@ -72,7 +72,7 @@ var fillcolorSelector = document.getElementById('bgcolorbtn');
 var deletesplineBtn = document.getElementById('deletebtn');
 
 var initialdata = {
-    alloweddrawing: allowdrawingBtn.checked,
+    //alloweddrawing: allowdrawingBtn.checked,
     currentcolor: splinecolorSelector.value,
     currentwidth: splinewidthRange.value,
     currentisfill: enablefillBtn.checked,
@@ -262,13 +262,13 @@ nodescaleclearbtn.addEventListener(
 )
 
 
-
+/*
 allowdrawingBtn.addEventListener(
     'input',
     function() { allowdrawingChange(this); },
     false
 );
-
+*/
 splinewidthRange.addEventListener(
     'input',
     function() { splinewidthChange(Math.exp((Math.log(1000)/100) * this.value)); },
@@ -333,7 +333,7 @@ function nodescaleclear()
 function allowdrawingChange(e)
 {
     var data = {
-        alloweddrawing: e.checked
+        //alloweddrawing: e.checked
     }
     senddata(data);
 }
@@ -423,7 +423,7 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
 
 
 ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
-    allowdrawingBtn.checked = false;
+    //allowdrawingBtn.checked = false;
     if (data.docactive)
     {
         setzoneisplayactive();
@@ -455,7 +455,7 @@ ipcRenderer.on(EDITOR_SELECTION, (event, data) => {
 function updanodeiconclickedatus()
 {
     var senddata = {
-        alloweddrawing: allowdrawingBtn.checked,
+        //alloweddrawing: allowdrawingBtn.checked,
         currentcolor: splinecolorSelector.value,
         currentwidth: splinewidthRange.value,
         currentisfill: enablefillBtn.checked,
@@ -488,7 +488,7 @@ function rebuildsplinelist(splineentries){
 
 function splinebuttonpressed(index)
 {
-    allowdrawingBtn.checked = false;
+    //allowdrawingBtn.checked = false;
     splinewidthRange.value = currentsplines[index].width;
     splinecolorSelector.jscolor.fromString(currentsplines[index].color);
     enablefillBtn.checked = currentsplines[index].isfill;
@@ -502,7 +502,7 @@ function splinebuttonpressed(index)
     primarywindow.webContents.send (EDITOR_SET_OVERRIDEINDEX, index);
 
     var newdata = {
-        alloweddrawing: allowdrawingBtn.checked,
+        //alloweddrawing: allowdrawingBtn.checked,
         currentcolor: splinecolorSelector.value,
         currentwidth: splinewidthRange.value,
         currentisfill: enablefillBtn.checked,
