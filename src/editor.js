@@ -80,7 +80,7 @@ var initialdata = {
 }
 
 var nodetokenlist = [];
-var nodeiconholder = document.getElementById('nodeiconholder');
+//var nodeiconholder = document.getElementById('nodeiconholder');
 var nodeiconlist = document.getElementById('nodeicons');
 
 var files = []
@@ -92,9 +92,29 @@ function initializeicons(){
     for (var i = 0; i < files.length; i++)
     {
         files[i] = files[i].replace(/\\/g,"/");
-        var li = document.createElement('li');
-        li.innerHTML = '<img src="' + files[i] +'"> ' + (files[i].substring(files[i].lastIndexOf('/')+1)).split('.').slice(0, -1).join('.');
-        li.setAttribute( 'onclick', 'nodeiconclicked("' + files[i] + '")');
+        var li = document.createElement('div');
+        var imgli = document.createElement('div');
+        imgli.classList.add("nodedisplay");
+        imgli.innerHTML += '<img src="' + files[i] +'"> ';
+
+
+        imgli.setAttribute( 'onclick', 'nodeiconclicked("' + files[i] + '")');
+        imgli.setAttribute('draggable', false);
+        li.appendChild(imgli);
+        
+
+        if (i > 10)
+        {
+            var closeli = document.createElement('div');
+            closeli.classList.add("deletenode");
+            closeli.innerHTML += 'X';
+            closeli.setAttribute( 'onclick', 'nodeicondeleted("' + i + '")');
+            li.appendChild(closeli);
+        }
+        
+
+        //li.innerHTML = '<img src="' + files[i] +'"> ' + (files[i].substring(files[i].lastIndexOf('/')+1)).split('.').slice(0, -1).join('.');
+        
 
         nodeiconlist.appendChild(li);
 
@@ -106,7 +126,27 @@ function initializeicons(){
         ipcRenderer.send(EDITOR_UPDATEICONS, files);
     }
 
-    nodeiconholder.src = files[0];
+    //add the plus mark.
+
+    var li = document.createElement('div');
+    var imgli = document.createElement('div');
+    imgli.classList.add("nodedisplay");
+    imgli.innerHTML += '<img src="images/Tokens/Addnew.png"> ';
+
+
+    imgli.setAttribute( 'onclick', 'importIcon()');
+    li.appendChild(imgli);
+    imgli.setAttribute('draggable', false);
+
+    nodeiconlist.appendChild(li);
+
+    //nodeiconholder.src = files[0];
+}
+
+function nodeicondeleted(element)
+{
+    files.splice(element, 1);
+    ipcRenderer.send(EDITOR_UPDATEICONS, files);
 }
 
 function nodeiconclicked(element)
@@ -210,6 +250,15 @@ window.onclick = function(event) {
             }
         }
     }
+}
+
+nodeiconlist.onwheel = zoom;
+function zoom(event) {
+    event.preventDefault();
+    nodeiconlist.scrollLeft += event.deltaY * -0.75;
+    //scale += event.deltaY * -0.01;
+
+
 }
 
 
@@ -416,7 +465,6 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
     if (message.icons != null)
     {
         files = message.icons;
-        console.log(files);
         initializeicons();
     }
 })

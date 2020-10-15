@@ -902,14 +902,8 @@ Mousetrap.bind(['command+b', 'ctrl+b', 'f1'], function() {
 
 Mousetrap.bind(['command+d', 'ctrl+d'], function() {
   //highlightdecider(null);
-  savetext();
-  drawings = [];
-  freedrawing = false;
-  isDrawing = false;
-  currentdrawing = 0;
-  overrideindex = null;
-  canvasRender();
-  
+  clearDocumentSelection();
+  selectnodes([]);
   return false;
 });
 
@@ -1062,11 +1056,11 @@ ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
     click: () => { 
       savetext();
       ipcRenderer.send(NOTIFY_RESTART); 
-    } 
+    }
   })
   rebuildmenu(newmenuitem);
   downloaddisplay.style.display = "none";
-  infodisplay.innerHTML = "Download Complete!"
+  infodisplay.innerHTML = "Download Complete!";
 })
 
 ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {

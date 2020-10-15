@@ -132,7 +132,7 @@ function createWindow() {
       }
    });
 
-   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 1000, maxWidth: 500, parent: win, frame: false, show:false, webPreferences: {
+   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 1000,  parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
    }});
    editorwindow.loadURL(url.format ({
@@ -972,12 +972,14 @@ ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
       {
          if (CurrentContent.content.textEntries[i].parentid != "")
          {
+            reorder(CurrentContent.content.textEntries, i, getlocation(CurrentContent.content.textEntries[i].parentid) + 1);
+
             var huntdata = {
                child: data,
                parent: CurrentContent.content.textEntries[i].parentid
             }
 
-            removechild(huntdata);
+            removechild(huntdata);            
          }
 
          CurrentContent.content.textEntries[i].parentid = "";
@@ -1174,7 +1176,22 @@ autoUpdater.on('update-downloaded', () => {
 });
 
 ipcMain.on(NOTIFY_RESTART, function(event) {
-   autoUpdater.quitAndInstall()
+   if (dirtyproject)
+   {
+      const choice = require('electron').dialog.showMessageBoxSync(this,
+      {
+         type: 'question',
+         buttons: ['Yes', 'No'],
+         title: 'Confirm',
+         message: 'You have unsaved data, Are you sure you want to restart?'
+      });
+      if (choice === 1) {
+      }
+      else
+      {
+         autoUpdater.quitAndInstall();
+      }
+   }
 });
 
 ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event, message) {
