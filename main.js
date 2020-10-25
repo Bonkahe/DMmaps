@@ -115,7 +115,7 @@ function createWindow() {
    {
       if (dirtyproject)
       {
-         const choice = require('electron').dialog.showMessageBoxSync(this,
+         const choice = dialog.showMessageBoxSync(this,
          {
             type: 'question',
             buttons: ['Yes', 'No'],
@@ -123,7 +123,7 @@ function createWindow() {
             message: 'You have unsaved data, Are you sure you want to quit?'
          });
          if (choice === 1) {
-         e.preventDefault();
+            e.preventDefault();
          }
          else
          {
@@ -132,7 +132,7 @@ function createWindow() {
       }
    });
 
-   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 1000,  parent: win, frame: false, show:false, webPreferences: {
+   editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 450, height: 900, maxWidth: 600,  parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
    }});
    editorwindow.loadURL(url.format ({

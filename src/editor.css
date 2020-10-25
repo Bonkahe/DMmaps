@@ -49,6 +49,8 @@ body{
   width: 160px;
 }
 
+
+
 /* The container <div> - needed to position the dropdown content */
 .dropdown {
   position: relative;
@@ -186,12 +188,12 @@ body{
 }
 
 #splinecolorbtn{
-    width: 100%;
+    width: 32px;
     margin: 5px;
 }
 
 #bgcolorbtn{
-    width: 100%;
+    width: 32px;
     margin: 5px;
 }
 
@@ -213,6 +215,7 @@ body{
     display: flex;
     align-items: center;
     flex-direction: row;
+    padding: 0 0 10px 0;
 }
 
 #zone-display{

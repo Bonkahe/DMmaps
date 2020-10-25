@@ -1093,6 +1093,7 @@ ipcRenderer.on(EDITOR_NODESETTINGS, (event, data) => {
 })
 
 ipcRenderer.on(CHANGE_NODE_ICON, (event, data) =>{
+  console.log(data);
   if (selectednodes.length > 0)
   {
     var maindata = {
@@ -1101,7 +1102,8 @@ ipcRenderer.on(CHANGE_NODE_ICON, (event, data) =>{
     };
     for (var i = 0; i < selectednodes.length; i++)
     {
-      selectednodes[i].style.backgroundImage = 'url('+ data +')';
+      console.log("test");
+      selectednodes[i].style.backgroundImage = 'url("'+ data +'")';
       maindata.nodes.push(selectednodes[i].getAttribute('node-db-path'));
     }
     ipcRenderer.send(CHANGE_NODE_ICON, maindata);
@@ -1272,6 +1274,7 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
 })
 
 ipcRenderer.on(REFRESH_DATABASE, (event, message) => {
+  savetext();
   ipcRenderer.send(REFRESH_DATABASE_COMPLETE);
 })
 
@@ -1695,11 +1698,11 @@ function createnode(node)
 
   if (node.tokenurl != null)
   {
-    img.style.backgroundImage  = "url('" + node.tokenurl + "')";
+    img.style.backgroundImage  = 'url("' + node.tokenurl + '")';
   }
   else
   {
-    img.style.backgroundImage  = "url('./images/Tokens/House.png')";
+    img.style.backgroundImage  = 'url("./images/Tokens/House.png")';
   }
   dragNode(img, mapdiv);
   //img.id = "node-icon";

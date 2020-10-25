@@ -76,7 +76,7 @@
                             </div>
                             <div class="toolbarline">
                                 Spline:
-                                <input class="basebtn" id="splinecolorbtn" data-jscolor="{value:'#000000', alpha:1}">
+                                <button class="basebtn colorbox" id="splinecolorbtn" data-jscolor="value:'#000000', alpha:1}">
                             </div>
                             <div class="toolbarline">
                                 <input type="checkbox" id="enablefillbtn" name="enablefillbtn" value="enablefill">
@@ -84,16 +84,14 @@
                             </div>
                             <div class="toolbarline">
                                 Fill:
-                                <input class="basebtn" id="bgcolorbtn" data-jscolor="{value:'rgba(255,255,255,0)'}">
+                                <button class="basebtn colorbox" id="bgcolorbtn" data-jscolor="value:'#000000', alpha:1}">
                             </div>
                             <div class="toolbarline">
                                 <button class="basebtn" id="deletebtn">Delete Spline</button>
                             </div>
                             <script>
                                 jscolor.presets.default = {
-                                    format:'rgba', backgroundColor:'rgba(89,89,89,1)', 
-                                    borderColor:'rgba(110,110,110,1)', mode:'HVS', 
-                                    controlBorderColor:'rgba(128,128,128,1)', sliderSize:10
+                                    format:'rgba', backgroundColor:'rgba(66,66,66,1)', buttonHeight:30
                                 };
                                 jscolor.trigger('input change');
                             </script>
