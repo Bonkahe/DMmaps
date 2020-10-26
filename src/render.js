@@ -179,6 +179,147 @@ let currentfillstyle = "rgba(32, 45, 21, 0.2)";
 let overrideindex = null;
 
 
+var documenttab = document.getElementById('btn-tab-documents');
+var toolboxtab = document.getElementById('btn-tab-toolbox');
+
+/**----------------IMPORTED EDITOR TOOLBOX---------------- */
+
+var currentsplines = [];
+var selectedspline = false;
+var selectedindex;
+
+var nodedisplay = document.getElementById('node-display');
+var nodedisplaytooltip = document.getElementById('node-display-tooltip');
+
+
+var zonedisplay = document.getElementById('zone-display');
+var zonedisplaytooltip = document.getElementById('zone-display-tooltip');
+
+/** -------------------- Buttons --------------------- */
+
+/**nodes */
+var defaultnodesizeRange = document.getElementById('basenodeRange');
+var currentnodesizeRange = document.getElementById('currentnodeRange');
+var nodescaleclearbtn = document.getElementById('clearbtn');
+
+/**docs(drawing) */
+
+var splinelist = document.getElementById('drawinglist');
+
+//var allowdrawingBtn = document.getElementById('allowdrawingbtn');
+var splinewidthRange = document.getElementById('Splinewidth');
+var splinecolorSelector = document.getElementById('splinecolorbtn');
+var enablefillBtn = document.getElementById('enablefillbtn');
+var fillcolorSelector = document.getElementById('bgcolorbtn');
+var deletesplineBtn = document.getElementById('deletebtn');
+
+var nodetokenlist = [];
+//var nodeiconholder = document.getElementById('nodeiconholder');
+var nodeiconlist = document.getElementById('nodeicons');
+
+
+function initializeicons(){
+  nodeiconlist.innerHTML = "";
+
+  var originallength = files.length;
+  for (var i = 0; i < files.length; i++)
+  {
+      files[i] = files[i].replace(/\\/g,"/");
+      var li = document.createElement('div');
+      var imgli = document.createElement('div');
+      imgli.classList.add("nodedisplay");
+      imgli.innerHTML += '<img src="' + files[i] +'"> ';
+
+
+      imgli.setAttribute( 'onclick', 'nodeiconclicked("' + files[i] + '")');
+      imgli.setAttribute('draggable', false);
+      li.appendChild(imgli);
+      
+
+      if (i > 10)
+      {
+          var closeli = document.createElement('div');
+          closeli.classList.add("deletenode");
+          closeli.innerHTML += 'X';
+          closeli.setAttribute( 'onclick', 'nodeicondeleted("' + i + '")');
+          li.appendChild(closeli);
+      }
+      
+
+      //li.innerHTML = '<img src="' + files[i] +'"> ' + (files[i].substring(files[i].lastIndexOf('/')+1)).split('.').slice(0, -1).join('.');
+      
+
+      nodeiconlist.appendChild(li);
+
+      imageExists(files[i], i);   
+  }
+
+  if (originallength != files.length)
+  {
+      ipcRenderer.send(EDITOR_UPDATEICONS, files);
+  }
+
+  //add the plus mark.
+
+  var li = document.createElement('div');
+  var imgli = document.createElement('div');
+  imgli.classList.add("nodedisplay");
+  imgli.innerHTML += '<img src="images/Tokens/Addnew.png"> ';
+
+
+  imgli.setAttribute( 'onclick', 'importIcon()');
+  li.appendChild(imgli);
+  imgli.setAttribute('draggable', false);
+
+  nodeiconlist.appendChild(li);
+
+  //nodeiconholder.src = files[0];
+}
+
+function nodeicondeleted(element)
+{
+  files.splice(element, 1);
+  ipcRenderer.send(EDITOR_UPDATEICONS, files);
+}
+
+function nodeiconclicked(element)
+{
+  //send selected token url to renderer then from there to main.
+  primarywindow.webContents.send (CHANGE_NODE_ICON, element);
+}
+
+function imageExists(url, index, callback) {
+  var img = new Image();
+  img.onload = function() { 
+      //callback(true); 
+    };
+  img.onerror = function() { 
+      files.splice(index,1);
+      //callback(false);
+    };
+  img.src = url;
+}
+
+
+
+
+documenttab.addEventListener(
+  'click',
+  function() {
+    document.getElementById('document-tab').style.display = "none";
+    document.getElementById('toolbox-tab').style.display = "block";
+  },
+  false
+);
+toolboxtab.addEventListener(
+  'click',
+  function() {
+    document.getElementById('document-tab').style.display = "block";
+    document.getElementById('toolbox-tab').style.display = "none";
+  },
+  false
+);
+
 
 /**---------------------------------------Initialization------------------------------------ */
 
@@ -1238,13 +1379,18 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   milesdistancescale = CurrentContent.measurementscale;
   currentdistancetype = CurrentContent.measurementtype;
 
+  files = CurrentContent.availableicons;
+  initializeicons();
+/*
   var editorinitializationdata = {
     currentdistancetype: currentdistancetype,
     icons: CurrentContent.availableicons
   };
 
-  editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
 
+
+  editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
+*/
 
 
   //Clear nodes/text editor
