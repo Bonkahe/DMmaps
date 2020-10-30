@@ -1192,6 +1192,10 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
          autoUpdater.quitAndInstall();
       }
    }
+   else
+   {
+      autoUpdater.quitAndInstall();
+   }
 });
 
 ipcMain.on(REQUEST_HIERARCHY_REFRESH, function(event, message) {
