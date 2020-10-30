@@ -149,7 +149,7 @@
                               </div>
                               <div class="toolbarline">
                                   Spline:
-                                  <button class="basebtn colorbox" id="splinecolorbtn" data-jscolor="value:'#000000', alpha:1}">
+                                  <input class="colorbox" id="splinecolorbtn" data-jscolor="{value:'#000000', onChange: 'splinecolorChange(this)'}" type="button">
                               </div>
                               <div class="toolbarline">
                                   <input type="checkbox" id="enablefillbtn" name="enablefillbtn" value="enablefill">
@@ -157,7 +157,7 @@
                               </div>
                               <div class="toolbarline">
                                   Fill:
-                                  <button class="basebtn colorbox" id="bgcolorbtn" data-jscolor="value:'#000000', alpha:1}">
+                                  <input class="colorbox" id="bgcolorbtn" data-jscolor="{value:'#000000', onChange: 'fillcolorChange(this)'}" type="button">
                               </div>
                               <div class="toolbarline">
                                   <button class="basebtn" id="deletebtn">Delete Spline</button>

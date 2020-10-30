@@ -268,11 +268,11 @@ button {
   }
 
   #document-tab{
-    display: none;
+    
   }
 
   #toolbox-tab{
-
+    display: none;
   }
   
   #texteditor-title-holder {
@@ -782,6 +782,7 @@ button {
     height: 20px;
     background-color: var(--main-button-color);
     user-select: none;
+    padding: 0;
 }
 
 .container input[type=range] {

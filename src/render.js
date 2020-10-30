@@ -53,15 +53,9 @@ const {
   NOTIFY_RESTART,
   NOTIFY_CURRENTVERSION,
   DatabaseTextentry,
-  EDITOR_SELECTION,
   EDITOR_INITIALIZED,  
-  EDITOR_DRAWINGSETTINGS,
   EDITOR_MEASUREMENTSETTINGS,
-  EDITOR_NODESETTINGS,
-  EDITOR_IMPORTSPLINES,
-  EDITOR_SET_OVERRIDEINDEX,
-  EDITOR_DELETE_SPLINE,
-  EDITOR_REQUEST_REFRESH,
+  EDITOR_UPDATEICONS,
   REFRESH_NODES,
   TITLEBAR_OPEN_GENERATOR_WINDOW,
 }  = require('../utils/constants');
@@ -213,6 +207,7 @@ var enablefillBtn = document.getElementById('enablefillbtn');
 var fillcolorSelector = document.getElementById('bgcolorbtn');
 var deletesplineBtn = document.getElementById('deletebtn');
 
+
 var nodetokenlist = [];
 //var nodeiconholder = document.getElementById('nodeiconholder');
 var nodeiconlist = document.getElementById('nodeicons');
@@ -276,18 +271,6 @@ function initializeicons(){
   //nodeiconholder.src = files[0];
 }
 
-function nodeicondeleted(element)
-{
-  files.splice(element, 1);
-  ipcRenderer.send(EDITOR_UPDATEICONS, files);
-}
-
-function nodeiconclicked(element)
-{
-  //send selected token url to renderer then from there to main.
-  primarywindow.webContents.send (CHANGE_NODE_ICON, element);
-}
-
 function imageExists(url, index, callback) {
   var img = new Image();
   img.onload = function() { 
@@ -300,34 +283,334 @@ function imageExists(url, index, callback) {
   img.src = url;
 }
 
+function importIcon(){
+  TokengetFileFromUser();
+}
 
+const TokengetFileFromUser = async () => {
+  let options = {
+    title : "Load a Token", 
+
+    defaultPath : ".",
+    
+    buttonLabel : "Import image",
+    
+    filters :[
+      {name: 'Images', extensions: ['jpg', 'png', 'gif', 'svg']}
+    ],
+    properties: ['openFile']
+  }
+  let Remotewin = BrowserWindow.getFocusedWindow();
+
+  //This operation is asynchronous and needs to be awaited
+  const pickedfiles = await dialog.showOpenDialog(Remotewin, options, {
+      // The Configuration object sets different properties on the Open File Dialog 
+      properties: ['openFile']
+  });
+
+  // If we don't have any files, return early from the function
+  if (!pickedfiles.filePaths[0]) {
+      return;
+  }
+  
+  
+  files.push(pickedfiles.filePaths[0]);
+  
+  ipcRenderer.send(EDITOR_UPDATEICONS, files);
+}
+
+function toggledropdown() {
+  document.getElementById("nodeicondropdown").classList.toggle("show");
+}
+
+
+function rebuildsplinelist(splineentries){
+  splinelist.innerHTML = null;
+
+  if (splineentries.length === 0)
+  {
+      return; //stops if theres no splines
+  }
+
+  var newhtml = '';
+  for(var i = 0; i < splineentries.length; i++)
+  {
+      newhtml = newhtml + '<li Db-Path="' + i + '" onclick="splinebuttonpressed(' + i + ')">Spline #' + i + '</li>';
+  }
+
+  splinelist.innerHTML = newhtml;
+
+  if (selectedindex != null)
+  {
+      sethighlight(selectedindex);
+  }
+}
+
+function splinebuttonpressed(index)
+{
+    //allowdrawingBtn.checked = false;
+    splinewidthRange.value = currentsplines[index].width;
+    splinecolorSelector.jscolor.fromString(currentsplines[index].color);
+    enablefillBtn.checked = currentsplines[index].isfill;
+    fillcolorSelector.jscolor.fromString(currentsplines[index].fillstyle);
+
+    currentcolor = currentsplines[index].color;
+    currentfillstyle = currentsplines[index].fillstyle;
+    //console.log(currentsplines);
+    sethighlight(index);
+
+    //currentsplines[i]
+
+
+    transferToolBoxToRender();
+}
+
+function sethighlight(index)
+{
+    if (selectedindex != null)
+    {
+        document.querySelector('*[Db-Path="' + selectedindex + '"]').id = '';
+    }
+
+    selectedindex = index;
+    overrideindex = index;
+
+    if (selectedindex != null)
+    {
+        document.querySelector('*[Db-Path="' + index + '"]').id = 'highlight';
+    }
+}
+
+
+
+$(function() {
+  $("body").click(function(e) {
+    if (e.target.id == "zone-display" || $(e.target).parents("#zone-display").length || e.target.classList.contains("jscolor-picker-wrap")|| $(e.target).parents(".jscolor-picker-wrap").length) {
+      
+    } else {
+      sethighlight(null);
+    }
+  });
+})
+
+nodeiconlist.onwheel = zoom;
+function zoom(event) {
+    event.preventDefault();
+    nodeiconlist.scrollLeft += event.deltaY * -0.75;
+}
+
+function updanodeiconclickedatus()
+{
+  transferToolBoxToRender();
+}
+
+function transferToolBoxToRender()
+{
+  currentwidth = splinewidthRange.value;
+  currentisfill = enablefillBtn.checked;
+
+  if (overrideindex != null)
+  {
+    textchanged = true;
+    drawings[overrideindex].color = currentcolor;
+    drawings[overrideindex].width = currentwidth;
+    drawings[overrideindex].isfill = currentisfill;
+    drawings[overrideindex].fillstyle = currentfillstyle;
+    canvasRender();
+  }
+}
+
+
+defaultnodesizeRange.addEventListener(
+  'input',
+  function() { defaultnodesizeChange(Math.exp((Math.log(1000)/100) * this.value)); },
+  false
+);
+currentnodesizeRange.addEventListener(
+  'input',
+  function() { currentnodesizeChange(Math.exp((Math.log(1000)/100) * this.value)); },
+  false
+);
+
+nodescaleclearbtn.addEventListener(
+  'click',
+  function() { nodescaleclear(); },
+  false
+)
+
+splinewidthRange.addEventListener(
+  'input',
+  function() { splinewidthChange(Math.exp((Math.log(1000)/100) * this.value)); },
+  false
+);
+/*
+splinecolorSelector.addEventListener(
+  'change',
+  function() { splinecolorChange(this.value); },
+  false
+);
+*/
+enablefillBtn.addEventListener(
+  'input',
+  function() { enablefillChange(this); },
+  false
+);
+/*
+fillcolorSelector.addEventListener(
+  'change',
+  function() { fillcolorChange(this.value); },
+  false
+);
+*/
+deletesplineBtn.addEventListener(
+  'click',
+  function() {
+    if (drawings.length > 0 && overrideindex != null)
+    {
+      drawings.splice(overrideindex, 1);
+      overrideindex = null;
+      canvasRender();
+      currentdrawing = drawings.length;
+      var data = getexportabledrawings();
+
+      currentsplines = data.drawings;
+      selectedindex = data.index;
+      rebuildsplinelist(data.drawings); 
+    }
+   },
+  false
+);
+
+function nodeicondeleted(element)
+{
+  files.splice(element, 1);
+  ipcRenderer.send(EDITOR_UPDATEICONS, files);
+}
+
+function nodeiconclicked(element)
+{
+  if (selectednodes.length > 0)
+  {
+    var maindata = {
+      nodes: [],
+      url: element
+    };
+    for (var i = 0; i < selectednodes.length; i++)
+    {
+      console.log("test");
+      selectednodes[i].style.backgroundImage = 'url("'+ element +'")';
+      maindata.nodes.push(selectednodes[i].getAttribute('node-db-path'));
+    }
+    ipcRenderer.send(CHANGE_NODE_ICON, maindata);
+  }
+}
+
+function defaultnodesizeChange(e)
+{
+    e = e / 10;
+    console.log(e);
+    if (e === 0){e = 0.01;}
+    rescalenodes(e);
+    ipcRenderer.send(SCALE_ALL_NODES, e);
+}
+
+function currentnodesizeChange(e)
+{
+    e = e / 10;
+    if (e === 0){e = 0.01;}
+    rescaleselectednode(e);
+}
+
+function nodescaleclear()
+{
+  resetselectednode();
+}
+
+function setnodedisplayactive()
+{
+    nodedisplaytooltip.style.display = "none";
+    nodedisplay.classList.remove('greyout');
+
+}
+
+function setnodedisplayinactive()
+{
+    nodedisplaytooltip.style.display = "block";
+    nodedisplay.classList.add('greyout');
+}
+function setzoneisplayactive()
+{
+    zonedisplaytooltip.style.display = "none";
+    zonedisplay.classList.remove('greyout');
+}
+
+function setzoneisplayinactive()
+{
+    zonedisplaytooltip.style.display = "block";
+    zonedisplay.classList.add('greyout');
+    splinelist.innerHTML = null;
+}
+
+function splinewidthChange(e)
+{
+  
+
+    e = e / 4;
+    if (e === 0){e = 0.1;}
+
+    currentwidth = e;
+    transferToolBoxToRender();
+}
+function splinecolorChange(e)
+{
+    currentcolor = e.toRGBAString();
+    transferToolBoxToRender();
+}
+function enablefillChange(e)
+{
+    currentisfill = e;
+    transferToolBoxToRender();
+}
+function fillcolorChange(e)
+{
+    currentfillstyle = e.toRGBAString();
+    transferToolBoxToRender();
+}
 
 
 documenttab.addEventListener(
   'click',
   function() {
-    document.getElementById('document-tab').style.display = "none";
-    document.getElementById('toolbox-tab').style.display = "block";
+    DisplayToolbox();
   },
   false
 );
+
+function DisplayToolbox()
+{
+  document.getElementById('document-tab').style.display = "none";
+  document.getElementById('toolbox-tab').style.display = "block";
+}
+
 toolboxtab.addEventListener(
   'click',
   function() {
-    document.getElementById('document-tab').style.display = "block";
-    document.getElementById('toolbox-tab').style.display = "none";
+    DisplayDocument();
   },
   false
 );
+
+function DisplayDocument()
+{
+  document.getElementById('document-tab').style.display = "block";
+  document.getElementById('toolbox-tab').style.display = "none";
+}
 
 
 /**---------------------------------------Initialization------------------------------------ */
 
-editorwindow = remote.getGlobal ('editorwindow'); //grabs the editor if it exists.
-if (editorwindow)
-{
-  editorwindow.webContents.send (EDITOR_REQUEST_REFRESH);
-}
+updanodeiconclickedatus();
+editorwindow = remote.getGlobal ('editorwindow');
 
 var splitinstance = Split(['.a','.b', '.c'], {
   sizes: [20, 55, 30],
@@ -711,7 +994,11 @@ function finishdrawing(e)
   currentdrawing += 1;
   isDrawing = false;  
   textchanged = true;
-  editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
+
+  var data = getexportabledrawings();
+  currentsplines = data.drawings;
+  selectedindex = data.index;
+  rebuildsplinelist(data.drawings);  
 }
 
 /**Handles Actually drawing when moveing your mouse and clicking and dragging on the canvas */
@@ -1016,6 +1303,14 @@ $(document).keyup(function (e) {
   }
 });
 
+Mousetrap.bind(['del'], function(){
+  if (selecteddocid != null)
+  {
+    ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
+  }
+  return false;
+})
+
 /**Had unwanted results, removed. */
 Mousetrap.bind(['pageup', 'pagedown'], function(){
   return false;
@@ -1217,70 +1512,17 @@ ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
   })
 })
 
-ipcRenderer.on(EDITOR_NODESETTINGS, (event, data) => {
-  if (data.currentdefaultnodescale != null){ 
-    rescalenodes(data.currentdefaultnodescale);
-    ipcRenderer.send(SCALE_ALL_NODES, data.currentdefaultnodescale);
-  }
-  
-  if (data.currentnodescale != null){
-    rescaleselectednode(data.currentnodescale);
-  }
-
-  if (data.clear != null){
-    resetselectednode();
-    //ipcRenderer.send(CLEAR_NODE_SCALE);
-  }
-})
-
-ipcRenderer.on(CHANGE_NODE_ICON, (event, data) =>{
-  console.log(data);
-  if (selectednodes.length > 0)
-  {
-    var maindata = {
-      nodes: [],
-      url: data
-    };
-    for (var i = 0; i < selectednodes.length; i++)
-    {
-      console.log("test");
-      selectednodes[i].style.backgroundImage = 'url("'+ data +'")';
-      maindata.nodes.push(selectednodes[i].getAttribute('node-db-path'));
-    }
-    ipcRenderer.send(CHANGE_NODE_ICON, maindata);
-  }
-})
-
-ipcRenderer.on(EDITOR_DRAWINGSETTINGS, (event, data) => {
-  /*
-  if (data.alloweddrawing != null){ 
-    alloweddrawing = data.alloweddrawing;
-    if (!alloweddrawing && isDrawing){
-      finishdrawing();
-    }
-  }
-  */
-  if (data.currentcolor != null){currentcolor = data.currentcolor;}
-  if (data.currentwidth != null){currentwidth = (data.currentwidth);}
-  if (data.currentisfill != null){currentisfill = data.currentisfill;}
-  if (data.currentfillstyle != null){currentfillstyle = data.currentfillstyle;}
-
-  if (overrideindex != null)
-  {
-    textchanged = true;
-    drawings[overrideindex].color = currentcolor;
-    drawings[overrideindex].width = currentwidth;
-    drawings[overrideindex].isfill = currentisfill;
-    drawings[overrideindex].fillstyle = currentfillstyle;
-    canvasRender();
-  }
-})
-
 ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) =>{
+  if (message.icons != null)
+  {
+      files = message.icons;
+      initializeicons();
+  }
+
+  
   if (measurement.render)
   {
     if (message.type != null){currentdistancetype = message.type;}
-    console.log(currentdistancetype);
 
     if (message.length != null){
       var totaldistance = 0;
@@ -1310,43 +1552,22 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) =>{
     var editorupdatedata = {
       currentdistancetype: currentdistancetype
     }
-
-    
+    //document.getElementById("currenttype").selectedIndex = currentdistancetype;
+    //document.getElementById("calibrationtype").selectedIndex = currentdistancetype;
     ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS, newdata);
     editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
     canvasRender();
   }
 })
 
-ipcRenderer.on(EDITOR_SET_OVERRIDEINDEX, (event, newoverride) => {
-  if (isDrawing)
-  {
-    finishdrawing();
-  }
-  overrideindex = newoverride;
-  editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
-})
-
-ipcRenderer.on(EDITOR_DELETE_SPLINE, (event, message) => {
-  if (drawings.length > 0 && overrideindex != null)
-  {
-    drawings.splice(overrideindex, 1);
-    overrideindex = null;
-    canvasRender();
-    currentdrawing = drawings.length;
-    editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
-  }
-})
-
 ipcRenderer.on(EDITOR_INITIALIZED, (event) => {
   //selectionchanged(selecteddocid, selectednodeid);
-  editorwindow = remote.getGlobal ('editorwindow');
 
-  if (editorwindow)
-  {
-    overrideindex = null;
-    editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings());
-  }
+  overrideindex = null;
+  var data = getexportabledrawings();
+  currentsplines = data.drawings;
+  selectedindex = data.index;
+  rebuildsplinelist(data.drawings);
 })
 
 ipcRenderer.on(REFRESH_NODES, (event, CurrentContent) =>{
@@ -1381,17 +1602,6 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
 
   files = CurrentContent.availableicons;
   initializeicons();
-/*
-  var editorinitializationdata = {
-    currentdistancetype: currentdistancetype,
-    icons: CurrentContent.availableicons
-  };
-
-
-
-  editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
-*/
-
 
   //Clear nodes/text editor
   document.querySelectorAll('.node-icon').forEach(function(a) {
@@ -1444,12 +1654,15 @@ ipcRenderer.on(SET_MOUSEMODE, (event, message) =>{
   else if (mousemode == 2)
   {
     document.getElementById("cursorcontrol").style.cursor = "url(images/CursorSpline.png), help  ";
+    DisplayToolbox();
   }
   else
   {
     document.getElementById("cursorcontrol").style.cursor = "auto";
   }
 })
+
+
 
 ipcRenderer.on(REFRESH_HIERARCHY, (event, message) =>{
   rebuildhierarchy(message);
@@ -1618,11 +1831,11 @@ function loadtext(document)
         document.drawing[i].isfill));
     }
   }
-  
-  if (editorwindow)
-  {
-      editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings()); //updates the editor if it exists.
-  }
+
+  var data = getexportabledrawings();
+  currentsplines = data.drawings;
+  selectedindex = data.index;
+  rebuildsplinelist(data.drawings);
 
 
   canvasRender()
@@ -1680,10 +1893,10 @@ function loadtextsoft(document)
     }
   }
   
-  if (editorwindow)
-  {
-      editorwindow.webContents.send (EDITOR_IMPORTSPLINES, getexportabledrawings()); //updates the editor if it exists.
-  }
+  var data = getexportabledrawings();
+  currentsplines = data.drawings;
+  selectedindex = data.index;
+  rebuildsplinelist(data.drawings);
 
 
   canvasRender()
@@ -2160,13 +2373,14 @@ function selectnodes(newnodes)
       //highlight selectednodes[i]
     }
 
-    var data = {
-      nodeactive: (selectednodes.length > 0)
+    if (selectednodes.length > 0)
+    {
+        setnodedisplayactive();
     }
-  
-    editorwindow.webContents.send(EDITOR_SELECTION, data); 
-
-    //clearDocumentSelection();
+    else
+    {
+        setnodedisplayinactive();
+    }
   }
   else
   {
@@ -2509,6 +2723,7 @@ function hierarchybuttonpressed(id)
     if (selecteddocid != id)
     {
       clearDocumentSelection();
+      DisplayDocument();
       selectDocument(id)
       loadDocument();
     }
@@ -2613,13 +2828,24 @@ function clearDocumentSelection()
     hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';    
     selecteddocid = null;
   }  
-
+/*
   var data = {
     docactive: false,
     nodeactive: (selectednodes.length > 0)
   }
+*/
+  if (selectednodes.length > 0)
+  {
+      setnodedisplayactive();
+  }
+  else
+  {
+      setnodedisplayinactive();
+  }
 
-  editorwindow.webContents.send(EDITOR_SELECTION, data); 
+  setzoneisplayinactive();
+
+  //editorwindow.webContents.send(EDITOR_SELECTION, data); 
   savetext();
   cleartexteditor();
 
@@ -2633,6 +2859,7 @@ function clearDocumentSelection()
 function selectDocument(id)
 {
   if(id == null){return;}
+
   selecteddocid = id;
   hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
 
@@ -2648,13 +2875,17 @@ function selectDocument(id)
   {
     selectnodes([]);
   }
-  
-  var data = {
-    docactive: true,
-    nodeactive: (selectednodes.length > 0)
+
+  setzoneisplayactive();
+  if (selectednodes.length > 0)
+  {
+      setnodedisplayactive();
+  }
+  else
+  {
+      setnodedisplayinactive();
   }
   
-  editorwindow.webContents.send(EDITOR_SELECTION, data);   
 }
 
 /**Pulls data from the database and sets it to the text editor, if this is a new document (as per the newdoc variable) it will set the selection to the title */
@@ -2685,122 +2916,6 @@ function loadDocument()
 
 
 
-/**Handles highlighting the selected document/node, and it's corrosponding binded document/node if they exist, also unhighlights the last one. */
-/*
-function highlightdecider(docid)
-{
-
-  if (selecteddocid != null)
-  {
-    hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';
-    cleartexteditor();
-  }
-
-  selecteddocid = docid;
-
-  if (docid != null)
-  {
-    highlightdoc(docid);
-    return;
-  }
-  cleartexteditor();
-  selectionchanged(null,null);
-}
-
-function highlightdoc(docid)
-{
-  var doc = hierarchylist.querySelector('*[Db-Path="' + docid + '"]');
-  doc.id = 'highlight';
-
-  var foundnode = mapdiv.querySelector('*[doc-db-path="' + docid + '"]');
-  if(foundnode){
-
-    // HIGHLIGHT NODE ----
-    selectnodes([foundnode]);
-
-    //var currentcompass = foundnode.firstChild;
-    //if (currentcompass != null){currentcompass.classList.add("node-compass-show");}
-
-    panto(foundnode.style.left, foundnode.style.top);
-    
-    selectionchanged(docid,foundnode.getAttribute('node-db-path'));
-    return;    
-  }
-
-  selectionchanged(docid,null);
-}
-
-function highlightnode(nodeid)
-{
-  var node = mapdiv.querySelector('*[node-db-path="' + nodeid + '"]');
-  // HIGHLIGHT NODE ----
-  var currentcompass = node.firstChild;
-  if (currentcompass != null){currentcompass.classList.add("node-compass-show");}
-
-  var docid = node.getAttribute('doc-db-path');
-  if (docid){
-    var founddoc = hierarchylist.querySelector('*[Db-Path="' + docid + '"]');
-    
-    if (founddoc){
-      founddoc.id = 'highlight';
-      selectionchanged(docid,nodeid);
-      return;
-    }
-    else
-    {
-      node.setAttribute('doc-db-path','');
-    }
-  }
-
-  selectionchanged(null,nodeid);
-}
-
-function selectionnodechanged(node)
-{
-  if (node == null)
-  {
-    if (editorwindow){
-      editorwindow.webContents.send(EDITOR_SELECTION, null);
-      return;
-    }  
-  }
-  console.log("test");
-
-  var data = {
-    docid: node.getAttribute('doc-db-path'),
-    nodeid: node.getAttribute('node-db-path'),
-    nodeinternalscale: node.getAttribute('scaled')
-  }
-  
-  if (editorwindow){
-    editorwindow.webContents.send(EDITOR_SELECTION, data);
-  }  
-}
-*/
-/**Handles Final part of setting the selected node/doc ids and sending that information to the toolbox. */
-/*
-function selectionchanged(docid, nodeid)
-{
-  var data = {
-    docid: docid,
-    nodeid: nodeid
-    
-  }
-
-  //selectednodeid = nodeid;
-  selecteddocid = docid;
-  
-  if (selectednodes.length > 0)
-  {
-    console.log(selectednodes);
-    data.nodeid = selectednodes;
-  }
-  
-  if (editorwindow){
-    editorwindow.webContents.send(EDITOR_SELECTION, data);
-  }  
-}
-*/
 /**Loads the map on the render thread, probably needs to be moved to the Main thread.*/
 const getFileFromUser = async () => {
   let options = {

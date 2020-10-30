@@ -1218,7 +1218,7 @@ ipcMain.on(EDITOR_MEASUREMENTSETTINGS, function(event, message) {
       var editorinitializationdata = {
          icons: CurrentContent.availableicons
        };
-      editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
+       win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
    }
 })
 
@@ -1227,7 +1227,7 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
    var editorinitializationdata = {
       icons: CurrentContent.availableicons
    };
-   editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
+   win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
    updateproject();
 })
 
