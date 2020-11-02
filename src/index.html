@@ -5,8 +5,24 @@
     <title>Dungeon Master's Database</title>
 
     <link href="./quill/quill.snow.css" rel="stylesheet">
-    <link rel="stylesheet" href="roottheme.css">
+    <!-- <link rel="stylesheet" href="roottheme.css"> -->
     <link rel="stylesheet" href="index.css">
+
+    <style type="text/css" id="styles">
+      :root{
+          /* --- Set to HSL of the desired tint https://codepen.io/sosuke/pen/Pjoqqp gets you closer than anything else ---*/
+          
+          --node-token-hue: hue-rotate(348deg); 
+          --node-token-saturate: saturate(250%); 
+          --node-token-brightness: brightness(85%); 
+
+          --main-button-color: #E6A255;
+          --main-button-highlight: #f5a64c;
+
+          --neg-button-color: #e05840;
+          --neg-button-highlight: #f75c41;
+      }
+    </style>
     
     
     <script src="./quill/quill.js"></script>

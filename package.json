@@ -1,8 +1,8 @@
 {
   "name": "dmmaps",
-  "version": "0.8.9",
+  "version": "0.9.2",
   "description": "A DM's world building toolkit.",
-  "main": "./main.js",
+  "main": "./src/main.js",
   "scripts": {
     "start": "electron .",
     "localbuild": "electron-builder build --win --publish never",

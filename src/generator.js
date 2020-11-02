@@ -12,13 +12,16 @@ const jscolor = require('./colorpicker/jscolor');
 var glob = require("glob")
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 //const creds = require('./vitaedatabase-a2beb10b1687.json'); // the file saved above
-const { TITLEBAR_OPEN_GENERATOR_WINDOW }  = require('../utils/constants');
 const { clipboard } = require('electron')
 var faker = require('./char/faker.js');
 var xlsx = require('node-xlsx').default
 
 const {
-    SETGLOBAL_CHARGEN
+    SETGLOBAL_CHARGEN,
+    TITLEBAR_OPENWINDOW,
+    TITLEBAR_OPEN_GENERATOR_WINDOW,
+    TITLEBAR_SAVEPROJECT,
+    TITLEBAR_SAVEASPROJECT
 }  = require('../utils/constants');
 
 const primarywindow = remote.getGlobal ('textwindow');
@@ -157,8 +160,28 @@ window.addEventListener('DOMContentLoaded', () => {
     //getversion();
 })
 
+Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
+    ipcRenderer.send(TITLEBAR_OPENWINDOW); 
+    return false;
+});
+
 Mousetrap.bind(['f5'], function() {
     ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW); 
+    return false;
+});
+
+  /**Had unwanted results, removed. */
+Mousetrap.bind(['pageup', 'pagedown'], function(){
+    return false;
+})
+  
+  Mousetrap.bind(['command+s', 'ctrl+s'], function() {
+    ipcRenderer.send(TITLEBAR_SAVEPROJECT);
+    return false;
+});
+  
+  Mousetrap.bind(['command+shift+s', 'ctrl+shift+s'], function() {
+    ipcRenderer.send(TITLEBAR_SAVEASPROJECT);
     return false;
 });
 

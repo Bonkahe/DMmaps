@@ -58,6 +58,7 @@ const {
   EDITOR_UPDATEICONS,
   REFRESH_NODES,
   TITLEBAR_OPEN_GENERATOR_WINDOW,
+  UPDATE_THEME,
 }  = require('../utils/constants');
 const { start } = require('repl');
 const { Titlebar } = require('custom-electron-titlebar');
@@ -68,6 +69,8 @@ const { measure } = require('custom-electron-titlebar/lib/common/dom');
 
 var titlebar;
 var editorwindow;
+
+var styles = document.getElementById("styles");
 
 /**Application Menu */
 
@@ -612,6 +615,7 @@ function DisplayDocument()
 updanodeiconclickedatus();
 editorwindow = remote.getGlobal ('editorwindow');
 
+
 var splitinstance = Split(['.a','.b', '.c'], {
   sizes: [20, 55, 30],
   minSize: [0, 0 ,0],
@@ -725,7 +729,7 @@ const template = [
     label: 'Window',
     submenu: [
        {
-          label: 'Editor window',
+          label: 'Options window',
           click: () => { ipcRenderer.send(TITLEBAR_OPENWINDOW); },
           accelerator: 'CommandOrControl+W or F3'
        },
@@ -1716,6 +1720,17 @@ ipcRenderer.on(MAIN_TO_RENDER_SETFOCUS, (event, message) =>
 ipcRenderer.on(TOGGLE_NODE, (event, message) => {
   togglenode(message.id, message.locked);
 })
+
+ipcRenderer.on(UPDATE_THEME, (event, data) => {
+  loadSettings(data);
+})
+
+function loadSettings(data)
+{
+  var importeddata = data;
+
+  styles.innerText = ":root{ --node-token-hue: hue-rotate( "+ importeddata.hueshift +"deg); --node-token-saturate: saturate(250%); --node-token-brightness: brightness(85%); --main-button-color: " + importeddata.primarycolor + "; --main-button-highlight: " + importeddata.primaryhighlight + "; --neg-button-color: " + importeddata.secondarycolor + "; --neg-button-highlight: "+ importeddata.secondaryhighlight + ";}";
+}
 
 /** -------------------- End region ---------------------  */
 

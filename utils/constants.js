@@ -112,6 +112,7 @@ module.exports = {
     EDITOR_REQUEST_REFRESH: 'editor-request-refresh',
     TITLEBAR_OPEN_GENERATOR_WINDOW: 'titlebar-open-generator-window',
     SETGLOBAL_CHARGEN: 'setglobal-chargen',
+    UPDATE_THEME: 'update-theme',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,

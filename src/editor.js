@@ -1,4 +1,5 @@
-const {remote, ipcRenderer} = require('electron');
+const { remote, ipcRenderer} = require('electron');
+const {app} = require('electron').remote;
 const { Menu, MenuItem} = remote;
 const { dialog, getCurrentWindow, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs');
@@ -18,17 +19,119 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     var menu = new Menu();
     titlebar.updateMenu(menu);
-    titlebar.updateTitle('Toolbox');
+    titlebar.updateTitle('Options');
     //getversion();
 })
 
 const {
     EDITOR_MEASUREMENTSETTINGS,
+    TITLEBAR_OPENWINDOW,
+    TITLEBAR_OPEN_GENERATOR_WINDOW,
+    TITLEBAR_SAVEPROJECT,
+    TITLEBAR_SAVEASPROJECT,
+    UPDATE_THEME,
 }  = require('../utils/constants');
 
 /** -------------------- Variables --------------------- */
 
 const primarywindow = remote.getGlobal ('textwindow');
+
+var hueshift = document.getElementById("hueSelection");
+var primarycolor = document.getElementById("primarycolor");
+var primaryhighlight = document.getElementById("primaryhighlight");
+var secondarycolor = document.getElementById("secondarycolor");
+var secondaryhighlight = document.getElementById("secondaryhighlight");
+var styles = document.getElementById("styles");
+
+
+/** ---------------------- Themes -------------------------- */
+
+console.log(styles.innerText);
+
+ipcRenderer.send(UPDATE_THEME);
+
+function saveSettings()
+{
+    //console.log(document.getElementById("primarycolor").toRGBString())
+    var settings = {
+        hueshift: hueshift.value,
+        primarycolor: primarycolor.value,
+        primaryhighlight: primaryhighlight.value,
+        secondarycolor: secondarycolor.value,
+        secondaryhighlight: secondaryhighlight.value
+    }
+    ipcRenderer.send(UPDATE_THEME, settings);
+    /*
+    fs.writeFile( '/themesettings.json' , JSON.stringify(settings, null, 2), (err) => {
+        if(err){
+            console.log("An error ocurred creating the file "+ err.message)
+            return;
+        }
+        loadSettings();
+        
+     });
+     */
+}
+ipcRenderer.on(UPDATE_THEME, (event, data) => {
+    loadSettings(data);
+})
+
+function loadSettings(data)
+{
+    var importeddata = data;
+    hueshift.value = importeddata.hueshift;
+    primarycolor.jscolor.fromString(importeddata.primarycolor);
+    primaryhighlight.jscolor.fromString(importeddata.primaryhighlight);
+    secondarycolor.jscolor.fromString(importeddata.secondarycolor);
+    secondaryhighlight.jscolor.fromString(importeddata.secondaryhighlight);
+
+    styles.innerText = ":root{ --node-token-hue: hue-rotate( "+ hueshift.value +"deg); --node-token-saturate: saturate(250%); --node-token-brightness: brightness(85%); --main-button-color: "+ primarycolor.value+ "; --main-button-highlight: " + primaryhighlight.value + "; --neg-button-color: " + secondarycolor.value + "; --neg-button-highlight: "+ secondaryhighlight.value + ";}";
+}
+
+function valuesChanged()
+{
+    saveSettings();
+}
+
+function resetThemes()
+{
+    var settings = {
+        hueshift: 348,
+        primarycolor: "#E6A255",
+        primaryhighlight: "#f5a64c",
+        secondarycolor: "#e05840",
+        secondaryhighlight: "#f75c41"
+    }
+    ipcRenderer.send(UPDATE_THEME, settings);
+}
+
+/** ---------------------- Measurements -------------------- */
+
+Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
+    ipcRenderer.send(TITLEBAR_OPENWINDOW); 
+    return false;
+});
+
+Mousetrap.bind(['f5'], function() {
+    ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW); 
+    return false;
+});
+
+  /**Had unwanted results, removed. */
+Mousetrap.bind(['pageup', 'pagedown'], function(){
+    return false;
+})
+  
+  Mousetrap.bind(['command+s', 'ctrl+s'], function() {
+    ipcRenderer.send(TITLEBAR_SAVEPROJECT);
+    return false;
+});
+  
+  Mousetrap.bind(['command+shift+s', 'ctrl+shift+s'], function() {
+    ipcRenderer.send(TITLEBAR_SAVEASPROJECT);
+    return false;
+});
+  
 
 function displaycalibrationtools() {
     document.getElementById("calibration-tools").classList.toggle("displayhiddenoptions");

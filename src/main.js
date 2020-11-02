@@ -69,11 +69,12 @@ const {
    EDITOR_UPDATEICONS,
    EDITOR_MEASUREMENTSETTINGS,
    TITLEBAR_OPEN_GENERATOR_WINDOW,
+   UPDATE_THEME,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry,
    SETGLOBAL_CHARGEN,
-} = require('./utils/constants');
+} = require('../utils/constants');
 const { dir } = require('console');
 
 var nodepath = [];
@@ -104,7 +105,7 @@ function createWindow() {
     nodeIntegration: true, enableRemoteModule: true
     }})
    win.loadURL(url.format ({
-      pathname: path.join(__dirname, './src/index.html'),
+      pathname: path.join(__dirname, './index.html'),
       protocol: 'file:',
       slashes: true,
    }))
@@ -136,7 +137,7 @@ function createWindow() {
       nodeIntegration: true, enableRemoteModule: true
    }});
    editorwindow.loadURL(url.format ({
-      pathname: path.join(__dirname, './src/editor.html'),
+      pathname: path.join(__dirname, './editor.html'),
       protocol: 'file:',
       slashes: true,
    }));
@@ -153,7 +154,7 @@ function createWindow() {
       nodeIntegration: true, enableRemoteModule: true
    }});
    generatorwindow.loadURL(url.format ({
-      pathname: path.join(__dirname, './src/generator.html'),
+      pathname: path.join(__dirname, './generator.html'),
       protocol: 'file:',
       slashes: true,
    }));
@@ -1234,6 +1235,38 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
    win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
    updateproject();
 })
+
+ipcMain.on(UPDATE_THEME, function(event, data) {
+   if (data != null)
+   {
+      fs.writeFile(path.join( app.getAppPath(), '/themesettings.json') , JSON.stringify(data, null, 2), (err) => {
+         if(err){
+             console.log("An error ocurred creating the file "+ err.message)
+             return;
+         }
+         loadSettings();         
+      });
+   }
+   else
+   {
+      loadSettings();
+   }
+})
+
+function loadSettings()
+{
+   fs.readFile( path.join( app.getAppPath(), '/themesettings.json'), 'utf-8', (err, data) => {
+      if(err){
+         console.log("An error ocurred reading the file :" + err.message);
+          return;
+      }
+      if (data != null)
+      {
+         editorwindow.webContents.send(UPDATE_THEME, JSON.parse(data));
+         win.webContents.send(UPDATE_THEME, JSON.parse(data));
+      }
+  });
+}
 
 /** ---------------------------   Document editor functions   ----------------------------- */
 
