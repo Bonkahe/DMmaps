@@ -29,6 +29,8 @@ const {
     TITLEBAR_OPEN_GENERATOR_WINDOW,
     TITLEBAR_SAVEPROJECT,
     TITLEBAR_SAVEASPROJECT,
+    EDITOR_SETPACK,
+    EDITOR_CHECKBROKEN,
     UPDATE_THEME,
 }  = require('../utils/constants');
 
@@ -45,6 +47,26 @@ var styles = document.getElementById("styles");
 
 
 /** ---------------------- Themes -------------------------- */
+
+
+var pullfiles=function(){ 
+    // love the query selector
+    var fileInput = document.querySelector("#myfiles");
+    var files = fileInput.files;
+    // cache files.length 
+    var fl = files.length;
+    var i = 0;
+
+    while ( i < fl) {
+        // localize file var in the loop
+        var file = files[i];
+        console.log(file);
+        i++;
+    }    
+}
+
+// set the input element onchange to call pullfiles
+document.querySelector("#myfiles").onchange=pullfiles;
 
 console.log(styles.innerText);
 
@@ -103,6 +125,13 @@ function resetThemes()
         secondaryhighlight: "#f75c41"
     }
     ipcRenderer.send(UPDATE_THEME, settings);
+}
+
+/** --------------------- File management -------------------- */
+
+function setPack()
+{
+    ipcRenderer.send(EDITOR_SETPACK);
 }
 
 /** ---------------------- Measurements -------------------- */
@@ -174,5 +203,10 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
     {
         files = message.icons;
         initializeicons();
+    }
+
+    if (message.packtrue != null)
+    {
+        document.getElementById("packbtn").innerText = message.packtrue? "Disable Image Packing" : "Enable Image Packing";        
     }
 })

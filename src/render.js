@@ -78,6 +78,7 @@ var menu;
 var infodisplay;
 var restartavailable = false;
 var downloaddisplay;
+var packtrue = false;
 
 /**MapVariables */
 
@@ -846,6 +847,8 @@ var editor = new Quill('#editor', {
 /**Inserts the image import option into the text editors menu.*/
 editor.getModule("toolbar").addHandler("image", imageHandler);
 
+
+
 function imageHandler(image, callback) {
   var input = document.createElement("input");
   input.setAttribute("type", "file");
@@ -1388,13 +1391,16 @@ window.addEventListener('contextmenu', (e) => {
           docid:selecteddocid,
           nodes:[]
         }
-
+        
+        data.nodes.push(node.getAttribute("node-db-path"));
+        /*
         for (var i in selectednodes)
         {
           data.nodes.push(selectednodes[i].getAttribute("node-db-path"));
         }
-        
+        */
         ipcRenderer.send(REQUEST_EXTENDED_NODE_CONTEXT, data);
+        selectnodes({node});
         return;
       }
       else
@@ -1403,12 +1409,15 @@ window.addEventListener('contextmenu', (e) => {
           nodes:[]
         }
 
+        data.nodes.push(node.getAttribute("node-db-path"));
+        /*
         for (var i in selectednodes)
         {
           data.nodes.push(selectednodes[i].getAttribute("node-db-path"));
         }
-
+        */
         ipcRenderer.send(REQUEST_NODE_CONTEXT, data);
+        selectnodes({node});
         return;
       }
     }
@@ -1562,6 +1571,11 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) =>{
     editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
     canvasRender();
   }
+
+  if (measurement.packtrue != null)
+  {
+    packtrue = measurement.packtrue;
+  }
 })
 
 ipcRenderer.on(EDITOR_INITIALIZED, (event) => {
@@ -1579,6 +1593,7 @@ ipcRenderer.on(REFRESH_NODES, (event, CurrentContent) =>{
   document.querySelectorAll('.node-icon').forEach(function(a) {
     a.remove()
   })
+  
   
   importnodes(CurrentContent);
 
@@ -2068,7 +2083,7 @@ function createnode(node)
     deactivatepanning = false
   };
   */
-  console.log(node.tokenurl);
+  //console.log(node.tokenurl);
 
   if (node.tokenurl != null)
   {
@@ -2084,6 +2099,7 @@ function createnode(node)
   img.setAttribute("node-db-path", node.id)
   img.setAttribute("doc-db-path", node.documentref)
   img.setAttribute("locked", node.locked)
+  //console.log(node.documentref);
 
   mapdiv.appendChild(img); 
     
@@ -2343,7 +2359,7 @@ function selectarea()
     parseFloat(el.style.left) + 32 < highcoords.x &&
     parseFloat(el.style.top) + 32 < highcoords.y);
     
-  if (node_els.length == 1 && node_els[0].getAttribute("doc-db-path") != null)
+  if (node_els.length == 1 && node_els[0].getAttribute("doc-db-path") != null && node_els[0].getAttribute("doc-db-path") != '')
   {
       clearDocumentSelection();
       selectDocument(node_els[0].getAttribute("doc-db-path"));
@@ -2752,6 +2768,12 @@ function hierarchybuttonpressed(id)
 
 //Should handle dragging and dropping for the remove parent bar on the left, as well as document links within text.
 function allowDrop(ev) {
+  if (!ev.target.classList.contains("item"))
+  {
+    ev.preventDefault();
+    return;
+  }
+  
   var delta = ev.clientY - ev.target.getBoundingClientRect().top;
   if (delta < 5)
   {
@@ -2840,7 +2862,13 @@ function clearDocumentSelection()
 {
   if (selecteddocid != null)
   {
-    hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = '';    
+    var selecteddoc = hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');  
+
+    if (selecteddoc != null)
+    {
+      selecteddoc.id = '';
+    }
+    
     selecteddocid = null;
   }  
 /*
@@ -2875,8 +2903,15 @@ function selectDocument(id)
 {
   if(id == null){return;}
 
+  
+  var selecteddoc = hierarchylist.querySelector('*[Db-Path="' + id + '"]');
+
+  if (selecteddoc == null)
+  {
+    return;
+  }
   selecteddocid = id;
-  hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]').id = 'highlight';
+  selecteddoc.id = 'highlight';
 
   var data = {
     docactive: true
@@ -2997,7 +3032,7 @@ function dragNode(buttonelmnt, parentelmnt){
 
     if (buttonelmnt.getAttribute("locked") == "true")
     {
-      if (buttonelmnt.getAttribute("doc-db-path") != null)
+      if (buttonelmnt.getAttribute("doc-db-path") != null && buttonelmnt.getAttribute("doc-db-path") != '')
       {
         clearDocumentSelection();
         selectDocument(buttonelmnt.getAttribute("doc-db-path"));
@@ -3005,7 +3040,9 @@ function dragNode(buttonelmnt, parentelmnt){
       }
       else
       {
+        clearDocumentSelection();
         selectnodes([buttonelmnt]);
+        panto(buttonelmnt.style.left, buttonelmnt.style.top);
       }
       return;
     }
@@ -3077,7 +3114,7 @@ function dragNode(buttonelmnt, parentelmnt){
 
     if (nodelocked)
     {
-      if (buttonelmnt.getAttribute("doc-db-path") != null)
+      if (buttonelmnt.getAttribute("doc-db-path") != null && buttonelmnt.getAttribute("doc-db-path") != '')
       {
         clearDocumentSelection();
         selectDocument(buttonelmnt.getAttribute("doc-db-path"));
@@ -3085,7 +3122,9 @@ function dragNode(buttonelmnt, parentelmnt){
       }
       else
       {
+        clearDocumentSelection();
         selectnodes([buttonelmnt]);
+        panto(buttonelmnt.style.left, buttonelmnt.style.top);
       }
       return;
     }

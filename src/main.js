@@ -70,12 +70,15 @@ const {
    EDITOR_MEASUREMENTSETTINGS,
    TITLEBAR_OPEN_GENERATOR_WINDOW,
    UPDATE_THEME,
+   EDITOR_SETPACK,
+   EDITOR_CHECKBROKEN,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry,
    SETGLOBAL_CHARGEN,
 } = require('../utils/constants');
 const { dir } = require('console');
+const { send } = require('process');
 
 var nodepath = [];
 var docpath = "";
@@ -99,6 +102,10 @@ global.editorwindow = null;
 global.generatorwindow = null;
 global.updatechargenset = false;
 var internaleditorshown = false;
+
+if (!fs.existsSync(path.join( app.getPath('userData'), '/DmmapsSettings/'))){
+   fs.mkdirSync(path.join( app.getPath('userData'), '/DmmapsSettings/'));
+}
 
 function createWindow() {
    win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, frame: false, webPreferences: {
@@ -212,11 +219,11 @@ let backupoptions  = {
 
 function checkbackup()
 {
-   if (fs.existsSync(path.join( app.getAppPath(), '/backup.dmdb' ))) {
+   if (fs.existsSync(path.join( app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ))) {
       dialog.showMessageBox(null, backupoptions).then( (data) => {
          if (data.response == 0) // load backup
          {
-            fs.readFile(path.join( app.getAppPath(), '/backup.dmdb' ), 'utf-8', (err, data) => {
+            fs.readFile(path.join( app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ), 'utf-8', (err, data) => {
                if(err){
                   console.log("An error ocurred reading the file :" + err.message);
                    return;
@@ -229,7 +236,7 @@ function checkbackup()
          }
          else // delete backup
          {
-            fs.unlink(path.join( app.getAppPath(), '/backup.dmdb' ), (err) => {
+            fs.unlink(path.join( app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ), (err) => {
                if (err) {
                   //alert("An error ocurred updating the file" + err.message);
                   console.log(err);
@@ -457,6 +464,7 @@ contextMenu({
             {
                if (count == 2)
                {
+                  updateproject();
                   break;
                }
 
@@ -464,19 +472,15 @@ contextMenu({
                {
                   CurrentContent.content.nodes[i].documentref = "";
                   count = count + 1;
-                  updateproject();
                   continue;
                }
 
                if (CurrentContent.content.nodes[i].id == nodepath[0])
                {
                   CurrentContent.content.nodes[i].documentref = docpath;
-                  count = count + 1;
-                  updateproject();
+                  count = count + 1;                  
                   continue;
                }
-               
-               
             }
             
             nodemenu = false;
@@ -660,7 +664,7 @@ function updateproject()
 {
    dirtyproject = true;
    
-   fs.writeFile(path.join( app.getAppPath(), '/backup.dmdb' ), JSON.stringify(CurrentContent, null, 2), (err) => {
+   fs.writeFile(path.join( app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ), JSON.stringify(CurrentContent, null, 2), (err) => {
       if(err){
           console.log("An error ocurred creating the file "+ err.message)
           return;
@@ -673,8 +677,8 @@ function cleanproject()
 {
    dirtyproject = false;
 
-   if (fs.existsSync(path.join( app.getAppPath(), '/backup.dmdb' ))) {
-      fs.unlink(path.join( app.getAppPath(), '/backup.dmdb' ), (err) => {
+   if (fs.existsSync(path.join(app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ))) {
+      fs.unlink(path.join( app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ), (err) => {
           if (err) {
               //alert("An error ocurred updating the file" + err.message);
               console.log(err);
@@ -700,6 +704,7 @@ ipcMain.handle(REQUEST_DOCUMENT_BYDOC, async (event, docid) =>
          break;
       }
    }
+   //find and replace all img urls with data urls
 
    if (documentData == null)
    {
@@ -813,6 +818,7 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
 });
 
 ipcMain.on(REFRESH_PAGE, function(event) {
+   loadSettings();
    updaterenderer();
 });
 
@@ -853,19 +859,16 @@ ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
 
 ipcMain.on(CHILD_DOCUMENT, function(event, data) 
 {
+   console.log(data);
    if (data.delta < 5)
    {
       reorder(CurrentContent.content.textEntries, getlocation(data.child), getlocation(data.parent))
-      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-      updateproject();
-      //setupperchild(data);
+      setupperchild(data);
    }
    else if (data.delta > 15)
    {
       reorder(CurrentContent.content.textEntries, getlocation(data.child), getlocation(data.parent) + 1)
-      //setupperchild(data);
-      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-      updateproject();
+      setupperchild(data);   
    }
    else
    {
@@ -904,10 +907,46 @@ function setupperchild(data)
    {
       if (CurrentContent.content.textEntries[i].id == data.parent)
       {
-         data.parent = CurrentContent.content.textEntries[i].parentid;
-         setchild(data);
+         if (CurrentContent.content.textEntries[i].parentid != '')
+         {
+            data.parent = CurrentContent.content.textEntries[i].parentid;
+            setchild(data);
+
+            win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+            updateproject();  
+         }
+         else
+         {
+            reorderremoveParent(data);
+            return;
+         }
       }
    }
+}
+
+function reorderremoveParent(data)
+{
+   for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
+   {
+      if (CurrentContent.content.textEntries[i].id == data.child)
+      {
+         if (CurrentContent.content.textEntries[i].parentid != "")
+         {
+            var huntdata = {
+               child: data.child,
+               parent: CurrentContent.content.textEntries[i].parentid
+            }
+
+            removechild(huntdata);        
+
+            CurrentContent.content.textEntries[i].parentid = "";
+         }
+         break;
+      }
+   }   
+
+   win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+   updateproject();
 }
 
 function setchild(data)
@@ -966,31 +1005,37 @@ function setchild(data)
 }
 
 ipcMain.on(REMOVE_PARENT_DOCUMENT, function(event, data) {
+   removeParent(data);
+});
 
+function removeParent(data)
+{
    for (var i = 0; i < CurrentContent.content.textEntries.length; i++)
    {
       if (CurrentContent.content.textEntries[i].id == data)
       {
          if (CurrentContent.content.textEntries[i].parentid != "")
          {
-            reorder(CurrentContent.content.textEntries, i, getlocation(CurrentContent.content.textEntries[i].parentid) + 1);
+            //reorder(CurrentContent.content.textEntries, i, getlocation(CurrentContent.content.textEntries[i].parentid) + 1);
 
             var huntdata = {
                child: data,
                parent: CurrentContent.content.textEntries[i].parentid
             }
 
-            removechild(huntdata);            
+            removechild(huntdata);         
+            
+            var parentid = CurrentContent.content.textEntries[i].parentid;
+            CurrentContent.content.textEntries[i].parentid = "";   
+            reorder(CurrentContent.content.textEntries, i, getlocation(parentid) + 1);
          }
-
-         CurrentContent.content.textEntries[i].parentid = "";
          break;
       }
    }   
 
    win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
    updateproject();
-});
+}
 
 ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
    dialog.showMessageBox(null, deleteoptions).then( (data) => {
@@ -1028,12 +1073,21 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
                win.webContents.send(COMPLETE_DOCUMENT_DELETE);
                win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
 
-               return;
+               break;
+            }
+         }
+
+         for(var i in CurrentContent.content.nodes)
+         {
+            if (CurrentContent.content.nodes[i].documentref == docid)
+            {
+               CurrentContent.content.nodes[i].documentref = "";
+               win.webContents.send(REFRESH_NODES, CurrentContent);
+               break;
             }
          }
       }
    });
-   
 });
 
 ipcMain.on(SELECT_DOCUMENT, function(event, value) {
@@ -1239,7 +1293,7 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
 ipcMain.on(UPDATE_THEME, function(event, data) {
    if (data != null)
    {
-      fs.writeFile(path.join( app.getAppPath(), '/themesettings.json') , JSON.stringify(data, null, 2), (err) => {
+      fs.writeFile(path.join( app.getPath('userData'), '/DmmapsSettings/themesettings.json') , JSON.stringify(data, null, 2), (err) => {
          if(err){
              console.log("An error ocurred creating the file "+ err.message)
              return;
@@ -1253,9 +1307,132 @@ ipcMain.on(UPDATE_THEME, function(event, data) {
    }
 })
 
+ipcMain.on(EDITOR_SETPACK, function(event, data) {
+   CurrentContent.packmode = !CurrentContent.packmode;
+
+   if (CurrentContent.packmode)
+   {
+      convertDatabaseToPacked();
+   }
+   else
+   {
+      convertDatabaseToUnpacked();
+   }
+
+   updaterenderer();
+})
+
+function convertDatabaseToPacked()
+{
+   CurrentContent.packedimages = [];
+   var imagesUrls = [];
+   for (var i in CurrentContent.content.textEntries)
+   {
+      var currentImages = getAttrFromString(CurrentContent.content.textEntries[i].content, 'img', 'src');
+      currentImages.forEach(element => {
+         imagesUrls.push(element);
+      });
+   }
+
+   imagesUrls.forEach(element => {
+      var found = false;
+
+      for (let otherelement of CurrentContent.packedimages)
+      {
+         if (element.url == otherelement)
+         {
+            found = true;
+            break;
+         }
+      }
+
+
+
+      if (!found)
+      {
+         if (fs.existsSync(element)) {
+            var newimageurl = {
+               url: element,
+               data: fs.readFileSync(element, {encoding: 'base64'})
+            }
+   
+            CurrentContent.packedimages.push(newimageurl);
+         }
+         else
+         {
+            var newimageurl = {
+               url: element,
+               data: null
+            }
+   
+            CurrentContent.packedimages.push(newimageurl);
+         }
+      }
+   });
+}
+
+function getAttrFromString(str, node, attr) {
+   var regex = new RegExp('<' + node + ' .*?' + attr + '="(.*?)"', "gi"), result, res = [];
+   while ((result = regex.exec(str))) {
+       res.push(result[1]);
+   }
+
+   return res;
+}
+
+function convertDatabaseToUnpacked()
+{
+   var folderpath = CurrentContent.projecturl.substring(0, CurrentContent.projecturl.lastIndexOf("/"));
+   var projectname = CurrentContent.projecturl.substring(CurrentContent.projecturl.lastIndexOf("/") + 1, CurrentContent.projecturl.length).split('.').slice(0, -1).join('.');
+   
+   folderpath = path.join(folderpath, projectname + " unpacked data/");
+
+   fs.mkdirSync(folderpath, { recursive: true })
+
+   CurrentContent.packedimages.forEach(packedImage => {
+      var filename = packedImage.url.substring(packedImage.url.lastIndexOf("/") + 1, packedImage.url.length);
+      //console.log(filename);
+
+      fs.writeFile(path.join(folderpath, filename), packedImage.data, 'base64', function(err) {
+         if (err)
+         {
+            console.log(err);
+         }
+      });
+
+      CurrentContent.content.textEntries.forEach(documententry => {
+         //var text = documententry.content;
+         //var newpath = path.join(folderpath, filename);
+         //text = text.split(packedImage.url).join(newpath.replace(/\\/g, '/'));
+         documententry.content = documententry.content.split(packedImage.url).join(path.join(folderpath, filename).replace(/\\/g, '/'));
+         //text = text.replaceAll(packedImage.url, path.join(folderpath, filename));
+         //documententry.content = documententry.content.replaceAll(packedImage.url, path.join(folderpath, filename));
+      });
+   });
+}
+
+function getName() {
+   var fullPath = document.getElementById("img1").src;
+   var filename = fullPath.replace(/^.*[\\\/]/, '');
+   // or, try this, 
+   // var filename = fullPath.split("/").pop();
+
+  document.getElementById("result").value = filename;
+}
+
+function sendPack()
+{
+   var editorupdatedata = {
+      packtrue: CurrentContent.packmode
+    }
+
+   editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
+   win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
+}
+
 function loadSettings()
 {
-   fs.readFile( path.join( app.getAppPath(), '/themesettings.json'), 'utf-8', (err, data) => {
+   fs.readFile( path.join( app.getPath('userData'), '/DmmapsSettings/themesettings.json'), 'utf-8', (err, data) => {
       if(err){
          console.log("An error ocurred reading the file :" + err.message);
           return;
@@ -1266,6 +1443,8 @@ function loadSettings()
          win.webContents.send(UPDATE_THEME, JSON.parse(data));
       }
   });
+
+  sendPack();
 }
 
 /** ---------------------------   Document editor functions   ----------------------------- */
@@ -1325,6 +1504,8 @@ Databasetemplate.fromjson = function(json)
    
    db.availableicons = data.availableicons;
    db.opendocs = data.opendocs;
+   db.packmode = data.packmode;
+   db.packedimages = data.packedimages;
    db.measurementscale = data.measurementscale;
    db.measurementtype = data.measurementtype;
 
@@ -1345,11 +1526,16 @@ Databasetemplate.fromjson = function(json)
       './images/Tokens/Cave.png'
    ];}
 
-   
-   if (data.versionnumber == 0.1)
+   db.versionnumber = data.versionnumber;
+
+   if (data.versionnumber < 0.3)
    {
-      data.opendocs = [];
+      db.opendocs = [];
+      db.packmode = false;
+      db.packedimages = [];
    }
+
+   db.versionnumber = 0.3;
 
    //console.log(db.availableicons+"---"+data.availableicons)
 

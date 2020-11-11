@@ -45,6 +45,24 @@
             <br>
             <button onclick="resetThemes()" class="basebtn" >Reset</button>
         </div>
+        
+        <div class="container" style="display: none;">
+            <h1>File Management:</h1>
+            <div class="container">
+                <h1>Pack Images:</h1>
+                <br>
+                <p>This is will make all images linked anywhere in the project be stored directly in the .dmdb file.</p>
+                <p>Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.</p>
+                <button onclick="setPack()" class="basebtn" id="packbtn"> Missing </button>
+                <input id="myfiles" multiple type="file">
+            </div>
+            <div class="container">
+                <h1>Broken Links</h1>
+                <br>
+                <p>To be implemented.</p>
+            </div>
+        </div>
+        
         <div class="container">
             <h1>Measurement tools:</h1>
             <p>To change the measurement distance, activate calibration mode.</p>

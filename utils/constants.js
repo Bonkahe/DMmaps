@@ -2,7 +2,8 @@
 
 class Databasetemplate {
     constructor() {
-        this.versionnumber = 0.2;
+        this.versionnumber = 0.3;
+        this.packmode = false;
         this.__type = "Databasetemplate";
         this.projecturl = "";
         this.name = "Default Database";
@@ -28,6 +29,7 @@ class Databasetemplate {
         this.opendocs = [];
         this.measurementscale = 1;
         this.measurementtype = 0;        
+        this.packedimages = [];
     }
 };
 
@@ -113,6 +115,8 @@ module.exports = {
     TITLEBAR_OPEN_GENERATOR_WINDOW: 'titlebar-open-generator-window',
     SETGLOBAL_CHARGEN: 'setglobal-chargen',
     UPDATE_THEME: 'update-theme',
+    EDITOR_SETPACK: 'editor-setpack',
+    EDITOR_CHECKBROKEN: 'editor-checkbroken',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,
