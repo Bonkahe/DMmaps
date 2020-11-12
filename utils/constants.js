@@ -73,6 +73,8 @@ module.exports = {
     REFRESH_NODES: 'refresh-nodes',
     REQUEST_NODE_CONTEXT: 'request-node-context',
     REQUEST_EXTENDED_NODE_CONTEXT: 'request-extended-node-context',
+    REFRESH_DOCUMENTS: 'refresh-documents',
+    RELOAD_DOCUMENT: 'reload-document',
     DELETE_NODE: 'delete-node',
     VERIFY_NODE: 'verify-node',
     CHANGE_NODE_ICON: 'change-node-icon',

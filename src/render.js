@@ -23,6 +23,8 @@ const {
   REQUEST_HIERARCHY_REFRESH,
   REQUEST_NODE_CONTEXT,
   REQUEST_EXTENDED_NODE_CONTEXT,
+  REFRESH_DOCUMENTS,
+  RELOAD_DOCUMENT,
   DELETE_NODE,
   VERIFY_NODE,
   CHANGE_NODE_ICON,
@@ -861,6 +863,7 @@ function imageHandler(image, callback) {
       // file type is only image.
       if (/^image\//.test(file.type)) {
         insertToEditor(path);
+        savetext();
       } else {
           console.warn("Only images can be uploaded here.");
       }
@@ -1468,6 +1471,15 @@ editor.on('selection-change', function(range, oldRange, source) {
 /**
  * Recieves events from the other windows, as well as the main thread.
  */
+
+ipcRenderer.on(REFRESH_DOCUMENTS, (event, message) => {
+  editor.setHTML(editor.getHTML());
+})
+
+ipcRenderer.on(RELOAD_DOCUMENT, (event, message) => {
+  loadtext(message)
+  console.log(message);
+})
 
 ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
   infodisplay.innerHTML = message;
@@ -2773,7 +2785,7 @@ function allowDrop(ev) {
     ev.preventDefault();
     return;
   }
-  
+
   var delta = ev.clientY - ev.target.getBoundingClientRect().top;
   if (delta < 5)
   {

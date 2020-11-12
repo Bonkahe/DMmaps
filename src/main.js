@@ -35,6 +35,8 @@ const {
    REFRESH_NODES,
    REQUEST_NODE_CONTEXT,
    REQUEST_EXTENDED_NODE_CONTEXT,
+   REFRESH_DOCUMENTS,
+   RELOAD_DOCUMENT,
    DELETE_NODE,
    VERIFY_NODE,
    CHANGE_NODE_ICON,
@@ -80,6 +82,7 @@ const {
 const { dir } = require('console');
 const { send } = require('process');
 
+var cachePath = path.join( app.getPath('userData'), '/Cache/');
 var nodepath = [];
 var docpath = "";
 var extendedcontext = false;
@@ -106,6 +109,12 @@ var internaleditorshown = false;
 if (!fs.existsSync(path.join( app.getPath('userData'), '/DmmapsSettings/'))){
    fs.mkdirSync(path.join( app.getPath('userData'), '/DmmapsSettings/'));
 }
+
+if (!fs.existsSync(path.join( app.getPath('userData'), '/Cache/'))){
+   fs.mkdirSync(path.join( app.getPath('userData'), '/Cache/'));
+}
+
+clearCache();
 
 function createWindow() {
    win = new BrowserWindow({backgroundColor: '#2e2c29', width: 1500, height: 1000, frame: false, webPreferences: {
@@ -632,6 +641,11 @@ const saveasproject = async () => {
    CurrentContent.name = basename(filename.filePath, '.dmdb');
    CurrentContent.projecturl = filename.filePath;
 
+   if (CurrentContent.packmode)
+   {
+      verifyImages();
+   }
+
    let data = JSON.stringify(CurrentContent, null, 2);
 
    fs.writeFile(filename.filePath, data, (err) => {
@@ -654,9 +668,66 @@ const saveasproject = async () => {
    });
 }
 
+const saveasprojectReturnUnpack = async () => {
+   let options = {
+      title : "Save as", 
+
+      defaultPath : ".",
+      
+      buttonLabel : "Save Project",
+      filters: [
+         { name: 'DungeonMaster Database', extensions: ['dmdb'] }
+       ],
+      properties: ['openFile']
+   }
+   // Triggers the OS' Open File Dialog box. We also pass it as a Javascript
+   // object of different configuration arguments to the function
+ 
+   //This operation is asynchronous and needs to be awaited
+   const filename = await dialog.showSaveDialog(win, options, {
+       // The Configuration object sets different properties on the Open File Dialog 
+       //properties: ['openDirectory']
+   });
+ 
+   // If we don't have any files, return early from the function
+   if (!filename) {
+       return;
+   }
+   CurrentContent.name = basename(filename.filePath, '.dmdb');
+   CurrentContent.projecturl = filename.filePath;
+
+   if (CurrentContent.packmode)
+   {
+      verifyImages();
+   }
+
+   let data = JSON.stringify(CurrentContent, null, 2);
+
+   fs.writeFile(filename.filePath, data, (err) => {
+      if(err){
+          console.log("An error ocurred creating the file "+ err.message)
+      }
+                  
+      //console.log("The file has been succesfully saved");
+
+      fs.readFile(filename.filePath, 'utf-8', (err, data) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+
+         cleanproject();
+         win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+         win.webContents.send(NOTIFY_UPDATECOMPLETE, "gottem");
+         convertDatabaseToUnpacked();
+      }); 
+   });
+}
+
 
 function updaterenderer()
 {
+   sendPack();
    win.webContents.send(PROJECT_INITIALIZED , CurrentContent);
 }
 
@@ -690,6 +761,7 @@ function cleanproject()
       //alert("This file doesn't exist, cannot delete");
       //console.log("File doesn't exist.");
   }
+  clearCache();
 }
 
 ipcMain.handle(REQUEST_DOCUMENT_BYDOC, async (event, docid) =>
@@ -712,6 +784,13 @@ ipcMain.handle(REQUEST_DOCUMENT_BYDOC, async (event, docid) =>
    }
    else
    {
+
+      if (CurrentContent.packmode)
+      {
+         //console.log("test1");
+         documentData.content = buildCache(documentData.content);
+      }
+
       return documentData;
    }
 })
@@ -751,6 +830,12 @@ ipcMain.handle(REQUEST_DOCUMENT_BYNODE, async (event, nodeid) =>
    else
    {
       //global.editorwin.webContents.send(EDITOR_DOCSELECTED, documentData);
+      if (CurrentContent.packmode)
+      {
+         //console.log("test1");
+         documentData.content = buildCache(documentData.content);
+      }
+
       return documentData;
    }
 })
@@ -772,6 +857,15 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
             CurrentContent.content.textEntries[i].content = document.content;
             CurrentContent.content.textEntries[i].drawing = document.drawing;
             //console.log(document.drawing);
+            if (CurrentContent.packmode)
+            {
+               //var test = packDocument(document.content);
+               CurrentContent.content.textEntries[i].content = packDocument(document.content);
+               clearCache();
+               buildCache(CurrentContent.content.textEntries[i].content);
+               win.webContents.send(RELOAD_DOCUMENT, CurrentContent.content.textEntries[i]);
+            }
+            
 
             win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
             updateproject();
@@ -800,6 +894,10 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
       return;
    }
 
+   if (CurrentContent.packmode)
+   {
+      verifyImages();
+   }
    //CurrentContent.projectdata.name = "newname";
 
    let data = JSON.stringify(CurrentContent, null, 2);
@@ -1298,7 +1396,7 @@ ipcMain.on(UPDATE_THEME, function(event, data) {
              console.log("An error ocurred creating the file "+ err.message)
              return;
          }
-         loadSettings();         
+         loadSettings();        
       });
    }
    else
@@ -1309,6 +1407,7 @@ ipcMain.on(UPDATE_THEME, function(event, data) {
 
 ipcMain.on(EDITOR_SETPACK, function(event, data) {
    CurrentContent.packmode = !CurrentContent.packmode;
+   console.log(CurrentContent.packmode);
 
    if (CurrentContent.packmode)
    {
@@ -1319,7 +1418,9 @@ ipcMain.on(EDITOR_SETPACK, function(event, data) {
       convertDatabaseToUnpacked();
    }
 
+   sendPack();
    updaterenderer();
+   updateproject();
 })
 
 function convertDatabaseToPacked()
@@ -1331,7 +1432,10 @@ function convertDatabaseToPacked()
       var currentImages = getAttrFromString(CurrentContent.content.textEntries[i].content, 'img', 'src');
       currentImages.forEach(element => {
          imagesUrls.push(element);
+         var filename = element.substring(element.lastIndexOf("/") + 1, element.length);
+         CurrentContent.content.textEntries[i].content = CurrentContent.content.textEntries[i].content.split(element).join(path.join(cachePath, filename).replace(/\\/g, '/'));
       });
+
    }
 
    imagesUrls.forEach(element => {
@@ -1339,29 +1443,31 @@ function convertDatabaseToPacked()
 
       for (let otherelement of CurrentContent.packedimages)
       {
-         if (element.url == otherelement)
+         if (element == otherelement.url)
          {
             found = true;
             break;
          }
       }
-
-
-
+      
       if (!found)
       {
+         var filename = element.substring(element.lastIndexOf("/") + 1, element.length);
+         
          if (fs.existsSync(element)) {
+
             var newimageurl = {
-               url: element,
+               url: path.join(cachePath, filename).replace(/\\/g, '/'),
                data: fs.readFileSync(element, {encoding: 'base64'})
             }
-   
+            console.log(newimageurl.url)
             CurrentContent.packedimages.push(newimageurl);
+            
          }
          else
          {
             var newimageurl = {
-               url: element,
+               url: path.join(cachePath, filename).replace(/\\/g, '/'),
                data: null
             }
    
@@ -1382,6 +1488,28 @@ function getAttrFromString(str, node, attr) {
 
 function convertDatabaseToUnpacked()
 {
+   if (CurrentContent.projecturl == null || CurrentContent.projecturl == "")
+   {
+      let unpackoptions  = {
+         buttons: ["Yes","No"],
+         message: "You must save to unpack images, would you like to save and proceed?"
+      }
+
+      dialog.showMessageBox(null, unpackoptions).then( (data) => {
+         if (data.response == 0)
+         {
+            saveasprojectReturnUnpack();
+         }
+         else
+         {
+            CurrentContent.packmode = true;
+         }
+      });
+
+      return;
+   }
+
+
    var folderpath = CurrentContent.projecturl.substring(0, CurrentContent.projecturl.lastIndexOf("/"));
    var projectname = CurrentContent.projecturl.substring(CurrentContent.projecturl.lastIndexOf("/") + 1, CurrentContent.projecturl.length).split('.').slice(0, -1).join('.');
    
@@ -1391,7 +1519,7 @@ function convertDatabaseToUnpacked()
 
    CurrentContent.packedimages.forEach(packedImage => {
       var filename = packedImage.url.substring(packedImage.url.lastIndexOf("/") + 1, packedImage.url.length);
-      //console.log(filename);
+      console.log(path.join(folderpath, filename).replace(/\\/g, '/'));
 
       fs.writeFile(path.join(folderpath, filename), packedImage.data, 'base64', function(err) {
          if (err)
@@ -1401,6 +1529,7 @@ function convertDatabaseToUnpacked()
       });
 
       CurrentContent.content.textEntries.forEach(documententry => {
+         
          //var text = documententry.content;
          //var newpath = path.join(folderpath, filename);
          //text = text.split(packedImage.url).join(newpath.replace(/\\/g, '/'));
@@ -1445,6 +1574,153 @@ function loadSettings()
   });
 
   sendPack();
+}
+
+function clearCache()
+{
+   fs.readdir(cachePath, (err, files) => {
+      if (err) throw err;
+    
+      for (const file of files) {
+        fs.unlink(path.join(cachePath, file), err => {
+          if (err) throw err;
+        });
+      }
+    });
+}
+
+var loadingimages = 0;
+
+function buildCache(documentContents)
+{
+   var imagesUrls = [];   
+   var currentImages = getAttrFromString(documentContents, 'img', 'src');
+   currentImages.forEach(element => {
+      imagesUrls.push(element);
+   });
+
+   imagesUrls.forEach(element => {
+      //console.log(element);
+      //console.log(CurrentContent.packedimages.length);
+      for (let otherelement of CurrentContent.packedimages)
+      {
+         //console.log(otherelement.url);
+         if (element == otherelement.url)
+         {
+            var filename = element.substring(element.lastIndexOf("/") + 1, element.length);
+            //console.log(path.join(cachePath, filename));
+            loadingimages = loadingimages + 1;
+            fs.writeFile(path.join(cachePath, filename), otherelement.data, 'base64', function(err) {
+               if (err)
+               {
+                  console.log(err);
+               }
+               loadingimages = loadingimages - 1;
+            });
+
+            documentContents = documentContents.split(element).join(path.join(cachePath, filename).replace(/\\/g, '/'));
+            otherelement.url = path.join(cachePath, filename).replace(/\\/g, '/');
+         }
+      }
+   });
+   updateDocument();
+   //console.log(documentContents);
+   return documentContents;
+}
+
+function updateDocument()
+{ 
+   var id = setInterval(function()
+   {
+      win.webContents.send(REFRESH_DOCUMENTS);
+
+      if(loadingimages <= 0)
+      {
+         clearInterval(id);
+      }
+   }, 100);
+}
+
+function packDocument(documentContents)
+{
+   var imagesUrls = getAttrFromString(documentContents, 'img', 'src');   
+
+   imagesUrls.forEach(element => {
+      var found = false;
+
+      var filename = element.substring(element.lastIndexOf("/") + 1, element.length);
+      var filepath = path.join(cachePath, filename).replace(/\\/g, '/');
+
+      documentContents = documentContents.split(element).join(filepath);
+
+      //console.log(element + " ----- " + filepath + " ------------- " + documentContents);
+      
+      for (let otherelement of CurrentContent.packedimages)
+      {
+         var otherfilename = otherelement.url.substring(otherelement.url.lastIndexOf("/") + 1, otherelement.url.length);
+         if (otherfilename == filename)
+         {
+            found = true;
+            break;
+         }
+      }
+
+      if (!found)
+      {
+         if (fs.existsSync(element)) {
+            var newimageurl = {
+               url: filepath,
+               data: fs.readFileSync(element, {encoding: 'base64'})
+            }
+   
+            CurrentContent.packedimages.push(newimageurl);
+         }
+         else
+         {
+            var newimageurl = {
+               url: filepath,
+               data: null
+            }
+   
+            CurrentContent.packedimages.push(newimageurl);
+         }
+      }
+   });
+
+   return documentContents;
+}
+
+function verifyImages()
+{
+   for (var i = CurrentContent.packedimages.length - 1; i >= 0; i--) {
+      var returnLoop = false;
+      for (var d in CurrentContent.content.textEntries)
+      {
+         var currentImages = getAttrFromString(CurrentContent.content.textEntries[d].content, 'img', 'src');
+
+         for (var im in currentImages)
+         {
+            console.log(currentImages[im]);
+            if (currentImages[im] == CurrentContent.packedimages[i].url)
+            {
+               returnLoop = true;
+               break;
+            }
+         }
+
+         if (returnLoop)
+         {
+            break;
+         }
+      }
+
+      if (!returnLoop)
+      {
+         CurrentContent.packedimages.splice(i, 1);
+      }
+
+      returnLoop = false;
+   }
 }
 
 /** ---------------------------   Document editor functions   ----------------------------- */
