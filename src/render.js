@@ -302,7 +302,7 @@ const TokengetFileFromUser = async () => {
     buttonLabel : "Import image",
     
     filters :[
-      {name: 'Images', extensions: ['jpg', 'png', 'gif', 'svg']}
+      {name: 'Images', extensions: ['jpg', 'png', 'gif']}
     ],
     properties: ['openFile']
   }
@@ -1314,11 +1314,13 @@ $(document).keyup(function (e) {
 });
 
 Mousetrap.bind(['del'], function(){
-  if (selecteddocid != null)
+  //console.log(document.activeElement.classList.contains("ql-editor"));
+  
+  if (selecteddocid != null && !document.activeElement.classList.contains("ql-editor") && document.activeElement != texteditortitle)
   {
     ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
-  }
-  return false;
+    return false;
+  }  
 })
 
 /**Had unwanted results, removed. */
@@ -1441,7 +1443,7 @@ newdocbtn.onclick = e => {
 
 const deletdocbtn = document.getElementById('btn-deletedoc');
 deletdocbtn.onclick = e => {
-  if (selecteddocid != null)
+  if (selecteddocid != null && !document.activeElement.classList.contains("ql-editor") && document.activeElement != texteditortitle)
   {
     ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
   }

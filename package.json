@@ -1,6 +1,6 @@
 {
   "name": "dmmaps",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "A DM's world building toolkit.",
   "main": "./src/main.js",
   "scripts": {

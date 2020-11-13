@@ -212,13 +212,16 @@ function opengeneratorwindow()
 
 
 let deleteoptions  = {
-   buttons: ["Yes","No"],
-   message: "Do you really want to delete?"
+   buttons: ["Delete Document","Don't Delete"],
+   message: "Do you really want to delete this document?",
+   defaultId: 1, // bound to buttons array
   }
 
 let nodedeleteoptions  = {
    buttons: ["Documents and Nodes","Just Nodes", "Cancel"],
-   message: "Do you want to delete the attached documents as well?"
+   message: "Do you want to delete the attached documents as well?",
+   defaultId: 2, // bound to buttons array
+
 }
 
 let backupoptions  = {
@@ -521,11 +524,12 @@ function iscurrentdoc()
 const newproject = async () => {
    if (dirtyproject)
    {
-      let deleteoptions  = {
+      let tempdeleteoptions  = {
          buttons: ["Yes","No"],
-         message: "You have unsaved data, do you wish to save first?"
+         message: "You have unsaved data, do you wish to save first?",
+         defaultId: 1, // bound to buttons array
       }
-      dialog.showMessageBox(null, deleteoptions).then( (data) => {
+      dialog.showMessageBox(null, tempdeleteoptions).then( (data) => {
          if (data.response == 0)
          {
             saveproject(false, true);
@@ -1331,12 +1335,13 @@ autoUpdater.on('update-downloaded', () => {
 ipcMain.on(NOTIFY_RESTART, function(event) {
    if (dirtyproject)
    {
-      const choice = require('electron').dialog.showMessageBoxSync(this,
+      const choice = dialog.showMessageBoxSync(this,
       {
          type: 'question',
          buttons: ['Yes', 'No'],
          title: 'Confirm',
-         message: 'You have unsaved data, Are you sure you want to restart?'
+         message: 'You have unsaved data, Are you sure you want to restart?',
+         defaultId: 1, // bound to buttons array
       });
       if (choice === 1) {
       }
