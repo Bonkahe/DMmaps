@@ -280,5 +280,9 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
     if (message.packtrue != null)
     {
         document.getElementById("packbtn").innerText = message.packtrue? "Disable Image Packing" : "Enable Image Packing";        
+        if (message.packtrue)
+        {
+            brokenlinkscontainer.style.display = "none";
+        }
     }
 })
