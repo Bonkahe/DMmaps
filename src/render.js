@@ -131,6 +131,8 @@ var caratindex;
 /**Search variables */
 var searchinput = document.getElementById("searchpanel");
 var searchoutput = document.getElementById("searchcount");
+var searchsetting = document.getElementById("searchtooltip");
+var searchsettingbutton = document.getElementById("searchtooltipbtn");
 
 /**hierarchyVariables */
 var hierarchyelmnt = document.getElementById("hierarchycontainer");
@@ -398,14 +400,11 @@ function sethighlight(index)
 $(function() {
   $("body").click(function(e) {
 
-    if (!$(e.target).closest("#hierarchylist").length)
+    if (!$(e.target).closest("#hierarchylist").length && !$(e.target).closest("#searchtooltip").length)
     {
       if (searchselect)
       {
-        ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
-        searchselect = false;
-        searchoutput.innerText = "";
-        searchinput.value = "";
+        clearsearch();
       }
     }
 
@@ -2493,12 +2492,31 @@ function selectnode(buttonelmnt)
 //searchinput.onchange = function(){search();};
 var searchselect = false;
 var searchtext = '';
+var searchcontents = false;
+
+function togglesearch()
+{
+  searchcontents = !searchcontents;
+  searchsettingbutton.innerText = searchcontents? "Search Titles" : "Search Contents";
+  search();
+}
+
+function clearsearch()
+{
+  ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
+  searchsetting.style.display = "none";
+  searchselect = false;
+  searchoutput.innerText = "";
+  searchinput.value = "";
+}
+
 
 function search()
 {
   var curstring = searchinput.value;
   searchtext = curstring;
-  console.log(searchtext);
+  searchsetting.style.display = "block";
+  //console.log(searchtext);
   /*
   if (curstring == '')
   {
@@ -2508,12 +2526,60 @@ function search()
     searchinput.innerText = "";
   }
   */
-  ipcRenderer.send(SEARCH_TITLES, curstring);
+  if (searchcontents)
+  {
+    ipcRenderer.send(SEARCH_CONTENT, curstring);
+  }
+  else
+  {
+    ipcRenderer.send(SEARCH_TITLES, curstring);
+  }
 }
 
-ipcRenderer.on(SEARCH_TITLES, (event, content) =>{
-  buildsearchhierarchy(content);
+ipcRenderer.on(SEARCH_CONTENT, (event, content) =>{
+  buildsearchhierarchycontents(content);
 })
+
+ipcRenderer.on(SEARCH_TITLES, (event, content) =>{
+  buildsearchhierarchy(content);  
+})
+
+function buildsearchhierarchycontents(content)
+{
+  searchoutput.innerText = content.length;
+  searchselect = true;
+  //WipeVariables
+  hierarchylist.innerHTML = null;
+  $('.sub-bar').remove();
+  $('.sub-tiles').remove();
+  textEntries = [];
+
+
+  textEntries = content;
+
+  newhtml = '';
+
+  var pattern = new RegExp('('+searchtext+')', 'gi');
+  columnrowcount = [];
+  for(var i = 0; i < textEntries.length; i++)
+  {    
+
+    newhtml = newhtml + '<li class="item" this-index="' + textEntries[i].id + '" Db-Path="' + textEntries[i].id + '" onclick="hierarchybuttonpressed(' + textEntries[i].id + ')">' + 
+      textEntries[i].name.toString() + '</li>';
+  }
+
+  hierarchylist.innerHTML = newhtml;
+  firstbar.style.height = "0px";
+  
+  if (selecteddocid != null)
+  {
+    var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
+    if (highlighteddoc != null)
+    {
+      highlighteddoc.id = 'highlight';
+    }
+  }
+}
 
 function buildsearchhierarchy(content)
 {
@@ -2541,6 +2607,15 @@ function buildsearchhierarchy(content)
 
   hierarchylist.innerHTML = newhtml;
   firstbar.style.height = "0px";
+
+  if (selecteddocid != null)
+  {
+    var highlighteddoc = hierarchylist.querySelector('*[Db-Path="' + selecteddocid + '"]');
+    if (highlighteddoc != null)
+    {
+      highlighteddoc.id = 'highlight';
+    }
+  }
 }
 
 /**Handles construction of the hierarchy */
@@ -2849,10 +2924,7 @@ function hierarchybuttonpressed(id)
 
       if (searchselect)
       {
-        ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
-        searchselect = false;
-        searchoutput.innerText = "";
-        searchinput.innerText = "";
+        clearsearch();
       }
     }
     var delayInMilliseconds = 500; //1 second

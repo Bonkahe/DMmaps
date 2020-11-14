@@ -1826,6 +1826,26 @@ ipcMain.on(UPDATE_BROKENLINKS, function(event, foundfiles) {
    updaterenderer();
 })
 
+ipcMain.on(SEARCH_CONTENT, function(event, searchname) {
+   if (searchname == "")
+   {
+      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+      win.webContents.send(SEARCH_CONTENT, []);
+      return;
+   } 
+   var foundTitles = [];
+
+   CurrentContent.content.textEntries.forEach(documententry => 
+   {         
+      if (documententry.content.toLowerCase().includes(searchname.toLowerCase()))
+      {
+         foundTitles.push(documententry);
+      }
+   });
+
+   win.webContents.send(SEARCH_CONTENT, foundTitles);
+})
+
 ipcMain.on(SEARCH_TITLES, function(event, searchname) {
    if (searchname == "")
    {

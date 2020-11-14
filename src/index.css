@@ -174,7 +174,17 @@ button {
 /* end overlay*/
 
 
+  #searchtooltip{
+    position: absolute;
+    background-color: black;
+    top: 5px;
+  }
 
+  #searchtooltip .basebtn{
+    font-size: smaller;
+    height: auto;
+    color: black;
+  }
   
   #highlight {
   background-color:var(--main-button-color);
@@ -547,6 +557,9 @@ button {
   z-index:10;
   display:block;
   }
+  .b{
+    position: relative;
+  }
   
   .b,.hierarchylist-items {
   width:100%;
@@ -828,6 +841,8 @@ button {
     background-color: var(--main-button-color);
     user-select: none;
     padding: 0;
+    cursor: pointer;
+    outline: none;
 }
 
 .container input[type=range] {
