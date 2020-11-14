@@ -54,12 +54,18 @@
                 <p>This is will make all images linked anywhere in the project be stored directly in the .dmdb file.</p>
                 <p>Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.</p>
                 <button onclick="setPack()" class="basebtn" id="packbtn"> Missing </button>
-                <input id="myfiles" multiple type="file">
             </div>
             <div class="container">
                 <h1>Broken Links</h1>
                 <br>
-                <p>To be implemented.</p>
+                <p id="brokenlinksinfodisplay" >No Project Loaded.</p>
+                <div class="container" id="brokenlinkscontainer" style="display: none;">
+                    <ul id="drawinglist">
+
+                    </ul>
+                    <label class="basebtn" id="myfileslabel"  for="myfiles">Select a folder to search for images.</label>
+                    <input id="myfiles" webkitdirectory directory multiple type="file">
+                </div>
             </div>
         </div>
         

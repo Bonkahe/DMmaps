@@ -166,6 +166,10 @@ body{
   display: inline-block;
 }
 
+#brokenlinkscontainer{
+  height: 300px;
+}
+
 #drawinglist{
     list-style-type: none;
     white-space: nowrap;
@@ -226,6 +230,7 @@ body{
 }
 
 .basebtn{    
+    cursor: pointer;
     height: 20px;
     background-color: var(--main-button-color);
     user-select: none;

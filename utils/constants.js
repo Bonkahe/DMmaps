@@ -119,6 +119,7 @@ module.exports = {
     UPDATE_THEME: 'update-theme',
     EDITOR_SETPACK: 'editor-setpack',
     EDITOR_CHECKBROKEN: 'editor-checkbroken',
+    UPDATE_BROKENLINKS: 'update-brokenlinks',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,

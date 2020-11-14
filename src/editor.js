@@ -32,6 +32,7 @@ const {
     EDITOR_SETPACK,
     EDITOR_CHECKBROKEN,
     UPDATE_THEME,
+    UPDATE_BROKENLINKS,
 }  = require('../utils/constants');
 
 /** -------------------- Variables --------------------- */
@@ -44,11 +45,85 @@ var primaryhighlight = document.getElementById("primaryhighlight");
 var secondarycolor = document.getElementById("secondarycolor");
 var secondaryhighlight = document.getElementById("secondaryhighlight");
 var styles = document.getElementById("styles");
+var brokenlinkoutput = document.getElementById("brokenlinksinfodisplay");
+var browsebrokenlinkslabel = document.getElementById("myfileslabel");
+var browsebrokenlinks = document.getElementById("myfiles");
+var brokenlinkscontainer = document.getElementById("brokenlinkscontainer");
+var brokenlinkslist = document.getElementById("drawinglist");
 
+var currentbrokenimageUrls = [];
+var currentbrokenimagefiles = [];
+
+browsebrokenlinks.style.opacity = 0;
+
+/** ----------------- Broken Links ------------------------- */
+
+ipcRenderer.on(UPDATE_BROKENLINKS, (event, brokenimageUrls) => {
+    if (brokenimageUrls.length > 0)
+    {
+        currentbrokenimageUrls = brokenimageUrls;
+        currentbrokenimagefiles = [];
+        for(var i in currentbrokenimageUrls)
+        {
+            currentbrokenimagefiles.push(currentbrokenimageUrls[i].replace(/^.*[\\\/]/, ''));
+        }
+
+        var newhtml = '';
+        for(var i = 0; i < currentbrokenimagefiles.length; i++)
+        {
+            newhtml = newhtml + '<li >' + currentbrokenimagefiles[i] + '</li>';
+        }
+      
+        brokenlinkslist.innerHTML = newhtml;
+
+        brokenlinkoutput.innerText = "Found " + brokenimageUrls.length + " broken links.";
+        brokenlinkscontainer.style.display = "block";
+    }
+    else
+    {
+        currentbrokenimageUrls = [];
+        currentbrokenimagefiles = [];
+        brokenlinkoutput.innerText = "Found no broken links.";
+        brokenlinkscontainer.style.display = "none";
+    }
+})
+
+browsebrokenlinks.onchange = function(event) {
+    var fileList = browsebrokenlinks.files;
+    var foundfiles = [];
+    for(var i in fileList)
+    {
+        brokenlinkoutput.innerText = "Processed " + i + " files...";
+        if (fileList[i].path != undefined)
+        {
+            var filename = fileList[i].path.replace(/^.*[\\\/]/, '');
+            //console.log(fileList[i].path.replace(/^.*[\\\/]/, ''));
+            if (currentbrokenimagefiles.indexOf(filename) != -1)
+            {
+                var replacementpath = {
+                    old: currentbrokenimageUrls[currentbrokenimagefiles.indexOf(filename)],
+                    new: fileList[i].path
+                }
+                foundfiles.push(replacementpath);
+            }
+        }
+        if (foundfiles.length >= currentbrokenimagefiles.length)
+        {
+            break;
+        }
+    }
+
+    brokenlinkoutput.innerText = "Found " + foundfiles.length + " files at location...";
+
+    if (foundfiles.length > 0)
+    {
+        ipcRenderer.send(UPDATE_BROKENLINKS, foundfiles);
+    }
+ }
 
 /** ---------------------- Themes -------------------------- */
 
-
+/*
 var pullfiles=function(){ 
     // love the query selector
     var fileInput = document.querySelector("#myfiles");
@@ -67,8 +142,8 @@ var pullfiles=function(){
 
 // set the input element onchange to call pullfiles
 document.querySelector("#myfiles").onchange=pullfiles;
-
-console.log(styles.innerText);
+*/
+//console.log(styles.innerText);
 
 ipcRenderer.send(UPDATE_THEME);
 

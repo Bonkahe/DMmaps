@@ -74,6 +74,7 @@ const {
    UPDATE_THEME,
    EDITOR_SETPACK,
    EDITOR_CHECKBROKEN,
+   UPDATE_BROKENLINKS,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry,
@@ -609,6 +610,7 @@ const deeploadproject = async () => {
       Databasetemplate.fromjson(data);
       CurrentContent.projecturl = filename.filePaths[0];
       updaterenderer();
+      checkBrokenLinks();
    }); 
 }
 
@@ -1769,6 +1771,50 @@ function removeparent(data)
       }
    } 
 }
+
+function checkBrokenLinks()
+{
+   var brokenimageUrls = [];
+   var imagesUrls = [];
+   for (var i in CurrentContent.content.textEntries)
+   {
+      var currentImages = getAttrFromString(CurrentContent.content.textEntries[i].content, 'img', 'src');
+      currentImages.forEach(element => {
+         imagesUrls.push(element);
+      });
+   }
+
+   imagesUrls.forEach(element => {
+      if (!fs.existsSync(element)) {
+         brokenimageUrls.push(element);
+      }
+   });
+   /*
+   if (brokenimageUrls.length > 0)
+   {
+      console.log("Found " + brokenimageUrls.length + " broken links;")
+      brokenimageUrls.forEach(element => {
+         console.log(element);
+      });      
+   }
+   */
+   editorwindow.webContents.send(UPDATE_BROKENLINKS, brokenimageUrls);
+}
+
+
+ipcMain.on(UPDATE_BROKENLINKS, function(event, foundfiles) {
+   CurrentContent.content.textEntries.forEach(documententry => 
+   {         
+      for (var i in foundfiles)
+      {
+         //console.log(foundfiles[i].old + " --- " + foundfiles[i].new);
+         documententry.content = documententry.content.split(foundfiles[i].old).join(foundfiles[i].new);
+      }
+   });
+   checkBrokenLinks();
+   updateproject();
+})
+
 
 /** ---------------------------   END -- Document editor functions   ----------------------------- */
 
