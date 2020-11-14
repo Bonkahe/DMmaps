@@ -61,6 +61,8 @@ const {
   REFRESH_NODES,
   TITLEBAR_OPEN_GENERATOR_WINDOW,
   UPDATE_THEME,
+  SEARCH_TITLES,
+  SEARCH_CONTENT,
 }  = require('../utils/constants');
 const { start } = require('repl');
 const { Titlebar } = require('custom-electron-titlebar');
@@ -125,6 +127,10 @@ var toolbarheight;
 var editorcontainer = document.getElementById('editor');
 var texteditorcontainer = document.getElementById('textcontainer');
 var caratindex;
+
+/**Search variables */
+var searchinput = document.getElementById("searchpanel");
+var searchoutput = document.getElementById("searchcount");
 
 /**hierarchyVariables */
 var hierarchyelmnt = document.getElementById("hierarchycontainer");
@@ -391,6 +397,18 @@ function sethighlight(index)
 
 $(function() {
   $("body").click(function(e) {
+
+    if (!$(e.target).closest("#hierarchylist").length)
+    {
+      if (searchselect)
+      {
+        ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
+        searchselect = false;
+        searchoutput.innerText = "";
+        searchinput.value = "";
+      }
+    }
+
     if (e.target.id == "zone-display" || $(e.target).parents("#zone-display").length || e.target.classList.contains("jscolor-picker-wrap")|| $(e.target).parents(".jscolor-picker-wrap").length) {
       
     } else {
@@ -2470,9 +2488,66 @@ function selectnode(buttonelmnt)
   })  
 }
 
+/**Handles inputs into search function */
+
+//searchinput.onchange = function(){search();};
+var searchselect = false;
+var searchtext = '';
+
+function search()
+{
+  var curstring = searchinput.value;
+  searchtext = curstring;
+  console.log(searchtext);
+  /*
+  if (curstring == '')
+  {
+    ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
+    searchselect = false;
+    searchoutput.innerText = "";
+    searchinput.innerText = "";
+  }
+  */
+  ipcRenderer.send(SEARCH_TITLES, curstring);
+}
+
+ipcRenderer.on(SEARCH_TITLES, (event, content) =>{
+  buildsearchhierarchy(content);
+})
+
+function buildsearchhierarchy(content)
+{
+  searchoutput.innerText = content.length;
+  searchselect = true;
+  //WipeVariables
+  hierarchylist.innerHTML = null;
+  $('.sub-bar').remove();
+  $('.sub-tiles').remove();
+  textEntries = [];
+
+
+  textEntries = content;
+
+  newhtml = '';
+
+  var pattern = new RegExp('('+searchtext+')', 'gi');
+  columnrowcount = [];
+  for(var i = 0; i < textEntries.length; i++)
+  {    
+
+    newhtml = newhtml + '<li class="item" this-index="' + textEntries[i].id + '" Db-Path="' + textEntries[i].id + '" onclick="hierarchybuttonpressed(' + textEntries[i].id + ')">' + 
+      textEntries[i].name.toString().replace(pattern, '<u>$1</u>') + '</li>';
+  }
+
+  hierarchylist.innerHTML = newhtml;
+  firstbar.style.height = "0px";
+}
+
 /**Handles construction of the hierarchy */
 function rebuildhierarchy(content)
 {
+  searchoutput.innerText = "";
+  searchinput.value = "";
   //WipeVariables
   hierarchylist.innerHTML = null;
   $('.sub-bar').remove();
@@ -2771,6 +2846,14 @@ function hierarchybuttonpressed(id)
       DisplayDocument();
       selectDocument(id)
       loadDocument();
+
+      if (searchselect)
+      {
+        ipcRenderer.send(REQUEST_HIERARCHY_REFRESH, openednodes);
+        searchselect = false;
+        searchoutput.innerText = "";
+        searchinput.innerText = "";
+      }
     }
     var delayInMilliseconds = 500; //1 second
     doubleclick = true;

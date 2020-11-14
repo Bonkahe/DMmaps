@@ -93,7 +93,6 @@ browsebrokenlinks.onchange = function(event) {
     var foundfiles = [];
     for(var i in fileList)
     {
-        brokenlinkoutput.innerText = "Processed " + i + " files...";
         if (fileList[i].path != undefined)
         {
             var filename = fileList[i].path.replace(/^.*[\\\/]/, '');
@@ -112,8 +111,6 @@ browsebrokenlinks.onchange = function(event) {
             break;
         }
     }
-
-    brokenlinkoutput.innerText = "Found " + foundfiles.length + " files at location...";
 
     if (foundfiles.length > 0)
     {

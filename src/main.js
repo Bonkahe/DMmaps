@@ -75,6 +75,8 @@ const {
    EDITOR_SETPACK,
    EDITOR_CHECKBROKEN,
    UPDATE_BROKENLINKS,
+   SEARCH_TITLES,
+   SEARCH_CONTENT,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry,
@@ -605,12 +607,15 @@ const deeploadproject = async () => {
    fs.readFile(filename.filePaths[0], 'utf-8', (err, data) => {
       if(err){
          console.log("An error ocurred reading the file :" + err.message);
-          return;
+         return;
       }
       Databasetemplate.fromjson(data);
       CurrentContent.projecturl = filename.filePaths[0];
       updaterenderer();
-      checkBrokenLinks();
+      if (!CurrentContent.packmode)
+      {
+         checkBrokenLinks();
+      }
    }); 
 }
 
@@ -1789,20 +1794,25 @@ function checkBrokenLinks()
          brokenimageUrls.push(element);
       }
    });
-   /*
-   if (brokenimageUrls.length > 0)
-   {
-      console.log("Found " + brokenimageUrls.length + " broken links;")
-      brokenimageUrls.forEach(element => {
-         console.log(element);
-      });      
+
+   if (!fs.existsSync(CurrentContent.backgroundurl)) {
+      brokenimageUrls.push(CurrentContent.backgroundurl);
    }
-   */
+   
    editorwindow.webContents.send(UPDATE_BROKENLINKS, brokenimageUrls);
 }
 
 
 ipcMain.on(UPDATE_BROKENLINKS, function(event, foundfiles) {
+   for (var i in foundfiles)
+   {
+      if (foundfiles[i].old == CurrentContent.backgroundurl)
+      {
+         CurrentContent.backgroundurl = foundfiles[i].new;
+         break;
+      }
+   }
+
    CurrentContent.content.textEntries.forEach(documententry => 
    {         
       for (var i in foundfiles)
@@ -1813,6 +1823,27 @@ ipcMain.on(UPDATE_BROKENLINKS, function(event, foundfiles) {
    });
    checkBrokenLinks();
    updateproject();
+   updaterenderer();
+})
+
+ipcMain.on(SEARCH_TITLES, function(event, searchname) {
+   if (searchname == "")
+   {
+      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+      win.webContents.send(SEARCH_TITLES, []);
+      return;
+   } 
+   var foundTitles = [];
+
+   CurrentContent.content.textEntries.forEach(documententry => 
+   {         
+      if (documententry.name.toLowerCase().includes(searchname.toLowerCase()))
+      {
+         foundTitles.push(documententry);
+      }
+   });
+
+   win.webContents.send(SEARCH_TITLES, foundTitles);
 })
 
 

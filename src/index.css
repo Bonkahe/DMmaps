@@ -39,6 +39,7 @@
   border-width: 0 0 0 0;
   border-style: solid;
   border-color: rgb(125, 128, 128);
+  cursor: pointer;
   }
   
   .option {
@@ -129,6 +130,7 @@ button {
 #donatebtn{
   padding: 10px;
   width: 100px;
+  cursor: pointer;
 }
 #donatebtn:hover{
   background-color: rgba(0, 0, 0, 0.13);
@@ -196,9 +198,7 @@ button {
 
   #hierarchylist-container .hierarchylist-open {
     position: absolute;
-    background-image: url(./images/OpenBtn.png);
     width: 12px;
-    height: 12px;
     left: -12px;
     top: 0;
     z-index: 12;
@@ -207,17 +207,39 @@ button {
 
   #hierarchylist-container .hierarchylist-close {
     position: absolute;
-    background-image: url(./images/CloseBtn.png);
     width: 12px;
-    height: 12px;
     left: -12px;
     top: 0;
     z-index: 12;
     background-size: contain;
   }
+  
+  #hierarchylist-container .hierarchylist-open:before {
+    content: '\002B';
+    color: white;
+    font-weight: bold;
+    float: left;
+    margin-right: 5px;
+  }
+  #hierarchylist-container .hierarchylist-close:before {
+    content: "\2212";
+    color: white;
+    font-weight: bold;
+    float: left;
+    margin-right: 5px;
+  }
 
+  #hierarchylist-container .hierarchylist-open:hover {
+    background-color: rgb(10, 10, 10);
+  }
+  #hierarchylist-container .hierarchylist-close:hover {
+    background-color: rgb(10, 10, 10);
+  }
+  
   #hierarchycontent .btn-group {
   height: 32px;
+  display: flex;
+  position: relative;
   }
   
   #hierarchycontent .btn-group button {
@@ -231,6 +253,7 @@ button {
   cursor:pointer;
   float:left;
   padding:0 5px;
+  min-width: 32px;
   }
 
   #hierarchycontent .btn-group #btn-newdoc:hover {
@@ -241,6 +264,26 @@ button {
   #hierarchycontent .btn-group #btn-deletedoc {
   background-color:var(--neg-button-color);
   border:1px solid black;
+  }
+
+  
+  #hierarchycontent .btn-group #searchpanel {
+    background-color: rgb(20, 20, 20);
+    border:1px solid black;
+    width: 100%;
+    height: 100%;
+    color: whitesmoke;
+    margin-left: 10px;
+    padding: 5px;
+    outline:none;
+  }
+
+  #searchcount {
+    position: absolute;
+    top: 8px;
+    right: 16px;
+    font-size: small;
+    color: rgba(255, 255, 255, 0.247);
   }
   
   #hierarchycontent .btn-group #btn-deletedoc:hover {
@@ -367,6 +410,7 @@ button {
     outline:none;
     position:absolute;
     z-index:4;
+    cursor: grab;
   }
 
   .node-compass {
@@ -435,6 +479,7 @@ button {
   background-blend-mode:overlay;
   border:none;
   outline:none;
+  cursor: pointer;
   }
 
   #innertoolbar{
@@ -874,23 +919,26 @@ button {
 }
 
 /* width */
-.container ::-webkit-scrollbar {
-    width: 10px;
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
 /* Track */
-.container ::-webkit-scrollbar-track {
-    background: #4d4d4d;
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px grey; 
+  border-radius: 10px;
 }
-
+ 
 /* Handle */
-.container ::-webkit-scrollbar-thumb {
-    background: var(--main-button-color);
+::-webkit-scrollbar-thumb {
+  background: white; 
+  border-radius: 10px;
 }
 
 /* Handle on hover */
-.container ::-webkit-scrollbar-thumb:hover {
-    background: var(--main-button-highlight);
+::-webkit-scrollbar-thumb:hover {
+  background: whitesmoke; 
 }
 
 .greyout{

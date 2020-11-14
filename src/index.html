@@ -50,6 +50,8 @@
           <div class="btn-group">
             <button id="btn-newdoc"><strong>+</strong></button>
             <button id="btn-deletedoc"><strong>-</strong></button>
+            <input type="text" id="searchpanel" name="fname" onkeyup="search()"><br><br>
+            <p id="searchcount"></p>
           </div>
           <div id="hierarchylist-container">
             <div id="hierarchylist-removeparent" class="hierarchylist-bar" ondrop="parentlessdrop(event)" ondragover="allowDrop(event)"></div>

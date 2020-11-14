@@ -120,6 +120,8 @@ module.exports = {
     EDITOR_SETPACK: 'editor-setpack',
     EDITOR_CHECKBROKEN: 'editor-checkbroken',
     UPDATE_BROKENLINKS: 'update-brokenlinks',
+    SEARCH_TITLES: 'search-titles',
+    SEARCH_CONTENT: 'search-content',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,
