@@ -148,7 +148,7 @@ function saveSettings()
 {
     //console.log(document.getElementById("primarycolor").toRGBString())
     var settings = {
-        hueshift: hueshift.value,
+        hueshift: parseFloat(hueshift.value),
         primarycolor: primarycolor.value,
         primaryhighlight: primaryhighlight.value,
         secondarycolor: secondarycolor.value,

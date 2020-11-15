@@ -1347,13 +1347,9 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
          type: 'question',
          buttons: ['Yes', 'No'],
          title: 'Confirm',
-         message: 'You have unsaved data, Are you sure you want to restart?',
-         defaultId: 1, // bound to buttons array
+         message: 'You have unsaved data, Are you sure you want to restart?'
       });
-      if (choice === 1) {
-      }
-      else
-      {
+      if (choice === 0) {
          autoUpdater.quitAndInstall();
       }
    }

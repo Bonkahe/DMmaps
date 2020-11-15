@@ -32,6 +32,26 @@ body{
     align-items: center;
 }
 
+
+button {
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: 0.5s;
+}
+button:focus {
+     outline:none;
+     box-shadow: 0 0 2pt 1pt grey;
+}
+
+select{
+    border-radius: 2px;
+    transition: 0.5s;
+}
+select:focus{
+    border-radius: 2px 2px 0 0;
+}
+
 /*NODE TOOLS */
 
 

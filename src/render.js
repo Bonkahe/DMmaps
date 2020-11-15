@@ -1533,8 +1533,8 @@ ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
   titlebar.dispose();
   var newmenuitem = new MenuItem({ 
     label: 'Restart', 
-    click: () => { 
-      savetext();
+    click: () => {
+      console.log("restarted.");
       ipcRenderer.send(NOTIFY_RESTART); 
     }
   })
