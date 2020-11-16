@@ -171,6 +171,29 @@ button {
   color: #000;
 }
 
+.basebtn {
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+    transition: 0.1s;
+}
+.basebtn:active {
+     outline:none;
+     box-shadow: 0 0 2pt 1pt grey;
+     transform: translateY(2px)
+}
+.basebtn:focus {
+     outline:none;
+}
+
+select{
+    border-radius: 2px;
+    transition: 0.1s;
+}
+select:focus{
+    border-radius: 2px 2px 0 0;
+}
+
 /* end overlay*/
 
 

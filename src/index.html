@@ -28,6 +28,7 @@
     <script src="./quill/quill.js"></script>
     <script src="./quill/image-resize.min.js"></script>
     <script src="./colorpicker/jscolor.js"></script>
+
     <!--<script src="./quill/image-drop.min.js"></script>-->
     <script defer src="render.js"></script>
   </head>
@@ -37,9 +38,9 @@
   </div>
   <div id="overlay">
     <div id="popup">
-       <h2>Donate to the Creator.</h2>
-       <p>If you want to support me with financial donations that's cool,</p>
-       <p>if not that's cool too, either way, enjoy the program!</p>
+       <h2 id="don0">Donate to the Creator.</h2>
+       <p id="don1">If you want to support me with financial donations that's cool,</p>
+       <p id="don2">if not that's cool too, either way, enjoy the program!</p>
        <img id="donatebtn" src="./images/PP_logo_h_100x26.png" alt="PayPal" />
     </div>
  </div>
@@ -75,7 +76,7 @@
         </div>
         <div id="no-map-info">
           <div id="no-map-info-content">
-            <h1>You do not currently have a map loaded.</h1>
+            <h1 id="map0">You do not currently have a map loaded.</h1>
             <button id="backgroundBtn">Load BackgroundImage</button>
           </div>
         </div>
@@ -134,8 +135,8 @@
           
 
           <div class="container">
-            <h1>Node Controls</h1>
-            <p>Default size:</p>
+            <h1 id="tool0">Node Controls</h1>
+            <p id="tool1">Default size:</p>
             <input type="range" id="basenodeRange" step="0.1" value="10" min="0" max="100">
 
             <div class="holder">
@@ -165,11 +166,11 @@
                           <div id="zonetoolbar">
 
                               <div class="toolbarline">
-                                  Spline Width:
+                                  <span id="spli0"> Spline Width:</span>
                                   <input type="range" id="Splinewidth" step="0.1" value="20" min="0" max="100">
                               </div>
                               <div class="toolbarline">
-                                  Spline:
+                                  <span id="spli1"> Spline:</span>
                                   <input class="colorbox" id="splinecolorbtn" data-jscolor="{value:'#000000', onChange: 'splinecolorChange(this)'}" type="button">
                               </div>
                               <div class="toolbarline">
@@ -177,7 +178,7 @@
                                   <label for="enablefillbtn"> Enable fill of region.</label><br><br>
                               </div>
                               <div class="toolbarline">
-                                  Fill:
+                                  <span id="spli2"> Fill:</span>
                                   <input class="colorbox" id="bgcolorbtn" data-jscolor="{value:'#000000', onChange: 'fillcolorChange(this)'}" type="button">
                               </div>
                               <div class="toolbarline">

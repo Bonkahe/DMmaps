@@ -82,6 +82,7 @@ const {
    DatabaseTextentry,
    SETGLOBAL_CHARGEN,
 } = require('../utils/constants');
+var i18n = new(require('../translations/i18n'))
 const { dir } = require('console');
 const { send } = require('process');
 
@@ -138,9 +139,9 @@ function createWindow() {
          const choice = dialog.showMessageBoxSync(this,
          {
             type: 'question',
-            buttons: ['Yes', 'No'],
-            title: 'Confirm',
-            message: 'You have unsaved data, Are you sure you want to quit?'
+            buttons: [i18n.__('Yes'), i18n.__('No')],
+            title: i18n.__('Confirm'),
+            message: i18n.__('You have unsaved data, Are you sure you want to quit?')
          });
          if (choice === 1) {
             e.preventDefault();
@@ -215,21 +216,21 @@ function opengeneratorwindow()
 
 
 let deleteoptions  = {
-   buttons: ["Delete Document","Don't Delete"],
-   message: "Do you really want to delete this document?",
+   buttons: [i18n.__("Delete Document"),i18n.__("Don't Delete")],
+   message: i18n.__("Do you really want to delete this document?"),
    defaultId: 1, // bound to buttons array
   }
 
 let nodedeleteoptions  = {
-   buttons: ["Documents and Nodes","Just Nodes", "Cancel"],
-   message: "Do you want to delete the attached documents as well?",
+   buttons: [i18n.__("Documents and Nodes"),i18n.__("Just Nodes"), i18n.__("Cancel")],
+   message: i18n.__("Do you want to delete the attached documents as well?"),
    defaultId: 2, // bound to buttons array
 
 }
 
 let backupoptions  = {
-   buttons: ["Attempt project recovery.","Continue"],
-   message: "DMmaps closed unexpectedly last time, would you like to recover your project?"
+   buttons: [i18n.__("Attempt project recovery."),i18n.__("Continue")],
+   message: i18n.__("DMmaps closed unexpectedly last time, would you like to recover your project?")
 }
 
 function checkbackup()
@@ -279,21 +280,21 @@ contextMenu({
       },
       */
       {
-         label: 'Select Mode',
+         label: i18n.__('Select Mode'),
          click: () => {
             win.webContents.send(SET_MOUSEMODE,0);
             //win.webContents.send(CHANGE_MAP , );
          }
       },
       {
-         label: 'Measure Mode',
+         label: i18n.__('Measure Mode'),
          click: () => {
             win.webContents.send(SET_MOUSEMODE,1);
             //win.webContents.send(CHANGE_MAP , );
          }
       },
       {
-         label: 'Spline Mode',
+         label: i18n.__('Spline Mode'),
          visible: docselected,
          click: () => {
             win.webContents.send(SET_MOUSEMODE,2);
@@ -304,14 +305,14 @@ contextMenu({
          type: 'separator',
       },
 		{
-         label: 'Load Background Image',
+         label: i18n.__('Load Background Image'),
          visible: !notonmap,
          click: () => {
             win.webContents.send(CHANGE_MAP , );
          }
       },
       {
-         label: 'Create Node',
+         label: i18n.__('Create Node'),
          visible: (CurrentContent.backgroundurl != "" && !notonmap),
          click: () => {
             var newnode = new DatabaseNodeentry();
@@ -370,7 +371,7 @@ contextMenu({
          }
       },
       {
-         label: 'Reset Map',
+         label: i18n.__('Reset Map'),
          visible: (CurrentContent.backgroundurl != "" && !notonmap),
          click: () => {
             win.webContents.send(RESET_MAP , );
@@ -381,7 +382,7 @@ contextMenu({
          visible: nodemenu === true,
       },
       {
-         label: 'Delete Node',
+         label: i18n.__('Delete Node'),
          visible: nodemenu === true,
          click: () => {
             dialog.showMessageBox(null, nodedeleteoptions).then( (data) => {
@@ -438,7 +439,7 @@ contextMenu({
          }
       },
       {
-         label: 'Lock/Unlock Node',
+         label: i18n.__('Lock/Unlock Node'),
          visible: nodemenu === true,
          click: () => {
             var locked = false;
@@ -471,7 +472,7 @@ contextMenu({
          }
       },
       {
-         label: 'Bind node to Document',
+         label: i18n.__('Bind node to Document'),
          visible: (nodemenu === true && extendedcontext === true && !iscurrentdoc()),
          click: () => {
             var count = 0;
@@ -528,8 +529,8 @@ const newproject = async () => {
    if (dirtyproject)
    {
       let tempdeleteoptions  = {
-         buttons: ["Yes","No"],
-         message: "You have unsaved data, do you wish to save first?",
+         buttons: [i18n.__("Yes"),i18n.__("No")],
+         message: i18n.__("You have unsaved data, do you wish to save first?"),
          defaultId: 1, // bound to buttons array
       }
       dialog.showMessageBox(null, tempdeleteoptions).then( (data) => {
@@ -556,8 +557,8 @@ function loadproject()
    if (dirtyproject)
    {
       let deleteoptions  = {
-         buttons: ["Yes","No"],
-         message: "You have unsaved data, do you wish to save first?"
+         buttons: [i18n.__("Yes"),i18n.__("No")],
+         message: i18n.__("You have unsaved data, do you wish to save first?")
       }
       dialog.showMessageBox(null, deleteoptions).then( (data) => {
          if (data.response == 0)
@@ -580,11 +581,11 @@ function loadproject()
 const deeploadproject = async () => {
 
    let options = {
-      title : "Choose a database", 
+      title : i18n.__("Choose a database"), 
 
       defaultPath : ".",
       
-      buttonLabel : "Load database",
+      buttonLabel : i18n.__("Load database"),
       filters: [
          { name: 'DungeonMaster Database', extensions: ['dmdb'] }
        ],
@@ -626,11 +627,11 @@ function saveproject()
 
 const saveasproject = async () => {
    let options = {
-      title : "Save as", 
+      title : i18n.__("Save as"), 
 
       defaultPath : ".",
       
-      buttonLabel : "Save Project",
+      buttonLabel : i18n.__("Save database"),
       filters: [
          { name: 'DungeonMaster Database', extensions: ['dmdb'] }
        ],
@@ -681,11 +682,11 @@ const saveasproject = async () => {
 
 const saveasprojectReturnUnpack = async () => {
    let options = {
-      title : "Save as", 
+      title : i18n.__("Save as"), 
 
       defaultPath : ".",
       
-      buttonLabel : "Save Project",
+      buttonLabel : i18n.__("Save database"),
       filters: [
          { name: 'DungeonMaster Database', extensions: ['dmdb'] }
        ],
@@ -1299,12 +1300,12 @@ ipcMain.on(TITLEBAR_LOADPROJECT, function(event) {
 });
 
 ipcMain.on(TITLEBAR_SAVEPROJECT, function(event) {
-   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, "Saving Database... ");
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, i18n.__("Saving Database..."));
    saveproject();
 });
 
 ipcMain.on(TITLEBAR_SAVEASPROJECT, function(event) {
-   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, "Saving Database... ");
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, i18n.__("Saving Database..."));
    saveasproject();
 });
 
@@ -1332,7 +1333,7 @@ ipcMain.handle(RETRIEVE_VERSION, async (event) =>
 })
 
 autoUpdater.on('update-available', () => {
-   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, "Downloading... ");
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, i18n.__("Downloading..."));
 });
  
 autoUpdater.on('update-downloaded', () => {
@@ -1345,9 +1346,9 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
       const choice = dialog.showMessageBoxSync(this,
       {
          type: 'question',
-         buttons: ['Yes', 'No'],
-         title: 'Confirm',
-         message: 'You have unsaved data, Are you sure you want to restart?'
+         buttons: [i18n.__('Yes'), i18n.__('No')],
+         title: i18n.__('Confirm'),
+         message: i18n.__('You have unsaved data, Are you sure you want to restart?')
       });
       if (choice === 0) {
          autoUpdater.quitAndInstall();
@@ -1499,8 +1500,8 @@ function convertDatabaseToUnpacked()
    if (CurrentContent.projecturl == null || CurrentContent.projecturl == "")
    {
       let unpackoptions  = {
-         buttons: ["Yes","No"],
-         message: "You must save to unpack images, would you like to save and proceed?"
+         buttons: [i18n.__("Yes"),i18n.__("No")],
+         message: i18n.__("You must save to unpack images, would you like to save and proceed?")
       }
 
       dialog.showMessageBox(null, unpackoptions).then( (data) => {

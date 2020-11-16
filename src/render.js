@@ -64,11 +64,34 @@ const {
   SEARCH_TITLES,
   SEARCH_CONTENT,
 }  = require('../utils/constants');
+var i18n = new(require('../translations/i18n'))
 const { start } = require('repl');
 const { Titlebar } = require('custom-electron-titlebar');
 const { data } = require('jquery');
 const { measure } = require('custom-electron-titlebar/lib/common/dom');
 //const { map } = require('jquery');
+
+/** ------------------- Localization ------------------- */
+
+document.getElementById("don0").innerText = i18n.__("Donate to the Creator.");
+document.getElementById("don1").innerText = i18n.__("If you want to support me with financial donations that's cool,");
+document.getElementById("don2").innerText = i18n.__("if not that's cool too, either way, enjoy the program!");
+document.getElementById("searchtooltipbtn").innerText = i18n.__("Search Contents");
+document.getElementById("map0").innerText = i18n.__("You do not currently have a map loaded.");
+document.getElementById("backgroundBtn").innerText = i18n.__("Load Background Image");
+document.getElementById("texteditor-title").innerText = i18n.__("Toolbox");
+document.getElementById("tool0").innerText = i18n.__("Node Controls");
+document.getElementById("tool1").innerText = i18n.__("Default size:");
+document.getElementById("node-display-tooltip").innerText = i18n.__("Please select a node.");
+document.getElementById("currentnodedef").innerText = i18n.__("Current Node size:");
+document.getElementById("clearbtn").innerText = i18n.__("Clear");
+document.getElementById("zone-display-tooltip").innerText = i18n.__("Please select a document.");
+document.getElementById("spli0").innerText = i18n.__("Spline Width:");
+document.getElementById("spli1").innerText = i18n.__("Spline:");
+document.getElementById("spli2").innerText = i18n.__("Fill:");
+document.getElementById("enablefillbtn").innerText = i18n.__("Enable fill of region.");
+document.getElementById("deletebtn").innerText = i18n.__("Delete Spline");
+
 /** -------------------- Variables --------------------- */
 
 var titlebar;
@@ -303,11 +326,11 @@ function importIcon(){
 
 const TokengetFileFromUser = async () => {
   let options = {
-    title : "Load a Token", 
+    title : i18n.__("Load a Token"), 
 
     defaultPath : ".",
     
-    buttonLabel : "Import image",
+    buttonLabel : i18n.__("Import image"),
     
     filters :[
       {name: 'Images', extensions: ['jpg', 'png', 'gif']}
@@ -520,7 +543,6 @@ function nodeiconclicked(element)
     };
     for (var i = 0; i < selectednodes.length; i++)
     {
-      console.log("test");
       selectednodes[i].style.backgroundImage = 'url("'+ element +'")';
       maindata.nodes.push(selectednodes[i].getAttribute('node-db-path'));
     }
@@ -716,23 +738,23 @@ function rebuildmenu(newmenuitem){
 
 const template = [
   {
-     label: 'File',
+     label: i18n.__('File'),
      submenu: [
         {
-           label: 'New Project',
+           label: i18n.__('New Project'),
            click: () => { ipcRenderer.send(TITLEBAR_NEWPROJECT); }
         },
         {
-           label: 'Load Project',
+           label: i18n.__('Load Project'),
            click: () => { ipcRenderer.send(TITLEBAR_LOADPROJECT); }
         },
         {
-           label: 'Save Project',
+           label: i18n.__('Save Project'),
            click: () => { ipcRenderer.send(TITLEBAR_SAVEPROJECT); },
            accelerator: 'CommandOrControl+S'
         },
         {
-           label: 'Save Project As',
+           label: i18n.__('Save Project As'),
            click: () => { ipcRenderer.send(TITLEBAR_SAVEASPROJECT); },
            accelerator: 'CommandOrControl+Shift+S'
         },
@@ -740,41 +762,41 @@ const template = [
            type: 'separator'
         },
         {
-           role: 'Close',
+           label: i18n.__('Close'),
            click: () => { ipcRenderer.send(TITLEBAR_CLOSE); },
         }
      ]
   },
   {
-    label: 'Window',
+    label: i18n.__('Window'),
     submenu: [
        {
-          label: 'Options window',
+          label: i18n.__('Options window'),
           click: () => { ipcRenderer.send(TITLEBAR_OPENWINDOW); },
           accelerator: 'CommandOrControl+W or F3'
        },
        {
-         label: 'Character creator',
+         label: i18n.__('Character creator'),
          click: () => { ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW);},
          accelerator: 'F5'
        }
     ]
   },
   {
-     role: 'Help',
+    label: i18n.__('Help'),
      submenu: [
         {
-           label: 'Check for updates',
+           label: i18n.__('Check for updates'),
            click: () => { 
              ipcRenderer.send(TITLEBAR_CHECKFORUPDATES); 
-             infodisplay.innerHTML = "Checking for updates... ";
+             infodisplay.innerHTML = i18n.__("Checking for updates...");
              downloaddisplay.style.display = "block";
             }
         }
      ]
   },
   {
-    label: 'Donate',
+    label: i18n.__('Donate'),
     enabled: true,
     click: () => {       
       $('#overlay').fadeIn(500);
@@ -815,10 +837,10 @@ document.getElementById('overlay').addEventListener('mousedown', e => {
 ipcRenderer.invoke(RETRIEVE_VERSION).then((result) => {
   if (result)
   {
-    infodisplay.innerHTML = "version: " + result;
+    infodisplay.innerHTML = i18n.__("version: ") + result;
   }
   else{
-    infodisplay.innerHTML = "no version number";
+    infodisplay.innerHTML = i18n.__("no version number");
   }
 })
 
@@ -1516,17 +1538,17 @@ ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
         downloaddisplay.style.display = "none";
         if (result)
         {
-          infodisplay.innerHTML = "version: " + result;
+          infodisplay.innerHTML = i18n.__("version: ") + result;
         }
         else{
-          infodisplay.innerHTML = "no version number";
+          infodisplay.innerHTML = i18n.__("no version number");
         }
       })
     }, delayInMilliseconds);
 
 
     downloaddisplay.style.display = "none";
-    infodisplay.innerHTML = "Save complete."
+    infodisplay.innerHTML = i18n.__("Save complete.")
     return;
   }
 
@@ -1540,7 +1562,7 @@ ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
   })
   rebuildmenu(newmenuitem);
   downloaddisplay.style.display = "none";
-  infodisplay.innerHTML = "Download Complete!";
+  infodisplay.innerHTML = i18n.__("Download Complete!");
 })
 
 ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
@@ -1548,10 +1570,10 @@ ipcRenderer.on(NOTIFY_CURRENTVERSION, (event, message) => {
     downloaddisplay.style.display = "none";
     if (result)
     {
-      infodisplay.innerHTML = "version: " + result;
+      infodisplay.innerHTML = i18n.__("version: ") + result;
     }
     else{
-      infodisplay.innerHTML = "no version number";
+      infodisplay.innerHTML =  i18n.__("no version number");
     }
   })
 })
@@ -3138,11 +3160,11 @@ function loadDocument()
 /**Loads the map on the render thread, probably needs to be moved to the Main thread.*/
 const getFileFromUser = async () => {
   let options = {
-    title : "Load a Map image", 
+    title : i18n.__("Load Background Image"), 
 
     defaultPath : ".",
     
-    buttonLabel : "Import image",
+    buttonLabel : i18n.__("Import image"),
     
     filters :[
       {name: 'Images', extensions: ['jpg', 'png', 'gif', 'svg']}

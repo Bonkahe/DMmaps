@@ -28,37 +28,46 @@
     
     <div id="editor-container">
         <div class="container">
-            <h1>Themes:</h1>
+            <h1 id="them0">Themes:</h1>
             <br>
-            <p>Hue slider tokens:</p>
+            <p id="them1">Hue slider tokens:</p>
             <input type="range" id="hueSelection" step="1" value="348" min="1" max="359" onchange='valuesChanged()'>
-            <br>
-            <p>Primary button color:</p>
-            <input class="colorbox" id="primarycolor" data-jscolor="{value:'#E6A255', onChange: 'valuesChanged()'}">
-            <p>Primary button on hover color:</p>
-            <input class="colorbox" id="primaryhighlight" data-jscolor="{value:'#f5a64c', onChange: 'valuesChanged()'}">
-            <br>
-            <p>Secondary button color:</p>
-            <input class="colorbox" id="secondarycolor" data-jscolor="{value:'#e05840', onChange: 'valuesChanged()'}">
-            <p>Secondary button on hover color:</p>
-            <input class="colorbox" id="secondaryhighlight" data-jscolor="{value:'#f75c41', onChange: 'valuesChanged()'}">
-            <br>
-            <button onclick="resetThemes()" class="basebtn" >Reset</button>
+            <div class="grid-container-2">
+                <div>
+                    <p id="them2">Primary button color:</p>
+                    <input class="colorbox" id="primarycolor" data-jscolor="{value:'#E6A255', onChange: 'valuesChanged()'}">
+                </div>
+                <div>
+                    <p id="them3">Primary hover color:</p>
+                    <input class="colorbox" id="primaryhighlight" data-jscolor="{value:'#f5a64c', onChange: 'valuesChanged()'}">
+                </div>
+                </div>
+                <div class="grid-container-2">
+                    <div>
+                        <p id="them4">Secondary button color:</p>
+                        <input class="colorbox" id="secondarycolor" data-jscolor="{value:'#e05840', onChange: 'valuesChanged()'}">
+                    </div>
+                    <div>
+                        <p id="them5">Secondary hover color:</p>
+                        <input class="colorbox" id="secondaryhighlight" data-jscolor="{value:'#f75c41', onChange: 'valuesChanged()'}">
+                    </div>
+                </div>    
+            <button onclick="resetThemes()" class="basebtn" id="them6" >Reset</button>
         </div>
         
         <div class="container" >
-            <h1>File Management:</h1>
+            <h1 id="file0">File Management:</h1>
             <div class="container">
-                <h1>Pack Images:</h1>
+                <h1 id="file1">Pack Images:</h1>
                 <br>
-                <p>This is will make all images linked anywhere in the project be stored directly in the .dmdb file.</p>
-                <p>Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.</p>
+                <p id="file2">This is will make all images linked anywhere in the project be stored directly in the .dmdb file.</p>
+                <p id="file3">Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.</p>
                 <button onclick="setPack()" class="basebtn" id="packbtn"> Missing </button>
             </div>
             <div class="container">
-                <h1>Broken Links</h1>
+                <h1 id="file4">Broken Links</h1>
                 <br>
-                <p>If you have broken links you can select the option below to search for the folder where you think they might be, it will be searched for the missing files.</p>
+                <p id="file5">If you have broken links you can select the option below to search for the folder where you think they might be, it will be searched for the missing files.</p>
                 <br>
                 <p id="brokenlinksinfodisplay" >Load a project to check for missing files.</p>
                 <div class="container" id="brokenlinkscontainer" style="display: none;">
@@ -72,29 +81,29 @@
         </div>
         
         <div class="container">
-            <h1>Measurement tools:</h1>
-            <p>To change the measurement distance, activate calibration mode.</p>
-            <button onclick="displaycalibrationtools()" class="basebtn" >Calibration</button>
-            <p>Current measurement type:</p>
+            <h1 id="meas0">Measurement tools:</h1>
+            <p id="meas1">To change the measurement distance, activate calibration mode.</p>
+            <button onclick="displaycalibrationtools()" class="basebtn" id="meas2">Calibration</button>
+            <p id="meas3">Current measurement type:</p>
             <select id="currenttype" onchange="currenttypechanged()" class="basebtn">
-                <option value="0" selected="selected">Miles</option>
-                <option value="1">Kilometers</option>
-                <option value="2">Meters</option>
+                <option value="0" selected="selected" id="meas4">Miles</option>
+                <option value="1" id="meas5">Kilometers</option>
+                <option value="2" id="meas6">Meters</option>
             </select>
 
             <div class="container hiddenoptions" id="calibration-tools">
-                <p>Select a distance using the measurement mode, then type the distance here, and select the corrosponding measurement type.</p>
+                <p id="meas7">Select a distance using the measurement mode, then type the distance here, and select the corrosponding measurement type.</p>
                     
-                <label for="distance">Distance:</label>
+                <label for="distance" id="meas8">Distance:</label>
                 <input type="text" id="distance" name="distance">
                 
                 <select id="calibrationtype"  class="basebtn">
-                    <option value="0" selected="selected">Miles</option>
-                    <option value="1">Kilometers</option>
-                    <option value="2">Meters</option>
+                    <option value="0" selected="selected" id="meas9">Miles</option>
+                    <option value="1" id="meas10">Kilometers</option>
+                    <option value="2" id="meas11">Meters</option>
                 </select>
 
-                <button onclick="confirmCalibration()" class="basebtn" >Confirm Calibration.</button>
+                <button onclick="confirmCalibration()" class="basebtn" id="meas12">Confirm Calibration.</button>
             </div>
         </div>
     </div>

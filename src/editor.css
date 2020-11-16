@@ -33,26 +33,45 @@ body{
 }
 
 
-button {
+.basebtn {
   border: none;
   border-radius: 2px;
   cursor: pointer;
-  transition: 0.5s;
+    transition: 0.1s;
 }
-button:focus {
+.basebtn:active {
      outline:none;
      box-shadow: 0 0 2pt 1pt grey;
+     transform: translateY(2px)
+}
+.basebtn:focus {
+     outline:none;
 }
 
 select{
     border-radius: 2px;
-    transition: 0.5s;
+    transition: 0.1s;
 }
 select:focus{
     border-radius: 2px 2px 0 0;
 }
 
 /*NODE TOOLS */
+.colorbox{
+  width: 70% ;
+}
+@media only screen and (max-width: 340px) { /* If the screen size is less than 175px */
+.grid-container-2 {
+  display: grid;
+  grid-template-columns: 100%;
+}
+}
+@media only screen and (min-width: 340px) { /* If the screen size is larger than 175px */
+.grid-container-2 {
+  display: grid;
+  grid-template-columns: 50% 50%;
+}
+}
 
 
 
@@ -342,6 +361,24 @@ select:focus{
 }
 .container input[type=range]:focus::-ms-fill-upper {
   background: var(--main-button-color);
+}
+
+
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: white; 
+  border-radius: 10px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: whitesmoke; 
 }
 
 /* width */

@@ -23,6 +23,7 @@ const {
     TITLEBAR_SAVEPROJECT,
     TITLEBAR_SAVEASPROJECT
 }  = require('../utils/constants');
+var i18n = new(require('../translations/i18n'))
 
 const primarywindow = remote.getGlobal ('textwindow');
 var btncontainer = document.getElementById('buildcontainer');
@@ -156,7 +157,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     var menu = new Menu();
     titlebar.updateMenu(menu);
-    titlebar.updateTitle('Character Generator');
+    titlebar.updateTitle(i18n.__('Character Generator'));
     //getversion();
 })
 
