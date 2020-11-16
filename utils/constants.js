@@ -2,7 +2,7 @@
 
 class Databasetemplate {
     constructor() {
-        this.versionnumber = 0.3;
+        this.versionnumber = 0.4;
         this.packmode = false;
         this.__type = "Databasetemplate";
         this.projecturl = "";
@@ -30,6 +30,7 @@ class Databasetemplate {
         this.measurementscale = 1;
         this.measurementtype = 0;        
         this.packedimages = [];
+        this.packedbackground= "";
     }
 };
 

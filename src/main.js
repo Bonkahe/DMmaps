@@ -1444,7 +1444,15 @@ function convertDatabaseToPacked()
          var filename = element.substring(element.lastIndexOf("/") + 1, element.length);
          CurrentContent.content.textEntries[i].content = CurrentContent.content.textEntries[i].content.split(element).join(path.join(cachePath, filename).replace(/\\/g, '/'));
       });
+   }
 
+            
+   if (fs.existsSync(CurrentContent.backgroundurl)) {
+      CurrentContent.packedbackground = fs.readFileSync(CurrentContent.backgroundurl, {encoding: 'base64'});      
+   }
+   else
+   {
+      CurrentContent.packedbackground = null;
    }
 
    imagesUrls.forEach(element => {
@@ -1526,9 +1534,20 @@ function convertDatabaseToUnpacked()
 
    fs.mkdirSync(folderpath, { recursive: true })
 
+   var bgfilename = CurrentContent.backgroundurl.substring(CurrentContent.backgroundurl.lastIndexOf("/") + 1, CurrentContent.backgroundurl.length);
+   //console.log(path.join(folderpath, filename).replace(/\\/g, '/'));
+
+   fs.writeFile(path.join(folderpath, bgfilename), CurrentContent.packedbackground, 'base64', function(err) {
+      if (err)
+      {
+         console.log(err);
+      }
+   });
+   CurrentContent.backgroundurl = path.join(folderpath, bgfilename).replace(/\\/g, '/');
+
    CurrentContent.packedimages.forEach(packedImage => {
       var filename = packedImage.url.substring(packedImage.url.lastIndexOf("/") + 1, packedImage.url.length);
-      console.log(path.join(folderpath, filename).replace(/\\/g, '/'));
+      //console.log(path.join(folderpath, filename).replace(/\\/g, '/'));
 
       fs.writeFile(path.join(folderpath, filename), packedImage.data, 'base64', function(err) {
          if (err)
@@ -1709,7 +1728,7 @@ function verifyImages()
 
          for (var im in currentImages)
          {
-            console.log(currentImages[im]);
+            //console.log(currentImages[im]);
             if (currentImages[im] == CurrentContent.packedimages[i].url)
             {
                returnLoop = true;
@@ -1881,6 +1900,7 @@ Databasetemplate.fromjson = function(json)
    db.opendocs = data.opendocs;
    db.packmode = data.packmode;
    db.packedimages = data.packedimages;
+   db.packedbackground = data.packedbackground;
    db.measurementscale = data.measurementscale;
    db.measurementtype = data.measurementtype;
 
@@ -1909,8 +1929,12 @@ Databasetemplate.fromjson = function(json)
       db.packmode = false;
       db.packedimages = [];
    }
+   else if (data.versionnumber < 0.4)
+   {
+      db.packedbackground = "";
+   }
 
-   db.versionnumber = 0.3;
+   db.versionnumber = 0.4;
 
    //console.log(db.availableicons+"---"+data.availableicons)
 
