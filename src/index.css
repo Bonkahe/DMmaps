@@ -343,10 +343,6 @@ select:focus{
   overflow:visible;
   }
 
-  #document-tab{
-    
-  }
-
   #toolbox-tab{
     display: none;
   }
