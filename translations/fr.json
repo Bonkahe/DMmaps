@@ -27,9 +27,7 @@
   "Delete Document": "Supprimer le document",
   "Don't Delete": "Ne pas supprimer",
   "Documents and Nodes": "Documents et nœuds",
-
-  "Just Nodes": "Juste des nœuds", 
-
+  "Just Nodes": "Juste des nœuds",
   "Attempt project recovery.": "Tentative de récupération du projet.",
   "Choose a database": "Choisissez une base de données",
   "Load database": "Charger la base de données",
@@ -45,6 +43,8 @@
   "Delete Node": "Supprimer le nœud",
   "Lock/Unlock Node": "Verrouiller / déverrouiller le nœud",
   "Bind node to Document": "Lier le nœud au document",
+  "Zone Controls:": "Commandes de zone:",
+  "Splines:": "Splines:",
   "Saving Database...": "Enregistrement de la base de données ...",
   "Downloading...": "Téléchargement...",
   "Checking for updates...": "Recherche de mises à jour ...",

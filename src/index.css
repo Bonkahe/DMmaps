@@ -350,6 +350,20 @@ select:focus{
   #toolbox-tab{
     display: none;
   }
+
+  #toolboxeditor-title-holder {
+    width:100%;
+    padding:5px;
+    display: flex;
+  }
+
+  #toolboxeditor-title {
+    flex: 1;
+    border:none;
+    outline:none;
+    font-size: 24px; 
+    overflow: hidden;
+  }
   
   #texteditor-title-holder {
   width:100%;
@@ -363,7 +377,7 @@ select:focus{
     outline:none;
     font-size: 24px; 
     overflow: hidden;
-    }
+  }
 
   #btn-tab-documents{
     width: 50px;
