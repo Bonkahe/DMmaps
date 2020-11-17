@@ -456,6 +456,18 @@ select:focus{
     cursor: grab;
   }
 
+  .node-icon:active {
+    cursor: grabbing;
+  }
+
+  .node-lock-false{
+
+  }
+
+  .node-lock-true{
+    cursor: help;
+  }
+
   .node-compass {
     pointer-events:none;
     width:80px;

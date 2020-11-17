@@ -408,7 +408,11 @@ function sethighlight(index)
 {
     if (selectedindex != null)
     {
-        document.querySelector('*[Db-Path="' + selectedindex + '"]').id = '';
+        var selectedspline = document.querySelector('*[Db-Path="' + selectedindex + '"]');
+        if (selectedspline != null)
+        {
+          selectedspline.id = '';
+        }
     }
 
     selectedindex = index;
@@ -416,7 +420,11 @@ function sethighlight(index)
 
     if (selectedindex != null)
     {
-        document.querySelector('*[Db-Path="' + index + '"]').id = 'highlight';
+        var selectedspline = document.querySelector('*[Db-Path="' + selectedindex + '"]');
+        if (selectedspline != null)
+        {
+          selectedspline.id = 'highlight';
+        }
     }
 }
 
@@ -513,21 +521,27 @@ fillcolorSelector.addEventListener(
 deletesplineBtn.addEventListener(
   'click',
   function() {
-    if (drawings.length > 0 && overrideindex != null)
-    {
-      drawings.splice(overrideindex, 1);
-      overrideindex = null;
-      canvasRender();
-      currentdrawing = drawings.length;
-      var data = getexportabledrawings();
-
-      currentsplines = data.drawings;
-      selectedindex = data.index;
-      rebuildsplinelist(data.drawings); 
-    }
+    deletespline();
    },
   false
 );
+
+function deletespline()
+{
+  if (drawings.length > 0 && overrideindex != null)
+  {
+    drawings.splice(overrideindex, 1);
+    //overrideindex = null;
+    canvasRender();
+    currentdrawing = drawings.length;
+    if (overrideindex >= drawings.length){overrideindex = overrideindex - 1;}
+    var data = getexportabledrawings();
+
+    currentsplines = data.drawings;
+    selectedindex = data.index;
+    rebuildsplinelist(data.drawings); 
+  }
+}
 
 function nodeicondeleted(element)
 {
@@ -1357,11 +1371,18 @@ $(document).keyup(function (e) {
 Mousetrap.bind(['del'], function(){
   //console.log(document.activeElement.classList.contains("ql-editor"));
   
-  if (selecteddocid != null && !document.activeElement.classList.contains("ql-editor") && document.activeElement != texteditortitle)
+  if (mousemode == 2 && overrideindex != null)
   {
-    ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
-    return false;
-  }  
+    deletespline();
+  }
+  else
+  {
+    if (selecteddocid != null && !document.activeElement.classList.contains("ql-editor") && document.activeElement != texteditortitle)
+    {
+      ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
+      return false;
+    }  
+  }
 })
 
 /**Had unwanted results, removed. */
@@ -1428,7 +1449,7 @@ window.addEventListener('contextmenu', (e) => {
   {
     rightClickPosition = {x: e.x, y: e.y}
     node = document.elementFromPoint(rightClickPosition.x, rightClickPosition.y);
-    if (node.className == "node-icon")
+    if (node.classList.contains("node-icon"))
     {
       if (selecteddocid != null)
       {
@@ -2150,7 +2171,8 @@ function createnode(node)
   }
   dragNode(img, mapdiv);
   //img.id = "node-icon";
-  img.className = "node-icon";
+  img.classList.add("node-icon","node-lock-" + node.locked);
+  //img.className = "node-icon";
   img.setAttribute("node-db-path", node.id)
   img.setAttribute("doc-db-path", node.documentref)
   img.setAttribute("locked", node.locked)
@@ -2254,7 +2276,7 @@ function mousecreatenode(x,y, nodeid, docid)
   img.setAttribute("doc-db-path", docid)
   img.setAttribute("node-icon", 0)
   img.setAttribute("locked", "false")
-  img.className = "node-icon";
+  img.classList.add("node-icon","node-lock-false");
 
   var coords = convertworldtodoccords(x,y);
   //console.log(coords);
@@ -2379,6 +2401,8 @@ function togglenode(id, locked)
   for (var i in selectednodes)
   {
     selectednodes[i].setAttribute("locked", locked)
+    selectednodes[i].className = "";
+    selectednodes[i].classList.add("node-icon","node-lock-" + locked);
 
     var myscale = currentscale;
     if (selectednodes[i].hasAttribute("scaled")){
@@ -2945,6 +2969,8 @@ function hierarchybuttonpressed(id)
       DisplayDocument();
       selectDocument(id)
       loadDocument();
+      mousemode = 0;
+      document.getElementById("cursorcontrol").style.cursor = "auto";
 
       if (searchselect)
       {
