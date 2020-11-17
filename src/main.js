@@ -1343,16 +1343,18 @@ autoUpdater.on('update-downloaded', () => {
 ipcMain.on(NOTIFY_RESTART, function(event) {
    if (dirtyproject)
    {
-      const choice = dialog.showMessageBoxSync(this,
-      {
-         type: 'question',
-         buttons: [i18n.__('Yes'), i18n.__('No')],
-         title: i18n.__('Confirm'),
-         message: i18n.__('You have unsaved data, Are you sure you want to restart?')
-      });
-      if (choice === 0) {
-         autoUpdater.quitAndInstall();
+      let temprestartoptions  = {
+         buttons: [i18n.__("Yes"),i18n.__("No")],
+         message: i18n.__("You have unsaved data, Are you sure you want to restart?"),
+         defaultId: 1, // bound to buttons array
       }
+      dialog.showMessageBox(null, temprestartoptions).then( (data) => {
+         if (data.response == 0)
+         {
+            cleanproject();
+            autoUpdater.quitAndInstall();
+         }
+      });
    }
    else
    {

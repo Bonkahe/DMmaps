@@ -91,7 +91,7 @@ document.getElementById("splititle2").innerText = i18n.__("Splines:");
 document.getElementById("spli0").innerText = i18n.__("Spline Width:");
 document.getElementById("spli1").innerText = i18n.__("Spline:");
 document.getElementById("spli2").innerText = i18n.__("Fill:");
-document.getElementById("enablefillbtn").innerText = i18n.__("Enable fill of region.");
+document.getElementById("enablefillbtnlabel").innerText = i18n.__("Enable fill of region.");
 document.getElementById("deletebtn").innerText = i18n.__("Delete Spline");
 
 /** -------------------- Variables --------------------- */
@@ -2545,7 +2545,7 @@ var searchcontents = false;
 function togglesearch()
 {
   searchcontents = !searchcontents;
-  searchsettingbutton.innerText = searchcontents? "Search Titles" : "Search Contents";
+  searchsettingbutton.innerText = searchcontents? i18n.__("Search Titles") : i18n.__("Search Contents");
   search();
 }
 
