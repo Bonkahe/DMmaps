@@ -1,6 +1,6 @@
 {
   "name": "dmmaps",
-  "version": "0.12.4",
+  "version": "0.12.6",
   "description": "A DM's world building toolkit.",
   "main": "./src/main.js",
   "scripts": {
@@ -45,7 +45,7 @@
   },
   "build": {
     "appId": "com.github.bonkahe.dmmaps",
-    "icon": "src/images/icon.ico",
+    "icon": "src/images/icon.png",
     "files": "!gifs"
   }
 }
