@@ -840,6 +840,12 @@ const template = [
     label: i18n.__('Help'),
      submenu: [
         {
+          label: i18n.__('Discord'),
+          click: () => { 
+            shell.openExternal('https://discord.gg/wKBhDEZctm');
+          }
+        },
+        {
           label: i18n.__('Display Patch Notes'),
           click: () => { 
             ipcRenderer.send(REQUEST_PATCHNOTES); 

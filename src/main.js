@@ -1042,6 +1042,7 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
 });
 
 ipcMain.on(REFRESH_PAGE, function(event) {
+   win.webContents.send(SET_MOUSEMODE,0);
    CheckVersion();
    loadSettings();
    updaterenderer();
