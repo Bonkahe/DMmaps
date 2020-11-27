@@ -45,6 +45,7 @@ const {
    SCALE_ONE_NODE,
    CLEAR_NODE_SCALE,
    PASTE_NODES,
+   REQUEST_PASTE_RESET,
    REQUEST_DOCUMENT_BYNODE,
    REQUEST_DOCUMENT_BYDOC,
    REQUEST_CLEAR_NODEPATH,
@@ -1059,7 +1060,7 @@ ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
 
 ipcMain.on(CHILD_DOCUMENT, function(event, data) 
 {
-   console.log(data);
+   //console.log(data);
    if (data.delta < 5)
    {
       reorder(CurrentContent.content.textEntries, getlocation(data.child), getlocation(data.parent))
@@ -1315,22 +1316,199 @@ ipcMain.on(REQUEST_CLEAR_NODEPATH, function() {
    extendedcontext = false;
 })
 
-ipcMain.on(PASTE_NODES, function(event, data) {
-   const pasteoptions = {
-      type: 'question',
-      buttons: [i18n.__("Cancel"), i18n.__("Documents and Nodes"), i18n.__("Just Nodes")],
-      defaultId: 2,
-      message: i18n.__('Would you like to paste documents as well?'),
-      detail: i18n.__('The documents will be places directly next to their originals.'),
-      checkboxLabel: i18n.__('Remember my answer'),
-      checkboxChecked: true,
-    };
-  
-    dialog.showMessageBox(null, options, (response, checkboxChecked) => {
-      console.log(response);
-      console.log(checkboxChecked);
-    });
+ipcMain.on(REQUEST_PASTE_RESET, function() {
+   CurrentContent.savedcopysettings = -1;
+   updateproject();
 })
+
+ipcMain.on(PASTE_NODES, function(event, data) {
+   if (CurrentContent.savedcopysettings == -1)
+   {
+      const pasteoptions = {
+         type: 'question',
+         buttons: [i18n.__("Cancel"), i18n.__("Documents and Nodes"), i18n.__("Just Nodes")],
+         defaultId: 2,
+         message: i18n.__('Would you like to paste documents as well?'),
+         detail: i18n.__('The documents will be places directly next to their originals.'),
+         checkboxLabel: i18n.__('Remember my answer'),
+         checkboxChecked: false,
+      };
+   
+      dialog.showMessageBox(null, pasteoptions).then ((response, checkboxChecked) => {
+         pastenode(data, response.response);
+         if (response.checkboxChecked)
+         {
+            if (response.response == 0)
+            {
+               CurrentContent.savedcopysettings = -1;
+            }
+            else
+            {
+               CurrentContent.savedcopysettings = response.response;
+            }
+         }
+      });
+   }
+   else
+   {
+      pastenode(data, CurrentContent.savedcopysettings);
+   }
+
+   updateproject();
+   //updaterenderer();
+})
+
+function pastenode(data, choice)
+{
+   if (choice == -1){return;}
+
+   if (choice == 1) //docsand nodes
+   {
+      for (var i = 0; i < data.nodes.length; i++)
+      {
+         for (var j = 0; j < CurrentContent.content.nodes.length; j++)
+         {
+            if (CurrentContent.content.nodes[j].id == data.nodes[i])
+            {
+               //console.log(CurrentContent.content.nodes[j].id);
+               var newnode = new DatabaseNodeentry;
+               newnode = Object.assign(newnode, CurrentContent.content.nodes[j]);
+               newnode.individualnodescale = CurrentContent.content.nodes[j].individualnodescale;
+               newnode.location = {
+                  x: CurrentContent.content.nodes[j].location.x,
+                  y: CurrentContent.content.nodes[j].location.y
+               }
+               newnode.locked = CurrentContent.content.nodes[j].locked;
+               newnode.tokenurl = CurrentContent.content.nodes[j].tokenurl;
+               newnode.nodetoken = CurrentContent.content.nodes[j].nodetoken;
+
+               newnode.location.x = newnode.location.x + data.vector.x;
+               newnode.location.y = newnode.location.y + data.vector.y;
+
+               var loop = true;
+               var r = 0;
+               
+               while(loop){
+                  r = Math.random() * 10000;
+   
+                  var ownerData = CurrentContent.content.nodes.filter(function(node) {
+                     return node.id === r;
+                  })[0];
+                  //console.log(ownerData);
+                  if(ownerData == null)
+                  {
+                     loop = false;
+                  }
+               }   
+               newnode.id = r;
+               var docref = CurrentContent.content.nodes[j].documentref;
+
+               if (docref != null && docref != "")
+               {
+                  for (var k = 0; k < CurrentContent.content.textEntries.length; k++)
+                  {
+                     if (CurrentContent.content.textEntries[k].id == docref)
+                     {
+                        var newdoc = new DatabaseTextentry();
+                        newdoc.content = CurrentContent.content.textEntries[k].content;
+                        newdoc.drawing = CurrentContent.content.textEntries[k].drawing;
+                        newdoc.name = CurrentContent.content.textEntries[k].name;
+                        newdoc.parentid = CurrentContent.content.textEntries[k].parentid;
+
+                        loop = true;
+                        var newr = 0;
+                        
+                        while(loop){
+                           newr = Math.random() * 10000;
+            
+                           var ownerData = CurrentContent.content.textEntries.filter(function(doc) {
+                              return doc.id === newr;
+                           })[0];
+                           //console.log(ownerData);
+                           if(ownerData == null)
+                           {
+                              loop = false;
+                           }
+                        }
+            
+                        newdoc.id = newr;
+                        newnode.documentref = newdoc.id;
+
+                        if (newdoc.parentid != null && newdoc.parentid != '')
+                        {
+                           for (var h = 0; h < CurrentContent.content.textEntries.length; h++)
+                           {
+                              if (CurrentContent.content.textEntries[h].id == newdoc.parentid) 
+                              {
+                                 CurrentContent.content.textEntries[h].childdocuments.push(newdoc.id);
+                                 break;
+                              }
+                           }
+                        }
+
+                        newdoc.childdocuments = [];
+                        CurrentContent.content.textEntries.push(newdoc);
+                        break;
+                     }
+                  }
+               }
+
+               CurrentContent.content.nodes.push(newnode);
+               break;
+            }
+         }
+      }
+   }
+   else //just nodes
+   {
+      for (var i = 0; i < data.nodes.length; i++)
+      {
+         for (var j = 0; j < CurrentContent.content.nodes.length; j++)
+         {
+            if (CurrentContent.content.nodes[j].id == data.nodes[i])
+            {
+               //console.log(CurrentContent.content.nodes[j].id);
+               var newnode = new DatabaseNodeentry;
+               newnode = Object.assign(newnode, CurrentContent.content.nodes[j]);
+               newnode.individualnodescale = CurrentContent.content.nodes[j].individualnodescale;
+               newnode.location = {
+                  x: CurrentContent.content.nodes[j].location.x,
+                  y: CurrentContent.content.nodes[j].location.y
+               }
+               newnode.locked = CurrentContent.content.nodes[j].locked;
+               newnode.tokenurl = CurrentContent.content.nodes[j].tokenurl;
+               newnode.nodetoken = CurrentContent.content.nodes[j].nodetoken;
+
+               newnode.location.x = newnode.location.x + data.vector.x;
+               newnode.location.y = newnode.location.y + data.vector.y;
+
+               var loop = true;
+               var r = 0;
+               
+               while(loop){
+                  r = Math.random() * 10000;
+   
+                  var ownerData = CurrentContent.content.nodes.filter(function(node) {
+                     return node.id === r;
+                  })[0];
+                  //console.log(ownerData);
+                  if(ownerData == null)
+                  {
+                     loop = false;
+                  }
+               }   
+               newnode.id = r;
+               
+               CurrentContent.content.nodes.push(newnode);
+               break;
+            }
+         }
+      }
+   }
+
+   updateproject();
+   win.webContents.send(REFRESH_NODES, CurrentContent);
+}
 
 ipcMain.on(NOT_ON_MAP, function(event,message) {
    notonmap = message;
@@ -1572,7 +1750,7 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
                   CurrentContent.content.nodes.forEach(node => {
                      nodefilename = node.tokenurl.replace(/\\/g, '/');
                      nodefilename = nodefilename.substring(nodefilename.lastIndexOf("/") + 1, nodefilename.length);
-                     console.log(nodefilename + " --- " + filename);
+                     //console.log(nodefilename + " --- " + filename);
                      if (nodefilename == filename)
                      {
                         node.tokenurl = newimageurl.url;
@@ -1819,7 +1997,7 @@ function convertDatabaseToPacked()
                url: path.join(cachePath, filename).replace(/\\/g, '/'),
                data: fs.readFileSync(element, {encoding: 'base64'})
             }
-            console.log(newimageurl.url)
+            //console.log(newimageurl.url)
             CurrentContent.packedimages.push(newimageurl);
             
             //handleImageCompression(newimageurl, new File(path.join(cachePath, filename).replace(/\\/g, '/')));
@@ -2321,6 +2499,7 @@ Databasetemplate.fromjson = function(json)
    db.nodescale = data.nodescale;
    
    db.availableicons = data.availableicons;
+   db.savedcopysettings = data.savedcopysettings;
    db.opendocs = data.opendocs;
    db.packmode = data.packmode;
    db.compressionactive = data.compressionactive;
@@ -2373,6 +2552,7 @@ Databasetemplate.fromjson = function(json)
    {
       db.packedtokens = [];
       db.distancelabel = '';
+      db.savedcopysettings = -1;
    }
 
    db.versionnumber = 0.5;

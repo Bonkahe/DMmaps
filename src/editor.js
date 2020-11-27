@@ -17,6 +17,7 @@ const {
     TITLEBAR_OPEN_GENERATOR_WINDOW,
     TITLEBAR_SAVEPROJECT,
     TITLEBAR_SAVEASPROJECT,
+    REQUEST_PASTE_RESET,
     EDITOR_SETPACK,
     EDITOR_SETCOMPRESSION,
     EDITOR_CHECKBROKEN,
@@ -72,6 +73,9 @@ document.getElementById("meas10").innerText = i18n.__("Kilometers");
 document.getElementById("meas11").innerText = i18n.__("Meters");
 document.getElementById("meas12").innerText = i18n.__("Confirm Calibration.");
 document.getElementById("meas13").innerText = i18n.__("Custom Distance Label:");
+document.getElementById("copypaste0").innerText = i18n.__("Copy paste options:");
+document.getElementById("copypaste1").innerText = i18n.__("Reset Document/Node only paste option.");
+
 
 
 /** -------------------- Variables --------------------- */
@@ -267,6 +271,11 @@ function setScale()
         setsize : document.getElementById("scaleinput").value,
     }
     ipcRenderer.send(EDITOR_SETCOMPRESSION, compdata);
+}
+
+function resetpaste()
+{
+    ipcRenderer.send(REQUEST_PASTE_RESET);
 }
 
 /** ---------------------- Measurements -------------------- */

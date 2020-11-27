@@ -29,7 +29,7 @@ class Databasetemplate {
             './images/Tokens/Cave.png'
         ];
         
-        
+        this.savedcopysettings = -1;
         this.opendocs = [];
         this.measurementscale = 1;
         this.measurementtype = 0; 
@@ -82,6 +82,7 @@ module.exports = {
     REQUEST_EXTENDED_NODE_CONTEXT: 'request-extended-node-context',
     REQUEST_CLEAR_NODEPATH: 'request-clear-nodepath',
     PASTE_NODES: 'paste-nodes',
+    REQUEST_PASTE_RESET: 'request-paste-reset',
     REFRESH_DOCUMENTS: 'refresh-documents',
     RELOAD_DOCUMENT: 'reload-document',
     DELETE_NODE: 'delete-node',

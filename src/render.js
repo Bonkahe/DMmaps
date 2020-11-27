@@ -175,6 +175,7 @@ var selecteddocid;
 //var selectednodeid;
 var selectednodes = [];
 var copiednodes = [];
+var copiedlocation;
 var cellbselected = false;
 var column;
 var row;
@@ -1459,6 +1460,9 @@ Mousetrap.bind(['command+c', 'ctrl+c'], function() {
   if (window.getSelection().toString().length == 0)
   {
     copiednodes = selectednodes;
+
+    copiedlocation = convertworldtodoccords((window.innerWidth / 2),(window.innerHeight / 2));
+
     return false;
   }
 });
@@ -1466,14 +1470,26 @@ Mousetrap.bind(['command+c', 'ctrl+c'], function() {
 Mousetrap.bind(['command+v', 'ctrl+v'], function() {
   if (cellbselected && copiednodes.length > 0)
   {
+    var coords = convertworldtodoccords((((textelmnt.getBoundingClientRect().left - hierarchyelmnt.getBoundingClientRect().right) / 2) + hierarchyelmnt.getBoundingClientRect().right) ,(window.innerHeight / 2));
+
     var pastedata = {
-      vector: {x:0, y:0},
+      vector: {x:coords.x - copiedlocation.x, y:coords.y - copiedlocation.y}, ///
       nodes:[]
     }
+
+    //panto(coords.x, coords.y);
+    
+    /*
+    var coords = {
+      x: (window.innerWidth / 2),
+      y: (window.innerHeight / 2)
+    }
+*/
+    console.log(coords.x + " -- " + coords.y);
     
     for (var i in copiednodes)
     {
-      data.nodes.push(copiednodes[i].getAttribute("node-db-path"));
+      pastedata.nodes.push(copiednodes[i].getAttribute("node-db-path"));
     }
     ipcRenderer.send(PASTE_NODES, pastedata);
 
@@ -2202,20 +2218,49 @@ function resetmap()
   canvas.height = map.height;
 }
 
+var panning = false;
+
 /**Given coordinates in world space it will pan the document to center those coordinates. */
 function panto(x,y)
 {
+  if (panning){return;}
+  panning = true;
   var coords = convertdoctoworldcords(x,y);
+  var smoother = 20;
 
   var newx = (((textelmnt.getBoundingClientRect().left - hierarchyelmnt.getBoundingClientRect().right) / 2) + hierarchyelmnt.getBoundingClientRect().right) - coords.x;
   var newy = (window.innerHeight / 2) - coords.y;
+  //console.log(newx + " / " + newy + " --- " + smoother);
+  newx = newx / smoother;
+  newy = newy / smoother;
+  //console.log(newx + " / " + newy + " --- " + smoother);
 
   //textelmnt.getBoundingClientRect().left || e.pageX < hierarchyelmnt.getBoundingClientRect().right
-
+  var x = 0;
+  var tid = setInterval(function () {
+    //console.log(x);
+    instance.panBy({ 
+      originX: newx, 
+      originY: newy
+    });
+    if (++x === smoother) {
+      panning = false;
+      window.clearInterval(tid);
+    }
+    /*
+    if ( elem.parentNode ) {
+        stopBtn.html(function ( i, num ) { return parseInt(num,10) + 1; });
+    } else {
+        clearInterval( tid );
+    }
+    */
+  }, 10);
+  /*
   instance.panBy({ 
     originX: newx, 
     originY: newy
   });
+  */
 }
 
 
@@ -3232,6 +3277,7 @@ function selectDocument(id)
   var foundnode = mapdiv.querySelector('*[doc-db-path="' + selecteddocid + '"]');
   if(foundnode){
     selectnodes([foundnode]);
+    //console.log("test");
     panto(foundnode.style.left, foundnode.style.top);
   }
   else
