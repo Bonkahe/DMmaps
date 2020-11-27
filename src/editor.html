@@ -63,6 +63,11 @@
                 <p id="file2">This is will make all images linked anywhere in the project be stored directly in the .dmdb file.</p>
                 <p id="file3">Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.</p>
                 <button onclick="setPack()" class="basebtn" id="packbtn"> Missing </button>
+                <div class="container" id="compressioncontainer">
+                    <p id="file6">This will clamp all images resolution based off the width, the height will scale accordingly, input into the field the width you would like to use, and enable compression.</p>
+                    <button onclick="setCompression()" class="basebtn" id="compressbtn"> Missing </button>
+                    <input type="text" id="scaleinput" value="800" onchange="setScale()">
+                </div>
             </div>
             <div class="container">
                 <h1 id="file4">Broken Links</h1>

@@ -1,6 +1,6 @@
 {
   "name": "dmmaps",
-  "version": "0.12.6",
+  "version": "0.12.12",
   "description": "A DM's world building toolkit.",
   "main": "./src/main.js",
   "scripts": {
@@ -25,8 +25,10 @@
     "electron-rebuild": "^2.0.1"
   },
   "dependencies": {
+    "compress-images": "^1.9.5",
     "custom-electron-titlebar": "^3.2.4",
     "electron-context-menu": "^2.3.0",
+    "electron-image-resize": "^1.2.4",
     "electron-updater": "^4.3.4",
     "glob": "^7.1.6",
     "google-spreadsheet": "^3.0.13",
@@ -36,16 +38,26 @@
     "jsdom": "^16.4.0",
     "mousetrap": "^1.6.5",
     "node-xlsx": "^0.15.0",
+    "probe-image-size": "^6.0.0",
     "quill": "^2.0.0-dev.4",
     "quill-drag-and-drop-module": "^0.3.0",
     "quill-image-drop-and-paste": "^1.1.1",
     "quill-image-resize-module": "^3.0.0",
+    "sharp": "^0.26.3",
     "split.js": "^1.6.2",
     "update-electron-app": "^1.5.0"
   },
   "build": {
     "appId": "com.github.bonkahe.dmmaps",
     "icon": "src/images/icon.png",
-    "files": "!gifs"
+    "files": "!gifs",
+    "fileAssociations": {
+      "ext": [ "dmdb" ],
+      "name": "DMDB",
+      "description": "An dmdb file",
+      "icon": "src/images/icon.png",
+      "role": "Editor",
+      "isPackage": false
+    }
   }
 }

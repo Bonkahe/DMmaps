@@ -137,6 +137,27 @@ button {
   border-radius: 5px;
 }
 
+#overlay-2 {
+  display: none;
+  position: fixed;
+  width: 500px;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  z-index: 40;
+}
+
+#popup-2 {
+  top: 100px;
+  max-width: 600px;
+  width: 80%;
+  padding: 20px;
+  position: relative;
+  background: rgb(94, 94, 94);
+  margin: 20px auto;
+  border-radius: 5px;  
+}
+
 #overlay {
   position: fixed;
   height: 100%; 
@@ -172,6 +193,7 @@ button {
 }
 
 .basebtn {
+  color: black;
   border: none;
   border-radius: 2px;
   cursor: pointer;

@@ -6,6 +6,7 @@ const {
    ipcMain,
    dialog,
    globalShortcut,
+   screen,
 } = require('electron')
 const url = require('url')
 const path = require('path')
@@ -43,8 +44,10 @@ const {
    SCALE_ALL_NODES,
    SCALE_ONE_NODE,
    CLEAR_NODE_SCALE,
+   PASTE_NODES,
    REQUEST_DOCUMENT_BYNODE,
    REQUEST_DOCUMENT_BYDOC,
+   REQUEST_CLEAR_NODEPATH,
    SAVE_DOCUMENT,
    NEW_DOCUMENT,
    CHILD_DOCUMENT,
@@ -73,10 +76,12 @@ const {
    TITLEBAR_OPEN_GENERATOR_WINDOW,
    UPDATE_THEME,
    EDITOR_SETPACK,
+   EDITOR_SETCOMPRESSION,
    EDITOR_CHECKBROKEN,
    UPDATE_BROKENLINKS,
    SEARCH_TITLES,
    SEARCH_CONTENT,
+   DISPLAY_PATCHNOTES,
    Databasetemplate,
    DatabaseNodeentry,
    DatabaseTextentry,
@@ -85,12 +90,18 @@ const {
 var i18n = new(require('../translations/i18n'))
 const { dir } = require('console');
 const { send } = require('process');
+//const imageCompression = require('browser-image-compression');
+const sharp = require('sharp');
+const probe = require('probe-image-size');
 
 var cachePath = path.join( app.getPath('userData'), '/Cache/');
+var versioninfo = path.join( app.getPath('userData'), '/versioninfo.json');
 var nodepath = [];
+var nodeclipboard = [];
 var docpath = "";
 var extendedcontext = false;
 var docselected = false;
+var screenwidth;
 
 var nodemenu = false;
 var notonmap = false;
@@ -235,6 +246,8 @@ let backupoptions  = {
 
 function checkbackup()
 {
+   CheckVersion();
+
    if (fs.existsSync(path.join( app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ))) {
       dialog.showMessageBox(null, backupoptions).then( (data) => {
          if (data.response == 0) // load backup
@@ -266,6 +279,34 @@ function checkbackup()
    else {
       //alert("This file doesn't exist, cannot delete");
       console.log("File doesn't exist.");
+   }
+
+}
+
+function CheckVersion()
+{
+   if (fs.existsSync(versioninfo)) {
+      fs.readFile(versioninfo, 'utf-8', (err, data) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+         if (app.getVersion() != data.version)
+         {
+            win.webContents.send(DISPLAY_PATCHNOTES, data.releaseNotes);
+         }
+         var jsonupdatedata = {
+            version: app.getVersion(),
+            releaseNotes: data.releaseNotes
+         };
+
+         fs.writeFile(versioninfo , JSON.stringify(jsonupdatedata, null, 2), (err) => {
+            if(err){
+                console.log("An error ocurred creating the file "+ err.message)
+                return;
+            }  
+         });
+      });
    }
 }
 
@@ -380,7 +421,24 @@ contextMenu({
       {
          type: 'separator',
          visible: nodemenu === true,
+         //visible: nodemenu === true || nodeclipboard.length > 0,
       },
+      /*
+      {
+         label: i18n.__("Copy"),
+         visible: nodepath.length > 0,
+         click: () => {
+            nodeclipboard = nodepath;
+         }
+      },
+      {
+         label: i18n.__("Paste"),
+         visible: nodeclipboard.length > 0,
+         click: () => {
+            
+         }
+      },
+      */
       {
          label: i18n.__('Delete Node'),
          visible: nodemenu === true,
@@ -578,6 +636,26 @@ function loadproject()
    }
 }
 
+if(process.argv.length >= 2) {
+   let filePath = process.argv[1];
+   if (filePath != null && filePath != "")
+   {
+      fs.readFile(filePath, 'utf-8', (err, data) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+            return;
+         }
+         Databasetemplate.fromjson(data);
+         CurrentContent.projecturl = filePath;
+         updaterenderer();
+         if (!CurrentContent.packmode)
+         {
+            checkBrokenLinks();
+         }
+      }); 
+   }
+}
+
 const deeploadproject = async () => {
 
    let options = {
@@ -718,6 +796,10 @@ const saveasprojectReturnUnpack = async () => {
    fs.writeFile(filename.filePath, data, (err) => {
       if(err){
           console.log("An error ocurred creating the file "+ err.message)
+          CurrentContent.packmode = true;
+          sendPack();
+          updaterenderer();
+          updateproject();
       }
                   
       //console.log("The file has been succesfully saved");
@@ -739,6 +821,10 @@ const saveasprojectReturnUnpack = async () => {
 
 function updaterenderer()
 {
+   if (CurrentContent.packmode)
+   {
+      retrieveConstantCache();
+   }
    sendPack();
    win.webContents.send(PROJECT_INITIALIZED , CurrentContent);
 }
@@ -893,6 +979,10 @@ ipcMain.handle(SAVE_DOCUMENT, async (event, document) =>
 ipcMain.handle(SAVE_MAP_TO_STORAGE, async (event, mappath) =>
 {
    CurrentContent.backgroundurl = mappath;
+   if (CurrentContent.packmode)
+   {
+      refreshBackgroundpack();
+   }
    updateproject();
    return true;
 })
@@ -1220,6 +1310,28 @@ ipcMain.on(REQUEST_NODE_CONTEXT, function(event, data) {
    notonmap = false;
 });
 
+ipcMain.on(REQUEST_CLEAR_NODEPATH, function() {
+   nodepath = [];
+   extendedcontext = false;
+})
+
+ipcMain.on(PASTE_NODES, function(event, data) {
+   const pasteoptions = {
+      type: 'question',
+      buttons: [i18n.__("Cancel"), i18n.__("Documents and Nodes"), i18n.__("Just Nodes")],
+      defaultId: 2,
+      message: i18n.__('Would you like to paste documents as well?'),
+      detail: i18n.__('The documents will be places directly next to their originals.'),
+      checkboxLabel: i18n.__('Remember my answer'),
+      checkboxChecked: true,
+    };
+  
+    dialog.showMessageBox(null, options, (response, checkboxChecked) => {
+      console.log(response);
+      console.log(checkboxChecked);
+    });
+})
+
 ipcMain.on(NOT_ON_MAP, function(event,message) {
    notonmap = message;
    extendedcontext = false;
@@ -1300,12 +1412,12 @@ ipcMain.on(TITLEBAR_LOADPROJECT, function(event) {
 });
 
 ipcMain.on(TITLEBAR_SAVEPROJECT, function(event) {
-   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, i18n.__("Saving Database..."));
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, {message : i18n.__("Saving Database...")});
    saveproject();
 });
 
 ipcMain.on(TITLEBAR_SAVEASPROJECT, function(event) {
-   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, i18n.__("Saving Database..."));
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, {message : i18n.__("Saving Database...")});
    saveasproject();
 });
 
@@ -1332,8 +1444,20 @@ ipcMain.handle(RETRIEVE_VERSION, async (event) =>
    return app.getVersion();
 })
 
-autoUpdater.on('update-available', () => {
-   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, i18n.__("Downloading..."));
+autoUpdater.on('update-available', (updateinfo) => {
+   win.webContents.send(NOTIFY_UPDATEDOWNLOADING, {message : i18n.__("Downloading...")});
+
+   jsonupdatedata = {
+      version: app.getVersion(),
+      releaseNotes: updateinfo.releaseNotes
+   }
+
+   fs.writeFile(versioninfo , JSON.stringify(jsonupdatedata, null, 2), (err) => {
+      if(err){
+          console.log("An error ocurred creating the file "+ err.message)
+          return;
+      }  
+   });
 });
  
 autoUpdater.on('update-downloaded', () => {
@@ -1391,12 +1515,89 @@ ipcMain.on(EDITOR_MEASUREMENTSETTINGS, function(event, message) {
 })
 
 ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
-   CurrentContent.availableicons = message;
+   
+   if (CurrentContent.availableicons.length != message.length)
+   {
+      if (CurrentContent.packmode)
+      {
+         console.log("test1");
+         if (CurrentContent.availableicons.length > message.length)
+         {
+            console.log("test2");
+            for (var i = 0; i < CurrentContent.packedtokens.length; i++)
+            {
+               var found = false;
+               for (var j = 11; j < message.length; j++)
+               {
+                  if (message[j].replace(/\\/g, '/') == CurrentContent.packedtokens[i].url.replace(/\\/g, '/'))
+                  {
+                     found = true;
+                     break;
+                  }
+               }
+
+               if (!found)
+               {
+                  CurrentContent.packedtokens.splice(i, 1);
+                  i--;
+               }
+            }
+         }
+         else
+         {
+            console.log("test3");
+            for (var i = 11; i < message.length; i++)
+            {
+               console.log("test4" + message[i]);
+               var found = false;
+               for (var j = 0; j < CurrentContent.availableicons.length; j++)
+               {
+                  if (CurrentContent.availableicons[j].replace(/\\/g, '/') == message[i].replace(/\\/g, '/'))
+                  {
+                     found = true;
+                     break;
+                  }
+               }
+
+               if (!found)
+               {
+                  var filename =  message[i].replace(/\\/g, '/');
+                  filename = filename.substring(filename.lastIndexOf("/") + 1, filename.length);
+                  
+                  var newimageurl = {
+                     url: path.join(cachePath, filename).replace(/\\/g, '/'),
+                     data: fs.readFileSync(message[i], {encoding: 'base64'})
+                  }
+                  CurrentContent.availableicons.push(path.join(cachePath, filename).replace(/\\/g, '/'));
+                  CurrentContent.packedtokens.push(newimageurl);         
+         
+                  var nodefilename = "";
+                  CurrentContent.content.nodes.forEach(node => {
+                     nodefilename = node.tokenurl.replace(/\\/g, '/');
+                     nodefilename = nodefilename.substring(nodefilename.lastIndexOf("/") + 1, nodefilename.length);
+                     console.log(nodefilename + " --- " + filename);
+                     if (nodefilename == filename)
+                     {
+                        node.tokenurl = newimageurl.url;
+                     }
+                  });
+               }
+            }
+         }
+         //CurrentContent.availableicons = message;
+         retrieveConstantCache();
+      }
+      else
+      {
+         CurrentContent.availableicons = message;
+      }
+   }
    var editorinitializationdata = {
       icons: CurrentContent.availableicons
    };
    win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorinitializationdata);
    updateproject();
+   updaterenderer();
 })
 
 ipcMain.on(UPDATE_THEME, function(event, data) {
@@ -1418,11 +1619,20 @@ ipcMain.on(UPDATE_THEME, function(event, data) {
 
 ipcMain.on(EDITOR_SETPACK, function(event, data) {
    CurrentContent.packmode = !CurrentContent.packmode;
-   console.log(CurrentContent.packmode);
+   //console.log(CurrentContent.packmode);
 
    if (CurrentContent.packmode)
    {
-      convertDatabaseToPacked();
+      if (CurrentContent.backgroundurl == "" && CurrentContent.content.textEntries.length == 0)
+      {
+         CurrentContent.packmode = !CurrentContent.packmode;
+         return;
+      }
+      else
+      {
+         CurrentContent.compressionscale = (screenwidth.width / 3 > 800)? screenwidth.width / 3 : 800;
+         convertDatabaseToPacked();
+      }
    }
    else
    {
@@ -1433,6 +1643,108 @@ ipcMain.on(EDITOR_SETPACK, function(event, data) {
    updaterenderer();
    updateproject();
 })
+
+ipcMain.on(EDITOR_SETCOMPRESSION, function(event, data) {
+   if (data.setsize != null)
+   {
+      var newint = parseInt(data.setsize);
+      if (newint <= 0)
+      {
+         newint = (screenwidth.width / 3 > 800)? screenwidth.width / 3 : 800;
+      }
+      CurrentContent.compressionscale = newint;
+
+      if (CurrentContent.compressionactive)
+      {
+         compressAll();
+      }
+   }
+
+   if (data.settype != null)
+   {
+      CurrentContent.compressionactive = !CurrentContent.compressionactive;
+      if(CurrentContent.compressionactive)
+      {
+         let tempdeleteoptions  = {
+            buttons: [i18n.__("Yes"),i18n.__("No")],
+            message: i18n.__("If you do this, all images packed into the database will be clamped down to the given resolution, this is permanent. Are you sure?"),
+            defaultId: 1, // bound to buttons array
+         }
+         dialog.showMessageBox(null, tempdeleteoptions).then( (data) => {
+            if (data.response == 0)
+            {
+               compressAll();
+            }
+            else
+            {
+               return;
+            }
+         });
+      }
+   }
+
+   sendPack();
+   updaterenderer();
+   updateproject();
+})
+
+function compressAll()
+{
+   //handleImageCompression(CurrentContent.packedimages[0]);
+   
+   CurrentContent.packedimages.forEach(element => {
+      handleImageCompression(element);
+   });
+}
+
+async function handleImageCompression(image) {
+
+   var filename = image.url.substring(image.url.lastIndexOf("/") + 1, image.url.length);
+   fs.writeFileSync(path.join(cachePath, filename), image.data, 'base64');
+
+   let result = await probe(fs.createReadStream(path.join(cachePath, filename)));
+
+   if (result.width > CurrentContent.compressionscale)
+   {
+      sharp(path.join(cachePath, filename))
+      .resize(CurrentContent.compressionscale)
+      .toBuffer()
+      .then( data => { 
+         image.data = data;
+      })
+      .catch( err => { 
+         console.log(err);
+      });
+   }
+}
+
+function reinsertImage(image)
+{
+   CurrentContent.packedimages.forEach(element => {
+      if (element.url == image.url)
+      {
+         element = image;
+      }
+   });
+}
+
+function refreshBackgroundpack()
+{
+   if (fs.existsSync(CurrentContent.backgroundurl)) {
+      CurrentContent.backgroundurl = CurrentContent.backgroundurl.replace(/\\/g, '/');
+      var bgfilename = CurrentContent.backgroundurl.substring(CurrentContent.backgroundurl.lastIndexOf("/") + 1, CurrentContent.backgroundurl.length);
+      CurrentContent.backgroundurl = path.join(cachePath, bgfilename).replace(/\\/g, '/');
+
+      CurrentContent.packedbackground = fs.readFileSync(CurrentContent.backgroundurl, {encoding: 'base64'});      
+   }
+   else
+   {
+      CurrentContent.packedbackground = null;
+   }
+
+   retrieveConstantCache();
+}
+
 
 function convertDatabaseToPacked()
 {
@@ -1450,11 +1762,42 @@ function convertDatabaseToPacked()
 
             
    if (fs.existsSync(CurrentContent.backgroundurl)) {
-      CurrentContent.packedbackground = fs.readFileSync(CurrentContent.backgroundurl, {encoding: 'base64'});      
+      CurrentContent.packedbackground = fs.readFileSync(CurrentContent.backgroundurl, {encoding: 'base64'});  
+      
+      CurrentContent.backgroundurl = CurrentContent.backgroundurl.replace(/\\/g, '/');
+      var bgfilename = CurrentContent.backgroundurl.substring(CurrentContent.backgroundurl.lastIndexOf("/") + 1, CurrentContent.backgroundurl.length);
+      CurrentContent.backgroundurl = path.join(cachePath, bgfilename).replace(/\\/g, '/');
    }
    else
    {
       CurrentContent.packedbackground = null;
+   }
+
+   //Tokens
+   if (CurrentContent.availableicons.length > 11)
+   {
+      for(var i = 11; i < CurrentContent.availableicons.length; i++)
+      {
+         CurrentContent.availableicons[i] = CurrentContent.availableicons[i].replace(/\\/g, '/');
+         var filename = CurrentContent.availableicons[i].substring(CurrentContent.availableicons[i].lastIndexOf("/") + 1, CurrentContent.availableicons[i].length);
+         
+         var newimageurl = {
+            url: path.join(cachePath, filename).replace(/\\/g, '/'),
+            data: fs.readFileSync(CurrentContent.availableicons[i], {encoding: 'base64'})
+         }
+         CurrentContent.availableicons[i] = path.join(cachePath, filename).replace(/\\/g, '/');
+         CurrentContent.packedtokens.push(newimageurl);         
+
+         var nodefilename = "";
+         CurrentContent.content.nodes.forEach(node => {
+            nodefilename = node.tokenurl.replace(/\\/g, '/');
+            nodefilename = nodefilename.substring(nodefilename.lastIndexOf("/") + 1, nodefilename.length);
+            if (nodefilename == filename)
+            {
+               node.tokenurl = path.join(cachePath, filename).replace(/\\/g, '/');
+            }
+         });
+      }
    }
 
    imagesUrls.forEach(element => {
@@ -1482,6 +1825,7 @@ function convertDatabaseToPacked()
             console.log(newimageurl.url)
             CurrentContent.packedimages.push(newimageurl);
             
+            //handleImageCompression(newimageurl, new File(path.join(cachePath, filename).replace(/\\/g, '/')));
          }
          else
          {
@@ -1494,15 +1838,8 @@ function convertDatabaseToPacked()
          }
       }
    });
-}
 
-function getAttrFromString(str, node, attr) {
-   var regex = new RegExp('<' + node + ' .*?' + attr + '="(.*?)"', "gi"), result, res = [];
-   while ((result = regex.exec(str))) {
-       res.push(result[1]);
-   }
-
-   return res;
+   retrieveConstantCache();
 }
 
 function convertDatabaseToUnpacked()
@@ -1522,6 +1859,9 @@ function convertDatabaseToUnpacked()
          else
          {
             CurrentContent.packmode = true;
+            sendPack();
+            updaterenderer();
+            updateproject();
          }
       });
 
@@ -1538,6 +1878,7 @@ function convertDatabaseToUnpacked()
 
    var bgfilename = CurrentContent.backgroundurl.substring(CurrentContent.backgroundurl.lastIndexOf("/") + 1, CurrentContent.backgroundurl.length);
    //console.log(path.join(folderpath, filename).replace(/\\/g, '/'));
+   console.log(path.join(folderpath, bgfilename) + " - 1744");
 
    fs.writeFile(path.join(folderpath, bgfilename), CurrentContent.packedbackground, 'base64', function(err) {
       if (err)
@@ -1546,6 +1887,31 @@ function convertDatabaseToUnpacked()
       }
    });
    CurrentContent.backgroundurl = path.join(folderpath, bgfilename).replace(/\\/g, '/');
+
+   if (CurrentContent.availableicons.length > 11)
+   {
+      CurrentContent.packedtokens.forEach(packedtoken => {
+         var filename = packedtoken.url.substring(packedtoken.url.lastIndexOf("/") + 1, packedtoken.url.length);
+         //console.log(path.join(folderpath, filename).replace(/\\/g, '/'));
+
+         fs.writeFile(path.join(folderpath, filename), packedtoken.data, 'base64', function(err) {
+            if (err)
+            {
+               console.log(err);
+            }
+         });
+
+
+         for (var i = 11; i < CurrentContent.availableicons.length; i++)
+         {
+            if (CurrentContent.availableicons[i] == packedtoken.url)
+            {
+               CurrentContent.availableicons[i] = path.join(folderpath, filename);
+               break;
+            }
+         }         
+      })
+   }
 
    CurrentContent.packedimages.forEach(packedImage => {
       var filename = packedImage.url.substring(packedImage.url.lastIndexOf("/") + 1, packedImage.url.length);
@@ -1568,25 +1934,19 @@ function convertDatabaseToUnpacked()
          //documententry.content = documententry.content.replaceAll(packedImage.url, path.join(folderpath, filename));
       });
    });
+
+   CurrentContent.packedbackground = "";
+   CurrentContent.packedimages = [];
+   clearCache();
 }
 
-function getName() {
-   var fullPath = document.getElementById("img1").src;
-   var filename = fullPath.replace(/^.*[\\\/]/, '');
-   // or, try this, 
-   // var filename = fullPath.split("/").pop();
+function getAttrFromString(str, node, attr) {
+   var regex = new RegExp('<' + node + ' .*?' + attr + '="(.*?)"', "gi"), result, res = [];
+   while ((result = regex.exec(str))) {
+       res.push(result[1]);
+   }
 
-  document.getElementById("result").value = filename;
-}
-
-function sendPack()
-{
-   var editorupdatedata = {
-      packtrue: CurrentContent.packmode
-    }
-
-   editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
-   win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
+   return res;
 }
 
 function loadSettings()
@@ -1606,20 +1966,80 @@ function loadSettings()
   sendPack();
 }
 
+function sendPack()
+{
+   var editorupdatedata = {
+      packtrue: CurrentContent.packmode,
+      compressiondisplay: (CurrentContent.packedimages.length > 0),
+      compressionactive: CurrentContent.compressionactive,
+      compressionscale: CurrentContent.compressionscale
+    }
+
+   editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
+   win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
+}
+
 function clearCache()
 {
    fs.readdir(cachePath, (err, files) => {
       if (err) throw err;
     
       for (const file of files) {
-        fs.unlink(path.join(cachePath, file), err => {
-          if (err) throw err;
-        });
+         var tokencheck = checkTokens(path.join(cachePath, file).replace(/\\/g, '/'));
+         if (path.join(cachePath, file).replace(/\\/g, '/') != CurrentContent.backgroundurl && tokencheck == false)
+         {
+            fs.unlink(path.join(cachePath, file), err => {
+               if (err) throw err;
+            });
+         }
       }
     });
 }
 
+function checkTokens(path)
+{
+   if (CurrentContent.availableicons.length > 11) //if there are custom tokens
+   {
+      for(var i = 11; i < CurrentContent.availableicons.length; i++)
+      {
+         if (CurrentContent.availableicons[i] == path)
+         {
+            return true;
+         }         
+      }
+   }
+   return false;
+}
+
 var loadingimages = 0;
+
+function retrieveConstantCache()
+{
+   CurrentContent.backgroundurl = CurrentContent.backgroundurl.replace(/\\/g, '/');
+   var bgfilename = CurrentContent.backgroundurl.substring(CurrentContent.backgroundurl.lastIndexOf("/") + 1, CurrentContent.backgroundurl.length);
+
+   fs.writeFile(path.join(cachePath, bgfilename), CurrentContent.packedbackground, 'base64', function(err) {
+      if (err)
+      {
+         console.log("Background Cache Error: " + err);
+      }
+   });
+
+   //add token handling
+
+   if (CurrentContent.availableicons.length > 11)
+   {
+      CurrentContent.packedtokens.forEach(packedtoken => {
+         fs.writeFile(packedtoken.url, packedtoken.data, 'base64', function(err) {
+            if (err)
+            {
+               console.log(err);
+            }
+         });     
+      })
+   }
+
+}
 
 function buildCache(documentContents)
 {
@@ -1704,6 +2124,11 @@ function packDocument(documentContents)
             }
    
             CurrentContent.packedimages.push(newimageurl);
+
+            if(CurrentContent.compressionactive)
+            {
+               handleImageCompression(newimageurl);
+            }
          }
          else
          {
@@ -1901,7 +2326,10 @@ Databasetemplate.fromjson = function(json)
    db.availableicons = data.availableicons;
    db.opendocs = data.opendocs;
    db.packmode = data.packmode;
+   db.compressionactive = data.compressionactive;
+   db.compressionscale = data.compressionscale;
    db.packedimages = data.packedimages;
+   db.packedtokens = data.packedtokens;
    db.packedbackground = data.packedbackground;
    db.measurementscale = data.measurementscale;
    db.measurementtype = data.measurementtype;
@@ -1931,12 +2359,24 @@ Databasetemplate.fromjson = function(json)
       db.packmode = false;
       db.packedimages = [];
    }
-   else if (data.versionnumber < 0.4)
+
+   if (data.versionnumber < 0.4)
    {
       db.packedbackground = "";
    }
 
-   db.versionnumber = 0.4;
+   if (data.versionnumber < 0.5)
+   {
+      db.compressionactive = false;
+      db.compressionscale = 800;
+   }
+
+   if (data.versionnumber < 0.6)
+   {
+      db.packedtokens = [];
+   }
+
+   db.versionnumber = 0.5;
 
    //console.log(db.availableicons+"---"+data.availableicons)
 
@@ -2047,5 +2487,6 @@ ipcMain.on('app_version', (event) => {
 app.on('ready', () => {
    autoUpdater.checkForUpdatesAndNotify();
    checkbackup();
+   screenwidth = screen.getPrimaryDisplay().workAreaSize;
 })
 app.on('ready', createWindow)

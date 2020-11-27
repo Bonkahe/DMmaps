@@ -1,4 +1,4 @@
-const {remote, ipcRenderer} = require('electron');
+const {remote, ipcRenderer, webFrame } = require('electron');
 const { Menu, MenuItem} = remote;
 const { dialog, getCurrentWindow, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs');
@@ -33,6 +33,8 @@ const {
   CLEAR_NODE_SCALE,
   REQUEST_DOCUMENT_BYNODE,
   REQUEST_DOCUMENT_BYDOC,
+  REQUEST_CLEAR_NODEPATH,
+  PASTE_NODES,
   SAVE_DOCUMENT,
   NEW_DOCUMENT,
   SELECT_DOCUMENT,
@@ -63,6 +65,7 @@ const {
   UPDATE_THEME,
   SEARCH_TITLES,
   SEARCH_CONTENT,
+  DISPLAY_PATCHNOTES,
 }  = require('../utils/constants');
 var i18n = new(require('../translations/i18n'))
 const { start } = require('repl');
@@ -171,12 +174,15 @@ var rowheight = 20;
 var selecteddocid;
 //var selectednodeid;
 var selectednodes = [];
+var copiednodes = [];
+var cellbselected = false;
 var column;
 var row;
 var columnrowcount;
 var openednodes = [];
 var textEntries = [];
 var newhtml;
+var copyorigin;
 
 /**DrawingTools */
 const canvas = document.getElementById('canvaswindow');
@@ -250,6 +256,10 @@ var deletesplineBtn = document.getElementById('deletebtn');
 var nodetokenlist = [];
 //var nodeiconholder = document.getElementById('nodeiconholder');
 var nodeiconlist = document.getElementById('nodeicons');
+
+function clamp(num, min, max) {
+  return num <= min ? min : num >= max ? max : num;
+}
 
 
 function initializeicons(){
@@ -428,10 +438,35 @@ function sethighlight(index)
     }
 }
 
+$(window).bind('mousewheel DOMMouseScroll', function (event) {
+  if ($(event.target).closest("#nodeicons").length) //scrollwheel on the node list.
+  {
+    nodeiconlist.scrollLeft += event.originalEvent.deltaY * -0.75;
+  }
+
+  if (event.ctrlKey == true) {
+  //event.preventDefault();
+  console.log(event.originalEvent.deltaY * -0.001);
+  var change = event.originalEvent.deltaY * -0.001;
+  //if (document.body.style.zoom == null || document.body.style.zoom == ""){document.body.style.zoom = 1.0;}
+  var currentzoom = webFrame.getZoomFactor();
+  currentzoom = clamp(currentzoom + change, 1.0, 4.0);
+  webFrame.setZoomFactor(currentzoom);
+  }
+});
 
 
 $(function() {
   $("body").click(function(e) {
+
+    if ($(e.target).closest("#cursorcontrol").length)
+    {
+      window.getSelection().empty();
+      cellbselected = true;
+    }
+    else{
+      cellbselected = false;
+    }
 
     if (!$(e.target).closest("#hierarchylist").length && !$(e.target).closest("#searchtooltip").length)
     {
@@ -448,12 +483,6 @@ $(function() {
     }
   });
 })
-
-nodeiconlist.onwheel = zoom;
-function zoom(event) {
-    event.preventDefault();
-    nodeiconlist.scrollLeft += event.deltaY * -0.75;
-}
 
 function updanodeiconclickedatus()
 {
@@ -1417,6 +1446,32 @@ Mousetrap.bind(['command+d', 'ctrl+d'], function() {
   return false;
 });
 
+Mousetrap.bind(['command+c', 'ctrl+c'], function() {
+  if (window.getSelection().toString().length == 0)
+  {
+    copiednodes = selectednodes;
+    return false;
+  }
+});
+
+Mousetrap.bind(['command+v', 'ctrl+v'], function() {
+  if (cellbselected && copiednodes.length > 0)
+  {
+    var pastedata = {
+      vector: {x:0, y:0},
+      nodes:[]
+    }
+    
+    for (var i in copiednodes)
+    {
+      data.nodes.push(copiednodes[i].getAttribute("node-db-path"));
+    }
+    ipcRenderer.send(PASTE_NODES, pastedata);
+
+    return false;
+  }
+});
+
 Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
   ipcRenderer.send(TITLEBAR_OPENWINDOW); 
   return false;
@@ -1459,15 +1514,18 @@ window.addEventListener('contextmenu', (e) => {
           nodes:[]
         }
         
-        data.nodes.push(node.getAttribute("node-db-path"));
-        /*
+        if (selectednodes.indexOf(node) < 0){selectednodes.push(node);}
+        selectnodes(selectednodes);
+
+        //data.nodes.push(node.getAttribute("node-db-path"));
+        
         for (var i in selectednodes)
         {
           data.nodes.push(selectednodes[i].getAttribute("node-db-path"));
         }
-        */
+        
         ipcRenderer.send(REQUEST_EXTENDED_NODE_CONTEXT, data);
-        selectnodes({node});
+        //selectnodes({node});
         return;
       }
       else
@@ -1476,7 +1534,15 @@ window.addEventListener('contextmenu', (e) => {
           nodes:[]
         }
 
-        data.nodes.push(node.getAttribute("node-db-path"));
+        if (selectednodes.indexOf(node) < 0){selectednodes.push(node);}
+        selectnodes(selectednodes);
+
+        for (var i in selectednodes)
+        {
+          data.nodes.push(selectednodes[i].getAttribute("node-db-path"));
+        }
+
+        //data.nodes.push(node.getAttribute("node-db-path"));
         /*
         for (var i in selectednodes)
         {
@@ -1484,7 +1550,7 @@ window.addEventListener('contextmenu', (e) => {
         }
         */
         ipcRenderer.send(REQUEST_NODE_CONTEXT, data);
-        selectnodes({node});
+        //selectnodes({node});
         return;
       }
     }
@@ -1536,6 +1602,10 @@ editor.on('selection-change', function(range, oldRange, source) {
  * Recieves events from the other windows, as well as the main thread.
  */
 
+ipcRenderer.on(REQUEST_CLEAR_NODEPATH, (event) => {
+  //copyorigin = 
+})
+
 ipcRenderer.on(REFRESH_DOCUMENTS, (event, message) => {
   editor.setHTML(editor.getHTML());
 })
@@ -1545,9 +1615,15 @@ ipcRenderer.on(RELOAD_DOCUMENT, (event, message) => {
   console.log(message);
 })
 
-ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, message) => {
-  infodisplay.innerHTML = message;
+ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, data) => {
+  infodisplay.innerHTML = data.message;
   downloaddisplay.style.display = "block";
+})
+
+ipcRenderer.on(DISPLAY_PATCHNOTES, (event, message) => {
+  console.log("Updated: " + message);
+  //document.getElementById("patch1").innerHTML = message;
+  //document.getElementById("overlay-2").style.display = "block";
 })
 
 ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
@@ -2495,6 +2571,7 @@ function selectnodes(newnodes)
   else
   {
     //clearDocumentSelection();
+    ipcRenderer.send(REQUEST_CLEAR_NODEPATH);
   }
 }
 
@@ -2547,6 +2624,11 @@ function togglesearch()
   searchcontents = !searchcontents;
   searchsettingbutton.innerText = searchcontents? i18n.__("Search Titles") : i18n.__("Search Contents");
   search();
+}
+
+function togglepatchnotes()
+{
+  document.getElementById("overlay-2").style.display = "none";
 }
 
 function clearsearch()
@@ -3265,12 +3347,27 @@ function dragNode(buttonelmnt, parentelmnt){
       }
       return;
     }
+
+    if(selectednodes.indexOf(buttonelmnt) == -1)
+    {
+      selectnodes([buttonelmnt]);
+    }
     
     selectednodesinfo = [];
 
     mouseorigin = {
-      x: (e.clientX - 32),
-      y: (e.clientY - 32)
+      x: (e.clientX),
+      y: (e.clientY)
+    }
+
+    for (var i in selectednodes)
+    {
+      nodeorigin = convertdoctoworldcords(parseFloat(selectednodes[i].style.left), parseFloat(selectednodes[i].style.top));
+      nodeorigin.x = nodeorigin.x - mouseorigin.x;
+      nodeorigin.y = nodeorigin.y - mouseorigin.y
+      
+
+      selectednodesinfo[i] = nodeorigin;
     }
     
     scale = buttonelmnt.getAttribute("scaled");
@@ -3301,26 +3398,46 @@ function dragNode(buttonelmnt, parentelmnt){
         //console.log("test");
         
         nodelocked = false;
-
         
-        parentelmnt.style.pointerEvents = 'none';
-        buttonelmnt.style.opacity= '0.6';
+        //parentelmnt.style.pointerEvents = 'none';
+        //buttonelmnt.style.opacity= '0.6';
 
-        document.body.appendChild(buttonelmnt);
-        buttonelmnt.style.left = (e.clientX - 32) + "px";
-        buttonelmnt.style.top = (e.clientY - 32) + "px";
-        scale = buttonelmnt.getAttribute("scaled");
+        //document.body.appendChild(buttonelmnt);
+        //buttonelmnt.style.left = (e.clientX - 32) + "px";
+        //buttonelmnt.style.top = (e.clientY - 32) + "px";
+        //scale = buttonelmnt.getAttribute("scaled");
 
-        if (!scale){scale = currentscale;}
+        //if (!scale){scale = currentscale;}
 
-        buttonelmnt.style.transform = `matrix(${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0, ${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0)`;
+        //buttonelmnt.style.transform = `matrix(${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0, ${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0)`;
+
+        for (var i in selectednodes)
+        {
+          if (selectednodes[i].getAttribute("locked") == "true"){continue;}
+
+          scale = selectednodes[i].getAttribute("scaled");
+          if (!scale){scale = currentscale;}
+
+          selectednodes[i].style.opacity = '0.6';
+          document.body.appendChild(selectednodes[i]);
+          selectednodes[i].style.left = ((e.clientX - 32) + selectednodesinfo[i].x) + "px";
+          selectednodes[i].style.top = ((e.clientY - 32) + selectednodesinfo[i].y) + "px";
+          selectednodes[i].style.transform = `matrix(${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0, ${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0)`;
+        }
       }
     }
 
     if (!nodelocked)
     {
-      buttonelmnt.style.left = (e.clientX - 32) + "px";
-      buttonelmnt.style.top = (e.clientY - 32) + "px";
+      //buttonelmnt.style.left = (e.clientX - 32) + "px";
+      //buttonelmnt.style.top = (e.clientY - 32) + "px";
+
+      for (var i in selectednodes)
+      {
+        if (selectednodes[i].getAttribute("locked") == "true"){continue;}
+        selectednodes[i].style.left = ((e.clientX - 32) + selectednodesinfo[i].x) + "px";
+        selectednodes[i].style.top = ((e.clientY - 32) + selectednodesinfo[i].y) + "px";
+      }
     }
   }
 
@@ -3329,7 +3446,6 @@ function dragNode(buttonelmnt, parentelmnt){
     document.onmouseup = null;
     document.onmousemove = null;
     parentelmnt.style.pointerEvents = 'auto';
-    buttonelmnt.style.opacity= '1.0';
 
     if (nodelocked)
     {
@@ -3353,11 +3469,11 @@ function dragNode(buttonelmnt, parentelmnt){
     var x = (parseFloat(buttonelmnt.style.left) + 32);
     var y = (parseFloat(buttonelmnt.style.top) + 32);
 
-    scale = buttonelmnt.getAttribute("scaled");
+    //scale = buttonelmnt.getAttribute("scaled");
 
-    if (!scale){scale = currentscale;}
+    //if (!scale){scale = currentscale;}
 
-    buttonelmnt.style.transform = 'matrix(' + (scale * basenodescaleunlocked) +', 0, 0, ' + (scale * basenodescaleunlocked) +', 0, 0)';
+    //buttonelmnt.style.transform = 'matrix(' + (scale * basenodescaleunlocked) +', 0, 0, ' + (scale * basenodescaleunlocked) +', 0, 0)';
 
     var modifiedzoom = 1 / zoom;
 
@@ -3370,18 +3486,41 @@ function dragNode(buttonelmnt, parentelmnt){
     var normalizedy = (y - originy);
     var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
 
-    parentelmnt.appendChild(buttonelmnt);
+    //parentelmnt.appendChild(buttonelmnt);
 
-    buttonelmnt.style.left = (multipliednormalizedx  + "px");
-    buttonelmnt.style.top = (multipliednormalizedy  + "px");
+    //buttonelmnt.style.left = (multipliednormalizedx  + "px");
+    //buttonelmnt.style.top = (multipliednormalizedy  + "px");
 
-    //send data to main
-    var mydata = {
-      x:multipliednormalizedx,
-      y:multipliednormalizedy,
-      id:buttonelmnt.getAttribute("node-db-path")
-    };
-    ipcRenderer.send(VERIFY_NODE, mydata);
+    for (var i in selectednodes)
+    {
+      if (selectednodes[i].getAttribute("locked") == "true"){continue;}
+      selectednodes[i].style.opacity = "1.0";
+
+      scale = selectednodes[i].getAttribute("scaled");
+      if (!scale){scale = currentscale;}
+
+      x = (parseFloat(selectednodes[i].style.left) + 32);
+      y = (parseFloat(selectednodes[i].style.top) + 32);
+
+      normalizedx = (x - originx);
+      multipliednormalizedx = (normalizedx * modifiedzoom) - 32;
+    
+      normalizedy = (y - originy);
+      multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
+
+
+      parentelmnt.appendChild(selectednodes[i]);
+      selectednodes[i].style.left = (multipliednormalizedx + "px");
+      selectednodes[i].style.top = (multipliednormalizedy + "px");
+      selectednodes[i].style.transform = 'matrix(' + (scale * basenodescaleunlocked) +', 0, 0, ' + (scale * basenodescaleunlocked) +', 0, 0)';
+
+      var mydata = {
+        x:multipliednormalizedx,
+        y:multipliednormalizedy,
+        id:selectednodes[i].getAttribute("node-db-path")
+      };
+      ipcRenderer.send(VERIFY_NODE, mydata);
+    }
   }
 }
 

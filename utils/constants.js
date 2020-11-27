@@ -2,8 +2,10 @@
 
 class Databasetemplate {
     constructor() {
-        this.versionnumber = 0.4;
+        this.versionnumber = 0.6;
         this.packmode = false;
+        this.compressionactive = false;
+        this.compressionscale = 800;
         this.__type = "Databasetemplate";
         this.projecturl = "";
         this.name = "Default Database";
@@ -26,10 +28,12 @@ class Databasetemplate {
             './images/Tokens/Flag.png',
             './images/Tokens/Cave.png'
         ];
+        
         this.opendocs = [];
         this.measurementscale = 1;
         this.measurementtype = 0;        
         this.packedimages = [];
+        this.packedtokens = [];
         this.packedbackground= "";
     }
 };
@@ -74,6 +78,8 @@ module.exports = {
     REFRESH_NODES: 'refresh-nodes',
     REQUEST_NODE_CONTEXT: 'request-node-context',
     REQUEST_EXTENDED_NODE_CONTEXT: 'request-extended-node-context',
+    REQUEST_CLEAR_NODEPATH: 'request-clear-nodepath',
+    PASTE_NODES: 'paste-nodes',
     REFRESH_DOCUMENTS: 'refresh-documents',
     RELOAD_DOCUMENT: 'reload-document',
     DELETE_NODE: 'delete-node',
@@ -119,10 +125,12 @@ module.exports = {
     SETGLOBAL_CHARGEN: 'setglobal-chargen',
     UPDATE_THEME: 'update-theme',
     EDITOR_SETPACK: 'editor-setpack',
+    EDITOR_SETCOMPRESSION: 'editor-setcompression',
     EDITOR_CHECKBROKEN: 'editor-checkbroken',
     UPDATE_BROKENLINKS: 'update-brokenlinks',
     SEARCH_TITLES: 'search-titles',
     SEARCH_CONTENT: 'search-content',
+    DISPLAY_PATCHNOTES: 'display-patchnotes',
     Databasetemplate,
     DatabaseNodeentry,
     DatabaseTextentry,

@@ -37,6 +37,8 @@
     "Save database": "Save database",
     "Load a Token": "Load a Token",
     "Import image": "Import image",
+    "Copy": "Copy",
+    "Paste": "Paste",
 
     "Select Mode": "Select Mode",
     "Measure Mode": "Measure Mode",
@@ -58,6 +60,8 @@
     " broken links.": " broken links.",
     "Disable Image Packing": "Disable Image Packing",
     "Enable Image Packing": "Enable Image Packing",
+    "Disable Auto Compression": "Disable Auto Compression",
+    "Enable Auto Compression": "Enable Auto Compression",
 
     "Clear": "Clear",
     "Node Controls": "Node Controls",
@@ -91,6 +95,10 @@
     "Distance:": "Distance:",
     "Confirm Calibration.": "Confirm Calibration.",
 
+    "Would you like to paste documents as well?": "Would you like to paste documents as well?",
+    "The documents will be places directly next to their originals." : "The documents will be places directly next to their originals.",
+    
+
     "This is will make all images linked anywhere in the project be stored directly in the .dmdb file.": "This is will make all images linked anywhere in the project be stored directly in the .dmdb file.",
     "Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.": "Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.",
     "If you have broken links you can select the option below to search for the folder where you think they might be, it will be searched for the missing files.": "If you have broken links you can select the option below to search for the folder where you think they might be, it will be searched for the missing files.",
@@ -105,6 +113,9 @@
     "Donate to the Creator.": "Donate to the Creator.",
     "If you want to support me with financial donations that's cool,": "If you want to support me with financial donations that's cool,",
     "if not that's cool too, either way, enjoy the program!": "if not that's cool too, either way, enjoy the program!",
+
+    "If you do this, all images packed into the database will be clamped down to the given resolution, this is permanent. Are you sure?": "If you do this, all images packed into the database will be clamped down to the given resolution, this is permanent. Are you sure?",
+    "This will clamp all images resolution based off the width, the height will scale accordingly, input into the field the width you would like to use, and enable compression.": "This will clamp all images resolution based off the width, the height will scale accordingly, input into the field the width you would like to use, and enable compression.",
 
     "Do you really want to delete this document?": "Do you really want to delete this document?",
     "Do you want to delete the attached documents as well?": "Do you want to delete the attached documents as well?",

@@ -18,6 +18,7 @@ const {
     TITLEBAR_SAVEPROJECT,
     TITLEBAR_SAVEASPROJECT,
     EDITOR_SETPACK,
+    EDITOR_SETCOMPRESSION,
     EDITOR_CHECKBROKEN,
     UPDATE_THEME,
     UPDATE_BROKENLINKS,
@@ -52,6 +53,7 @@ document.getElementById("file2").innerText = i18n.__("This is will make all imag
 document.getElementById("file3").innerText = i18n.__("Please be aware, this will make the project take longer to save and be larger, but there will be no broken links.");
 document.getElementById("file4").innerText = i18n.__("Broken Links");
 document.getElementById("file5").innerText = i18n.__("If you have broken links you can select the option below to search for the folder where you think they might be, it will be searched for the missing files.");
+document.getElementById("file6").innerText = i18n.__("This will clamp all images resolution based off the width, the height will scale accordingly, input into the field the width you would like to use, and enable compression.");
 document.getElementById("brokenlinksinfodisplay").innerText = i18n.__("Load a project to check for missing files.");
 document.getElementById("packbtn").innerText = i18n.__("Missing");
 document.getElementById("myfileslabel").innerText = i18n.__("Select a folder to search for images.");
@@ -242,6 +244,30 @@ function setPack()
     ipcRenderer.send(EDITOR_SETPACK);
 }
 
+function setCompression()
+{
+    var compdata = {
+        settype : true,
+    }
+    ipcRenderer.send(EDITOR_SETCOMPRESSION, compdata);
+}
+
+function setCompressionScale()
+{
+    var compdata = {
+        setsize : document.getElementById("scaleinput").value,
+    }
+    ipcRenderer.send(EDITOR_SETCOMPRESSION, compdata);
+}
+
+function setScale()
+{
+    var compdata = {
+        setsize : document.getElementById("scaleinput").value,
+    }
+    ipcRenderer.send(EDITOR_SETCOMPRESSION, compdata);
+}
+
 /** ---------------------- Measurements -------------------- */
 
 Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
@@ -320,5 +346,12 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
         {
             brokenlinkscontainer.style.display = "none";
         }
+    }
+
+    if (message.compressiondisplay != null)
+    {
+        document.getElementById("compressioncontainer").style.display = message.compressiondisplay? "block": "none";
+        document.getElementById("compressbtn").innerText = message.compressionactive? i18n.__("Stop clamping image width") : i18n.__("Clamp image width");
+        document.getElementById("scaleinput").value = message.compressionscale == null? "missing" : message.compressionscale;
     }
 })
