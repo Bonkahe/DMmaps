@@ -1110,6 +1110,15 @@ function finishdrawing(e)
   rebuildsplinelist(data.drawings);  
 }
 
+canvas.addEventListener('dblclick', e => {
+  if (measurement.shiftheld)
+  {
+    measurement.active = false;
+    measurement.shiftheld = false;
+    return;
+  }
+})
+
 /**Handles Actually drawing when moveing your mouse and clicking and dragging on the canvas */
 canvas.addEventListener('mousedown', e => {
   if (e.which == 1) //left mousebutton
@@ -1126,22 +1135,6 @@ canvas.addEventListener('mousedown', e => {
     }
     else if (mousemode == 1) //measure mode
     {
-      if (!doubleclick)
-      {
-        var delayInMilliseconds = 500; //1 second
-        doubleclick = true;
-        setTimeout(function() {
-          doubleclick = false;
-        }, delayInMilliseconds);
-      }
-      else if (measurement.shiftheld)
-      {
-        measurement.active = false;
-        measurement.shiftheld = false;
-        //measurement.endpoint = convertworldtodoccords(e.pageX,e.pageY);
-        return;
-      }
-
       if (!measurement.active)
       {
         measurement.points = [];
@@ -3431,8 +3424,11 @@ function dragNode(buttonelmnt, parentelmnt){
       }
       else
       {
-        clearDocumentSelection();
-        selectnodes([buttonelmnt]);
+        if(selectednodes.indexOf(buttonelmnt) == -1)
+        {
+          clearDocumentSelection();
+          selectnodes([buttonelmnt]);
+        }
         //panto(buttonelmnt.style.left, buttonelmnt.style.top);
       }
       return;
@@ -3547,8 +3543,11 @@ function dragNode(buttonelmnt, parentelmnt){
       }
       else
       {
-        clearDocumentSelection();
-        selectnodes([buttonelmnt]);
+        if(selectednodes.indexOf(buttonelmnt) == -1)
+        {
+          clearDocumentSelection();
+          selectnodes([buttonelmnt]);
+        }
         //panto(buttonelmnt.style.left, buttonelmnt.style.top);
       }
       return;
