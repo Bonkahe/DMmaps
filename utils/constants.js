@@ -74,6 +74,7 @@ module.exports = {
     REFRESH_DATABASE: 'refresh-database',
     REFRESH_DATABASE_COMPLETE: 'refresh-database-complete',
     REFRESH_PAGE: 'refresh-page',
+    REQUEST_PATCHNOTES: 'request-patchnotes',
     REFRESH_HIERARCHY: 'refresh-hirearchy',
     REQUEST_HIERARCHY_REFRESH: 'request-hirearchy-refresh',
     UPDATE_HIERARCHY_ORDER: 'update-hierarchy-order',

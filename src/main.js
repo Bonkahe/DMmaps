@@ -31,6 +31,7 @@ const {
    REFRESH_DATABASE,
    REFRESH_DATABASE_COMPLETE,
    REFRESH_PAGE,
+   REQUEST_PATCHNOTES,
    REFRESH_HIERARCHY,
    REQUEST_HIERARCHY_REFRESH,
    REFRESH_NODES,
@@ -247,8 +248,6 @@ let backupoptions  = {
 
 function checkbackup()
 {
-   CheckVersion();
-
    if (fs.existsSync(path.join( app.getPath('userData'), '/DmmapsSettings/backup.dmdb' ))) {
       dialog.showMessageBox(null, backupoptions).then( (data) => {
          if (data.response == 0) // load backup
@@ -287,13 +286,18 @@ function checkbackup()
 function CheckVersion()
 {
    if (fs.existsSync(versioninfo)) {
-      fs.readFile(versioninfo, 'utf-8', (err, data) => {
+      
+      fs.readFile(versioninfo, 'utf-8', (err, json) => {
          if(err){
             console.log("An error ocurred reading the file :" + err.message);
              return;
          }
+         var data = JSON.parse(json);
+         //console.log(data.version);
+
          if (app.getVersion() != data.version)
          {
+            console.log("notes");
             win.webContents.send(DISPLAY_PATCHNOTES, data.releaseNotes);
          }
          var jsonupdatedata = {
@@ -307,6 +311,25 @@ function CheckVersion()
                 return;
             }  
          });
+      });
+   }
+}
+
+function DisplayNotes()
+{
+   if (fs.existsSync(versioninfo)) {
+      
+      fs.readFile(versioninfo, 'utf-8', (err, json) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+         var data = JSON.parse(json);
+         if (data.releaseNotes != null && data.releaseNotes != "")
+         {
+            win.webContents.send(DISPLAY_PATCHNOTES, data.releaseNotes);
+         }
+         
       });
    }
 }
@@ -1019,9 +1042,14 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
 });
 
 ipcMain.on(REFRESH_PAGE, function(event) {
+   CheckVersion();
    loadSettings();
    updaterenderer();
 });
+
+ipcMain.on(REQUEST_PATCHNOTES, function() {
+   DisplayNotes();
+})
 
 ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
    var newdoc = new DatabaseTextentry();
@@ -1624,7 +1652,7 @@ ipcMain.handle(RETRIEVE_VERSION, async (event) =>
 
 autoUpdater.on('update-available', (updateinfo) => {
    win.webContents.send(NOTIFY_UPDATEDOWNLOADING, {message : i18n.__("Downloading...")});
-
+   
    jsonupdatedata = {
       version: app.getVersion(),
       releaseNotes: updateinfo.releaseNotes

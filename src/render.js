@@ -19,6 +19,7 @@ const {
   REFRESH_DATABASE,
   REFRESH_DATABASE_COMPLETE,
   REFRESH_PAGE,
+  REQUEST_PATCHNOTES,
   REFRESH_HIERARCHY,
   REQUEST_HIERARCHY_REFRESH,
   REQUEST_NODE_CONTEXT,
@@ -841,6 +842,12 @@ const template = [
     label: i18n.__('Help'),
      submenu: [
         {
+          label: i18n.__('Display Patch Notes'),
+          click: () => { 
+            ipcRenderer.send(REQUEST_PATCHNOTES); 
+          }
+        },
+        {
            label: i18n.__('Check for updates'),
            click: () => { 
              ipcRenderer.send(TITLEBAR_CHECKFORUPDATES); 
@@ -1647,8 +1654,8 @@ ipcRenderer.on(NOTIFY_UPDATEDOWNLOADING, (event, data) => {
 
 ipcRenderer.on(DISPLAY_PATCHNOTES, (event, message) => {
   console.log("Updated: " + message);
-  //document.getElementById("patch1").innerHTML = message;
-  //document.getElementById("overlay-2").style.display = "block";
+  document.getElementById("patch1").innerHTML = message;
+  document.getElementById("overlay-2").style.display = "block";
 })
 
 ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
@@ -3106,7 +3113,7 @@ function hierarchybuttonpressed(id)
     {
       clearDocumentSelection();
       DisplayDocument();
-      selectDocument(id)
+      selectDocument(id, true)
       loadDocument();
       mousemode = 0;
       document.getElementById("cursorcontrol").style.cursor = "auto";
@@ -3257,7 +3264,7 @@ function clearDocumentSelection()
   overrideindex = null;  
 }
 
-function selectDocument(id)
+function selectDocument(id, fromhirearchy)
 {
   if(id == null){return;}
 
@@ -3278,7 +3285,10 @@ function selectDocument(id)
   if(foundnode){
     selectnodes([foundnode]);
     //console.log("test");
-    panto(foundnode.style.left, foundnode.style.top);
+    if (fromhirearchy != null && fromhirearchy == true)
+    {
+      panto(foundnode.style.left, foundnode.style.top);
+    }
   }
   else
   {
@@ -3401,7 +3411,7 @@ function dragNode(buttonelmnt, parentelmnt){
       {
         clearDocumentSelection();
         selectnodes([buttonelmnt]);
-        panto(buttonelmnt.style.left, buttonelmnt.style.top);
+        //panto(buttonelmnt.style.left, buttonelmnt.style.top);
       }
       return;
     }
@@ -3517,7 +3527,7 @@ function dragNode(buttonelmnt, parentelmnt){
       {
         clearDocumentSelection();
         selectnodes([buttonelmnt]);
-        panto(buttonelmnt.style.left, buttonelmnt.style.top);
+        //panto(buttonelmnt.style.left, buttonelmnt.style.top);
       }
       return;
     }

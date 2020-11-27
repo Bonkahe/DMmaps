@@ -153,9 +153,18 @@ button {
   width: 80%;
   padding: 20px;
   position: relative;
-  background: rgb(94, 94, 94);
+  background: #202020;
   margin: 20px auto;
   border-radius: 5px;  
+}
+
+#popup-2 .container {
+  margin-bottom: 1em;
+  margin-top: 1em;
+}
+
+#popup-2 .basebtn {
+  min-width: 100px;
 }
 
 #overlay {
