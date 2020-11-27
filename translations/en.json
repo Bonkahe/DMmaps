@@ -98,6 +98,9 @@
 
     "Would you like to paste documents as well?": "Would you like to paste documents as well?",
     "The documents will be places directly next to their originals." : "The documents will be places directly next to their originals.",
+    "Display Patch Notes": "Display Patch Notes",
+    "Copy paste options": "Copy paste options",
+    "Reset Document/Node only paste option.": "Reset Document/Node only paste option.",
     
 
     "This is will make all images linked anywhere in the project be stored directly in the .dmdb file.": "This is will make all images linked anywhere in the project be stored directly in the .dmdb file.",

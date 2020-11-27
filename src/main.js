@@ -1918,7 +1918,7 @@ async function handleImageCompression(image) {
       })
       .catch( err => { 
          console.log(err);
-      });
+      });      
    }
 }
 

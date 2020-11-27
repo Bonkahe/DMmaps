@@ -1,6 +1,6 @@
 {
   "name": "dmmaps",
-  "version": "0.13.3",
+  "version": "0.13.5",
   "description": "A DM's world building toolkit.",
   "main": "./src/main.js",
   "scripts": {
@@ -25,13 +25,10 @@
     "electron-rebuild": "^2.0.1"
   },
   "dependencies": {
-    "compress-images": "^1.9.5",
     "custom-electron-titlebar": "^3.2.4",
     "electron-context-menu": "^2.3.0",
-    "electron-image-resize": "^1.2.4",
     "electron-updater": "^4.3.4",
     "glob": "^7.1.6",
-    "google-spreadsheet": "^3.0.13",
     "jquery": "^3.5.1",
     "jquery-popup-overlay": "^2.1.5",
     "js-spline": "^1.0.1",
@@ -50,14 +47,6 @@
   "build": {
     "appId": "com.github.bonkahe.dmmaps",
     "icon": "src/images/icon.png",
-    "files": "!gifs",
-    "fileAssociations": {
-      "ext": [ "dmdb" ],
-      "name": "DMDB",
-      "description": "An dmdb file",
-      "icon": "src/images/icon.png",
-      "role": "Editor",
-      "isPackage": false
-    }
+    "files": "!gifs"
   }
 }
