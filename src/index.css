@@ -117,7 +117,6 @@
   }
 
 /* overlay*/
-
 button {
   background: #000;
   color: #fff;
@@ -471,6 +470,8 @@ select:focus{
   .quill-doclink:hover{
     background-color: rgba(51, 51, 51, 0.719);
   }
+
+  
   
   .node-icon {
     -webkit-filter: brightness(100%) sepia(1) var(--node-token-hue) var(--node-token-saturate) var(--node-token-brightness);
@@ -495,6 +496,7 @@ select:focus{
   .node-lock-false{
 
   }
+  
 
   .node-lock-true{
     cursor: help;
@@ -519,6 +521,11 @@ select:focus{
     display: block;
   }
   
+  .unclickable{
+    pointer-events: none;
+  }
+  
+
   #mapdiv {
   transform-origin:0 0;
   -webkit-transform-origin:0 0;

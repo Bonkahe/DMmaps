@@ -1526,6 +1526,7 @@ function pastenode(data, choice)
                   }
                }   
                newnode.id = r;
+               newnode.documentref = "";
                
                CurrentContent.content.nodes.push(newnode);
                break;

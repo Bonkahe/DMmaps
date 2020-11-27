@@ -43,9 +43,9 @@ window.addEventListener('DOMContentLoaded', () => {
 document.getElementById("them0").innerText = i18n.__("Themes:");
 document.getElementById("them1").innerText = i18n.__("Hue slider tokens:");
 document.getElementById("them2").innerText = i18n.__("Primary button color:");
-document.getElementById("them3").innerText = i18n.__("Primary hover color:");
+//document.getElementById("them3").innerText = i18n.__("Primary hover color:");
 document.getElementById("them4").innerText = i18n.__("Secondary button color:");
-document.getElementById("them5").innerText = i18n.__("Secondary hover color:");
+//document.getElementById("them5").innerText = i18n.__("Secondary hover color:");
 document.getElementById("them6").innerText = i18n.__("Reset");
 
 document.getElementById("file0").innerText = i18n.__("File Management:");
@@ -80,7 +80,7 @@ document.getElementById("copypaste1").innerText = i18n.__("Reset Document/Node o
 
 /** -------------------- Variables --------------------- */
 
-const primarywindow = remote.getGlobal ('textwindow');
+var primarywindow = remote.getGlobal ('textwindow');
 
 var hueshift = document.getElementById("hueSelection");
 var primarycolor = document.getElementById("primarycolor");
@@ -189,13 +189,15 @@ ipcRenderer.send(UPDATE_THEME);
 
 function saveSettings()
 {
+    var highlightprim = hexToRgb(primarycolor.value);
+    var secondaryprim = hexToRgb(secondarycolor.value);
     //console.log(document.getElementById("primarycolor").toRGBString())
     var settings = {
         hueshift: parseFloat(hueshift.value),
         primarycolor: primarycolor.value,
-        primaryhighlight: primaryhighlight.value,
+        primaryhighlight: "rgb(" + highlightprim.r + "," + highlightprim.g + "," + highlightprim.b + ")",
         secondarycolor: secondarycolor.value,
-        secondaryhighlight: secondaryhighlight.value
+        secondaryhighlight: "rgb(" + secondaryprim.r + "," + secondaryprim.g + "," + secondaryprim.b + ")",
     }
     ipcRenderer.send(UPDATE_THEME, settings);
     /*
@@ -218,11 +220,11 @@ function loadSettings(data)
     var importeddata = data;
     hueshift.value = importeddata.hueshift;
     primarycolor.jscolor.fromString(importeddata.primarycolor);
-    primaryhighlight.jscolor.fromString(importeddata.primaryhighlight);
+    //primaryhighlight.jscolor.fromString(importeddata.primaryhighlight);
     secondarycolor.jscolor.fromString(importeddata.secondarycolor);
-    secondaryhighlight.jscolor.fromString(importeddata.secondaryhighlight);
+    //secondaryhighlight.jscolor.fromString(importeddata.secondaryhighlight);
 
-    styles.innerText = ":root{ --node-token-hue: hue-rotate( "+ hueshift.value +"deg); --node-token-saturate: saturate(250%); --node-token-brightness: brightness(85%); --main-button-color: "+ primarycolor.value+ "; --main-button-highlight: " + primaryhighlight.value + "; --neg-button-color: " + secondarycolor.value + "; --neg-button-highlight: "+ secondaryhighlight.value + ";}";
+    styles.innerText = ":root{ --node-token-hue: hue-rotate( "+ hueshift.value +"deg); --node-token-saturate: saturate(250%); --node-token-brightness: brightness(85%); --main-button-color: "+ primarycolor.value+ "; --main-button-highlight: " + importeddata.primaryhighlight + "; --neg-button-color: " + secondarycolor.value + "; --neg-button-highlight: "+ importeddata.secondaryhighlight + ";}";
 }
 
 function valuesChanged()
@@ -336,10 +338,21 @@ function currenttypechanged()
 function customtypechanged()
 {
     var measurementdata = {
+        type: 3,
         customtype: document.getElementById("customdistanceinput").value
     }
     primarywindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, measurementdata);
 }
+
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16) + 100,
+      g: parseInt(result[2], 16) + 100,
+      b: parseInt(result[3], 16) + 100,
+    } : null;
+  }
+
 
 ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS);
 

@@ -197,8 +197,6 @@ var measurement = {
   active: false,
   shiftheld: false
 };
-var shiftheld = false;
-
 var milesdistancescale = 1;
 /*
 var distancetype = {
@@ -1402,15 +1400,36 @@ $('div[contenteditable]').keydown(function(e) {
   }
 });
 
-$(document).keydown(function (e) {
+var fired = false;
+
+
+$(document).on('keydown', function (e) {
   if (e.keyCode == 16) {
       if (measurement.active){measurement.shiftheld = true;}
+  }
+  if (e.keyCode == 18){
+    if (!fired)
+    {
+      fired = true;
+      console.log("alt pressed");
+      if (mousemode == 1)
+      {
+        for (var i in nodelist)
+        {
+          nodelist[i].classList.toggle("unclickable");
+        }
+      }
+    }
   }
 });
 
 $(document).keyup(function (e) {
-  if (e.keyCode == 16) {
-      //if (measurement.active){measurement.shiftheld = true;}
+  if (e.keyCode == 18) {
+    fired = false;
+    for (var i in nodelist)
+    {
+      nodelist[i].classList.remove("unclickable");
+    }
   }
 });
 
@@ -3390,10 +3409,13 @@ function dragNode(buttonelmnt, parentelmnt){
   function dragMouseDown(e) {
     e = e || window.event;
 
-    if (e.which == 2 || e.which == 3 || mousemode != 0)
+    if (e.which == 2 || e.which == 3 || mousemode == 2)
     {
       return;
     }
+
+    
+
     //console.log(buttonelmnt.getAttribute("locked"));
     
     e.preventDefault();

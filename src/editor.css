@@ -9,12 +9,21 @@ body{
 
 .container{
     padding: 5px;
-    border: 1px solid rgb(141, 141, 141);
+    
     width: calc(100% - 20px);
 }
 
+.bordercontainer{
+    border: 1px solid rgb(141, 141, 141);
+}
+
+#file0 #meas0 #copypaste0{
+  margin-top: 20px;
+}
+
+
 .container h1{
-    margin: 15px 0;
+    margin: 5px 0;
     font-size: 20px;
 }
 .container p{
@@ -34,6 +43,7 @@ body{
 
 
 .basebtn {
+  margin: 5px 0;
   border: none;
   border-radius: 2px;
   cursor: pointer;
@@ -46,6 +56,10 @@ body{
 }
 .basebtn:focus {
      outline:none;
+}
+
+.basebtn:hover{
+  background-color: var(--main-button-highlight);
 }
 
 select{
