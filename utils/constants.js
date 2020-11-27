@@ -29,9 +29,11 @@ class Databasetemplate {
             './images/Tokens/Cave.png'
         ];
         
+        
         this.opendocs = [];
         this.measurementscale = 1;
-        this.measurementtype = 0;        
+        this.measurementtype = 0; 
+        this.distancelabel = 'custom';       
         this.packedimages = [];
         this.packedtokens = [];
         this.packedbackground= "";

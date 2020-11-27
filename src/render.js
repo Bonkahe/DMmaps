@@ -198,11 +198,20 @@ var measurement = {
 var shiftheld = false;
 
 var milesdistancescale = 1;
+/*
 var distancetype = {
   Mi: 1,
   Km: 1.60934,
-  M: 1609.34
+  M: 1609.34,
+  custom: 1
 }
+*/
+var distancetype = [
+  {title: "Mi", mod: 1},
+  {title: "Km", mod: 1.60934},
+  {title: "M", mod: 1609.34},
+  {title: "custom", mod: 1}
+]
 
 var currentdistancetype = 0;
 
@@ -1283,7 +1292,7 @@ function renderMeasurement()
   canvascontext.stroke();
   canvascontext.closePath();  
 
-  totaldistance = round(totaldistance * (Object.values(distancetype)[currentdistancetype] * milesdistancescale), 2); 
+  totaldistance = round(totaldistance * (distancetype[currentdistancetype].mod * milesdistancescale), 2); 
 
   if (measurement.points.length > 1)
   {
@@ -1305,7 +1314,7 @@ function writeText(distance, x1,y1,x2,y2)
     angleDeg += 180;
   }
 
-  var label = distance.toString() + " " + Object.keys(distancetype)[currentdistancetype];
+  var label = distance.toString() + " " + distancetype[currentdistancetype].title;
   canvascontext.save();
   canvascontext.strokeStyle = '#1a1a1a';
   canvascontext.textAlign = "center";
@@ -1684,45 +1693,46 @@ ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) =>{
       initializeicons();
   }
 
-  
-  if (measurement.render)
-  {
-    if (message.type != null){currentdistancetype = message.type;}
+  if (message.type != null){currentdistancetype = message.type;}
 
-    if (message.length != null){
-      var totaldistance = 0;
-      if ( measurement.points.length > 0)
-      {    
-        for (var i = 1; i < measurement.points.length; i++)
-        {
-          totaldistance += getdistance(measurement.points[i - 1].x,measurement.points[i].x,measurement.points[i - 1].y,measurement.points[i].y);
-          canvascontext.lineTo(measurement.points[i].x, measurement.points[i].y);
-        }
-        
-        totaldistance += getdistance(measurement.points[measurement.points.length - 1].x,measurement.endpoint.x,measurement.points[measurement.points.length - 1].y,measurement.endpoint.y);
-      }
-      else
+  if (message.length != null){
+    var totaldistance = 0;
+    if ( measurement.points.length > 0)
+    {    
+      for (var i = 1; i < measurement.points.length; i++)
       {
-        totaldistance += getdistance(measurement.points[0].x,measurement.endpoint.x,measurement.points[0].y,measurement.endpoint.y);
+        totaldistance += getdistance(measurement.points[i - 1].x,measurement.points[i].x,measurement.points[i - 1].y,measurement.points[i].y);
+        canvascontext.lineTo(measurement.points[i].x, measurement.points[i].y);
       }
       
-      milesdistancescale = (message.length / totaldistance) / Object.values(distancetype)[currentdistancetype];
+      totaldistance += getdistance(measurement.points[measurement.points.length - 1].x,measurement.endpoint.x,measurement.points[measurement.points.length - 1].y,measurement.endpoint.y);
     }
-
-    var newdata = {
-      length: milesdistancescale,
-      type: message.type
+    else
+    {
+      totaldistance += getdistance(measurement.points[0].x,measurement.endpoint.x,measurement.points[0].y,measurement.endpoint.y);
     }
-
-    var editorupdatedata = {
-      currentdistancetype: currentdistancetype
-    }
-    //document.getElementById("currenttype").selectedIndex = currentdistancetype;
-    //document.getElementById("calibrationtype").selectedIndex = currentdistancetype;
-    ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS, newdata);
-    editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
-    canvasRender();
+    
+    milesdistancescale = (message.length / totaldistance) / distancetype[currentdistancetype].mod;
   }
+
+  if (message.customtype != null){distancetype[3].title = message.customtype;}
+
+  var newdata = {
+    length: milesdistancescale,
+    type: currentdistancetype,
+    customtype: distancetype[3].title
+  }
+
+  var editorupdatedata = {
+    currentdistancetype: currentdistancetype,
+    currentcustomtype: distancetype[3].title
+  }
+  //document.getElementById("currenttype").selectedIndex = currentdistancetype;
+  //document.getElementById("calibrationtype").selectedIndex = currentdistancetype;
+  ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS, newdata);
+  editorwindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
+  canvasRender();
+  
 
   if (measurement.packtrue != null)
   {
@@ -1759,6 +1769,7 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   //Clear old variables that need clearing.
   openednodes = CurrentContent.opendocs;
   if (openednodes == null){openednodes = [];}
+  //console.log(CurrentContent.distancelabel);
 
   selecteddocid = null;
   //selectednodeid = null;
@@ -1766,6 +1777,7 @@ ipcRenderer.on(PROJECT_INITIALIZED, (event, CurrentContent) => {
   textchanged = false;
   overrideindex = null;
   currentscale = CurrentContent.nodescale;
+  distancetype[3].title = CurrentContent.distancelabel;
   if ( currentscale == null){currentscale = 1.0;}
 
   milesdistancescale = CurrentContent.measurementscale;

@@ -1503,7 +1503,8 @@ ipcMain.on(EDITOR_MEASUREMENTSETTINGS, function(event, message) {
    {
       CurrentContent.measurementscale = message.length;
       CurrentContent.measurementtype = message.type;
-      updateproject();
+      CurrentContent.distancelabel = message.customtype;
+      //updateproject();
    }
    else
    {
@@ -1520,10 +1521,8 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
    {
       if (CurrentContent.packmode)
       {
-         console.log("test1");
          if (CurrentContent.availableicons.length > message.length)
          {
-            console.log("test2");
             for (var i = 0; i < CurrentContent.packedtokens.length; i++)
             {
                var found = false;
@@ -1545,10 +1544,8 @@ ipcMain.on(EDITOR_UPDATEICONS, function(event, message) {
          }
          else
          {
-            console.log("test3");
             for (var i = 11; i < message.length; i++)
             {
-               console.log("test4" + message[i]);
                var found = false;
                for (var j = 0; j < CurrentContent.availableicons.length; j++)
                {
@@ -2333,6 +2330,7 @@ Databasetemplate.fromjson = function(json)
    db.packedbackground = data.packedbackground;
    db.measurementscale = data.measurementscale;
    db.measurementtype = data.measurementtype;
+   db.distancelabel = data.distancelabel;
 
    //backwards compatible;
    if (data.measurementscale == null){db.measurementscale = 1;}
@@ -2374,6 +2372,7 @@ Databasetemplate.fromjson = function(json)
    if (data.versionnumber < 0.6)
    {
       db.packedtokens = [];
+      db.distancelabel = '';
    }
 
    db.versionnumber = 0.5;

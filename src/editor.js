@@ -71,6 +71,7 @@ document.getElementById("meas9").innerText = i18n.__("Miles");
 document.getElementById("meas10").innerText = i18n.__("Kilometers");
 document.getElementById("meas11").innerText = i18n.__("Meters");
 document.getElementById("meas12").innerText = i18n.__("Confirm Calibration.");
+document.getElementById("meas13").innerText = i18n.__("Custom Distance Label:");
 
 
 /** -------------------- Variables --------------------- */
@@ -323,14 +324,29 @@ function currenttypechanged()
     primarywindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, measurementdata);
 }
 
+function customtypechanged()
+{
+    var measurementdata = {
+        customtype: document.getElementById("customdistanceinput").value
+    }
+    primarywindow.webContents.send (EDITOR_MEASUREMENTSETTINGS, measurementdata);
+}
+
 ipcRenderer.send(EDITOR_MEASUREMENTSETTINGS);
 
 ipcRenderer.on(EDITOR_MEASUREMENTSETTINGS, (event, message) => {
     if (message.currentdistancetype != null)
     {
-        console.log("test");
         document.getElementById("currenttype").selectedIndex = message.currentdistancetype;
         document.getElementById("calibrationtype").selectedIndex = message.currentdistancetype;
+    }
+
+    //console.log(message.currentcustomtype);
+    if (message.currentcustomtype != null)
+    {
+        document.getElementById("customdistancemenu").innerText = message.currentcustomtype;
+        document.getElementById("customdistancemenu2").innerText = message.currentcustomtype;
+        document.getElementById("customdistanceinput").value = message.currentcustomtype;
     }
     
     if (message.icons != null)

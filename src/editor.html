@@ -94,6 +94,7 @@
                 <option value="0" selected="selected" id="meas4">Miles</option>
                 <option value="1" id="meas5">Kilometers</option>
                 <option value="2" id="meas6">Meters</option>
+                <option value="3" id="customdistancemenu">custom</option>
             </select>
 
             <div class="container hiddenoptions" id="calibration-tools">
@@ -106,9 +107,15 @@
                     <option value="0" selected="selected" id="meas9">Miles</option>
                     <option value="1" id="meas10">Kilometers</option>
                     <option value="2" id="meas11">Meters</option>
+                    <option value="3" id="customdistancemenu2">custom</option>
                 </select>
 
                 <button onclick="confirmCalibration()" class="basebtn" id="meas12">Confirm Calibration.</button>
+            </div>
+
+            <div class="container">
+                <label for="customdistance" id="meas13">Custom Distance Label:</label>
+                <input type="text" id="customdistanceinput" name="distance" value="custom" onchange="customtypechanged()">
             </div>
         </div>
     </div>
