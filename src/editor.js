@@ -21,8 +21,10 @@ const {
     EDITOR_SETPACK,
     EDITOR_SETCOMPRESSION,
     EDITOR_CHECKBROKEN,
+    EDITOR_GLOBALSETTINGS,
     UPDATE_THEME,
     UPDATE_BROKENLINKS,
+    REFRESH_PAGE,
 }  = require('../utils/constants');
 var i18n = new(require('../translations/i18n'))
 
@@ -37,6 +39,8 @@ window.addEventListener('DOMContentLoaded', () => {
     titlebar.updateTitle(i18n.__('Options'));
     //getversion();
 })
+
+ipcRenderer.send(REFRESH_PAGE);
 
 /** ------------------- Localization ------------------- */
 
@@ -93,11 +97,67 @@ var browsebrokenlinkslabel = document.getElementById("myfileslabel");
 var browsebrokenlinks = document.getElementById("myfiles");
 var brokenlinkscontainer = document.getElementById("brokenlinkscontainer");
 var brokenlinkslist = document.getElementById("drawinglist");
+var isNodeOverlayCheck = document.getElementById("nodecolorcheck");
 
 var currentbrokenimageUrls = [];
 var currentbrokenimagefiles = [];
 
+var isAutoUpdate = true;
+var isNodeOverlay = true;
+
 browsebrokenlinks.style.opacity = 0;
+
+/** ----------------- Auto Update  ------------------------- */
+
+//function that toggles the class on the button with the id of globalsettings1, calls ipcrenderer with object with the toggled state as autoupdate
+function swapAutoUpdate(){
+    isAutoUpdate = !isAutoUpdate;
+    setAutoUpdateVisuals();
+    ipcRenderer.send(EDITOR_GLOBALSETTINGS, {
+        autoupdate: isAutoUpdate,
+        isnodeoverlay: isNodeOverlay
+    });
+}
+
+function iconOverlay(element){
+    console.log(element.classList.contains('fa-check-square'));
+    isNodeOverlay = !isNodeOverlay;
+    setAutoUpdateVisuals();
+    ipcRenderer.send(EDITOR_GLOBALSETTINGS, {
+        autoupdate: isAutoUpdate,
+        isnodeoverlay: isNodeOverlay
+    });
+}
+
+ipcRenderer.on(EDITOR_GLOBALSETTINGS, (event, data) => {
+    console.log(data);
+    isAutoUpdate = data.autoupdate;
+    isNodeOverlay = data.isnodeoverlay;
+    setAutoUpdateVisuals(); 
+})
+
+function setAutoUpdateVisuals(){
+    if (isAutoUpdate) {
+        document.getElementById("autoUpdateCheck").classList.add("fa-check-square");
+        document.getElementById("autoUpdateCheck").classList.remove("fa-square");
+        
+        document.getElementById("globalsettings1").classList.add("btnselected");
+    } else {
+        document.getElementById("autoUpdateCheck").classList.remove("fa-check-square");
+        document.getElementById("autoUpdateCheck").classList.add("fa-square");
+
+        document.getElementById("globalsettings1").classList.remove("btnselected");
+    } 
+    
+    if (isNodeOverlay){
+        isNodeOverlayCheck.classList.add("fa-check-square");
+        isNodeOverlayCheck.classList.remove("fa-square");
+    }else{
+        isNodeOverlayCheck.classList.remove("fa-check-square");
+        isNodeOverlayCheck.classList.add("fa-square");
+    }
+}
+
 
 /** ----------------- Broken Links ------------------------- */
 
@@ -160,6 +220,8 @@ browsebrokenlinks.onchange = function(event) {
         ipcRenderer.send(UPDATE_BROKENLINKS, foundfiles);
     }
  }
+
+
 
 /** ---------------------- Themes -------------------------- */
 
@@ -282,7 +344,7 @@ function resetpaste()
 
 /** ---------------------- Measurements -------------------- */
 
-Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
+Mousetrap.bind(['f4'], function() {
     ipcRenderer.send(TITLEBAR_OPENWINDOW); 
     return false;
 });

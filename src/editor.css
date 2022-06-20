@@ -11,7 +11,7 @@ body{
     padding: 5px;
     
     width: calc(100% - 20px);
-}
+} 
 
 .bordercontainer{
     border: 1px solid rgb(141, 141, 141);
@@ -414,6 +414,15 @@ select:focus{
 .container ::-webkit-scrollbar-thumb:hover {
     background: var(--main-button-highlight);
 }
+
+.btnselected{
+  background-color: rgb(57, 102, 57);
+}
+
+.btnselected:hover{
+  background-color: rgb(82, 146, 82);
+}
+
 
 .greyout{
     pointer-events: none;

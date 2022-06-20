@@ -6,6 +6,7 @@
 
     <!-- <link rel="stylesheet" href="roottheme.css"> -->
     <link rel="stylesheet" href="editor.css">    
+    <script src="https://kit.fontawesome.com/67e91ae8be.js" crossorigin="anonymous"></script>
 
     <script src="./colorpicker/jscolor.js"></script>
     <script defer src="editor.js"></script>
@@ -28,6 +29,11 @@
     
     <div id="editor-container">
         <div class="container">
+            <h1 id="globalsettings0">Global Settings:</h1>
+            
+            <button onclick="swapAutoUpdate()" class="basebtn" id="globalsettings1"><i id="autoUpdateCheck" class="far fa-check-square"></i> Download updates automatically.</button>
+        </div>
+        <div class="container">
             <h1 id="them0">Themes:</h1>
             <br>
             <p id="them1">Hue slider tokens:</p>
@@ -40,6 +46,12 @@
                 <div>
                     <p id="them4">Secondary button color:</p>
                     <input class="colorbox" id="secondarycolor" data-jscolor="{value:'#e05840', onChange: 'valuesChanged()'}">
+                </div>
+            </div>   
+            <div class="grid-container-2">
+                <div>
+                    <p id="them5">Node icons color Overlay:</p>
+                    <i id="nodecolorcheck" onclick="iconOverlay(this)" class="far fa-check-square"></i>
                 </div>
             </div>   
             <button onclick="resetThemes()" class="basebtn" id="them6" >Reset</button>

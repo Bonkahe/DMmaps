@@ -1,4 +1,5 @@
 const {remote, ipcRenderer, webFrame } = require('electron');
+const path = require('path');
 const { Menu, MenuItem} = remote;
 const { dialog, getCurrentWindow, BrowserWindow, screen } = require('electron').remote
 const fs = require('fs');
@@ -13,6 +14,7 @@ const {
   CHANGE_MAP,
   CREATE_NEW_NODE,
   PROJECT_INITIALIZED,
+  RECENT_PROJECTS,
   RESET_MAP,
   SET_MOUSEMODE,
   NOT_ON_MAP,
@@ -47,6 +49,7 @@ const {
   TOGGLE_NODE,
   TITLEBAR_NEWPROJECT,
   TITLEBAR_LOADPROJECT,
+  TITLEBAR_LOADRECENTPROJECT,
   TITLEBAR_SAVEPROJECT,
   TITLEBAR_SAVEASPROJECT,
   TITLEBAR_CLOSE,
@@ -229,6 +232,8 @@ let overrideindex = null;
 
 var documenttab = document.getElementById('btn-tab-documents');
 var toolboxtab = document.getElementById('btn-tab-toolbox');
+
+var currenttab = 'text';
 
 /**----------------IMPORTED EDITOR TOOLBOX---------------- */
 
@@ -681,12 +686,14 @@ documenttab.addEventListener(
   'click',
   function() {
     DisplayToolbox();
+    
   },
   false
 );
 
 function DisplayToolbox()
 {
+  currenttab = 'toolbox';
   document.getElementById('document-tab').style.display = "none";
   document.getElementById('toolbox-tab').style.display = "block";
 }
@@ -695,12 +702,14 @@ toolboxtab.addEventListener(
   'click',
   function() {
     DisplayDocument();
+    
   },
   false
 );
 
 function DisplayDocument()
 {
+  currenttab = 'text';
   document.getElementById('document-tab').style.display = "block";
   document.getElementById('toolbox-tab').style.display = "none";
 }
@@ -754,14 +763,16 @@ window.addEventListener('DOMContentLoaded', () => {
   rebuildmenu();
 })
 
-function rebuildmenu(newmenuitem){
+async function rebuildmenu(newmenuitem){
   titlebar = new customTitlebar.Titlebar({
     backgroundColor: customTitlebar.Color.fromHex('#1a1918'),
     overflow: "hidden",
     titleHorizontalAlignment: "right"
   });
 
-  menu = Menu.buildFromTemplate(template)
+  let newTemplate = await GetTemplate();
+
+  menu = Menu.buildFromTemplate(newTemplate)
   if (newmenuitem){menu.append(newmenuitem);}
 
   titlebar.updateMenu(menu);
@@ -790,99 +801,119 @@ function rebuildmenu(newmenuitem){
   //getversion();
 }
 
-const template = [
-  {
-     label: i18n.__('File'),
-     submenu: [
-        {
-           label: i18n.__('New Project'),
-           click: () => { ipcRenderer.send(TITLEBAR_NEWPROJECT); }
-        },
-        {
-           label: i18n.__('Load Project'),
-           click: () => { ipcRenderer.send(TITLEBAR_LOADPROJECT); }
-        },
-        {
-           label: i18n.__('Save Project'),
-           click: () => { ipcRenderer.send(TITLEBAR_SAVEPROJECT); },
-           accelerator: 'CommandOrControl+S'
-        },
-        {
-           label: i18n.__('Save Project As'),
-           click: () => { ipcRenderer.send(TITLEBAR_SAVEASPROJECT); },
-           accelerator: 'CommandOrControl+Shift+S'
-        },
-        {
-           type: 'separator'
-        },
-        {
-           label: i18n.__('Close'),
-           click: () => { ipcRenderer.send(TITLEBAR_CLOSE); },
-        }
-     ]
-  },
-  {
-    label: i18n.__('Window'),
-    submenu: [
-       {
-          label: i18n.__('Options window'),
-          click: () => { ipcRenderer.send(TITLEBAR_OPENWINDOW); },
-          accelerator: 'CommandOrControl+W or F3'
-       },
-       {
-         label: i18n.__('Character creator'),
-         click: () => { ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW);},
-         accelerator: 'F5'
-       }
-    ]
-  },
-  {
-    label: i18n.__('Help'),
-     submenu: [
-        {
-          label: i18n.__('Discord'),
-          click: () => { 
-            shell.openExternal('https://discord.gg/wKBhDEZctm');
-          }
-        },
-        {
-          label: i18n.__('Display Patch Notes'),
-          click: () => { 
-            ipcRenderer.send(REQUEST_PATCHNOTES); 
-          }
-        },
-        {
-           label: i18n.__('Check for updates'),
-           click: () => { 
-             ipcRenderer.send(TITLEBAR_CHECKFORUPDATES); 
-             infodisplay.innerHTML = i18n.__("Checking for updates...");
-             downloaddisplay.style.display = "block";
-            }
-        }
-     ]
-  },
-  {
-    label: i18n.__('Donate'),
-    enabled: true,
-    click: () => {       
-      $('#overlay').fadeIn(500);
-    }
- },
-  {
-     label: '|',
-     enabled: false
-  },
-  {
-    label: "output",
-    enabled: restartavailable,
-    click: () => { 
-      ipcRenderer.send(NOTIFY_RESTART); }
-  },
-  {
-    label: "animation",
-    enabled: false
+async function GetTemplate(){
+  let fileSubmenu = [
+    {
+      label: i18n.__('New Project'),
+      click: () => { ipcRenderer.send(TITLEBAR_NEWPROJECT); }
+   },
+   {
+      label: i18n.__('Load Project'),
+      click: () => { ipcRenderer.send(TITLEBAR_LOADPROJECT); }
+   },
+   {
+      label: i18n.__('Save Project'),
+      click: () => { ipcRenderer.send(TITLEBAR_SAVEPROJECT); },
+      accelerator: 'CommandOrControl+S'
+   },
+   {
+      label: i18n.__('Save Project As'),
+      click: () => { ipcRenderer.send(TITLEBAR_SAVEASPROJECT); },
+      accelerator: 'CommandOrControl+Shift+S'
+   },
+   {
+      type: 'separator'
+   },
+   {
+      label: i18n.__('Close'),
+      click: () => { ipcRenderer.send(TITLEBAR_CLOSE); },
+   }
+  ]
+
+  let fileHistory = ipcRenderer.sendSync(RECENT_PROJECTS, '');
+  if (fileHistory.length > 0){
+    let fileHistoryOptions = fileHistory.map(function(filepath) {
+      return {
+        label: path.basename(filepath, '.dmdb'),
+        click: () => { ipcRenderer.send(TITLEBAR_LOADRECENTPROJECT, filepath); }
+       };
+      });
+
+    fileSubmenu.splice(1,0,{
+      label: i18n.__('Recent Projects'),
+      submenu: fileHistoryOptions
+    });
   }
-]
+
+  
+  return [
+    {
+       label: i18n.__('File'),
+       submenu: fileSubmenu
+    },
+    {
+      label: i18n.__('Window'),
+      submenu: [
+         {
+            label: i18n.__('Options window'),
+            click: () => { ipcRenderer.send(TITLEBAR_OPENWINDOW); },
+            accelerator: 'F4'
+         },
+         {
+           label: i18n.__('Character creator'),
+           click: () => { ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW);},
+           accelerator: 'F5'
+         }
+      ]
+    },
+    {
+      label: i18n.__('Help'),
+       submenu: [
+          {
+            label: i18n.__('Discord'),
+            click: () => { 
+              shell.openExternal('https://discord.gg/wKBhDEZctm');
+            }
+          },
+          {
+            label: i18n.__('Display Patch Notes'),
+            click: () => { 
+              ipcRenderer.send(REQUEST_PATCHNOTES); 
+            }
+          },
+          {
+             label: i18n.__('Check for updates'),
+             click: () => { 
+               ipcRenderer.send(TITLEBAR_CHECKFORUPDATES); 
+               infodisplay.innerHTML = i18n.__("Checking for updates...");
+               downloaddisplay.style.display = "block";
+              }
+          }
+       ]
+    },
+    {
+      label: i18n.__('Donate'),
+      enabled: true,
+      click: () => {       
+        $('#overlay').fadeIn(500);
+      }
+   },
+    {
+       label: '|',
+       enabled: false
+    },
+    {
+      label: "output",
+      enabled: restartavailable,
+      click: () => { 
+        ipcRenderer.send(NOTIFY_RESTART); }
+    },
+    {
+      label: "animation",
+      enabled: false
+    }
+  ]
+}
 
 /**Handles Donation overlay */
 $('#donatebtn').click(function() {
@@ -1441,11 +1472,28 @@ Mousetrap.bind(['del'], function(){
   }
   else
   {
-    if (selecteddocid != null && !document.activeElement.classList.contains("ql-editor") && document.activeElement != texteditortitle)
+    if (!document.activeElement.classList.contains("ql-editor") && document.activeElement != texteditortitle)
     {
-      ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
-      return false;
-    }  
+      if (selectednodes.length > 0)
+      {
+        var data = {
+          nodes:[]
+        }
+
+        for (var i in selectednodes)
+        {
+          data.nodes.push(selectednodes[i].getAttribute("node-db-path"));
+        }
+
+        ipcRenderer.send(DELETE_NODE, data);
+        return false;
+      }  
+      else if (selecteddocid != null)
+      {
+        ipcRenderer.send(DELETE_DOCUMENT, selecteddocid);
+        return false;
+      }
+    }
   }
 })
 
@@ -1464,8 +1512,40 @@ Mousetrap.bind(['command+shift+s', 'ctrl+shift+s'], function() {
   return false;
 });
 
+Mousetrap.bind(['f4'], function() {
+  ipcRenderer.send(TITLEBAR_OPENWINDOW);
+  return false;
+});
+
+Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
+  if (geteditorOpen()){
+    if (currenttab == 'toolbox'){
+      closetexteditor();
+    }
+    else{
+      DisplayToolbox();
+    }
+  }
+  else{
+    DisplayToolbox();
+    opentexteditor();
+  }
+  return false;
+});
+
 Mousetrap.bind(['command+e', 'ctrl+e', 'f2'], function() {
-  toggletexteditor();
+  if (geteditorOpen()){
+    if (currenttab == 'text'){
+      closetexteditor();
+    }
+    else{
+      DisplayDocument();
+    }
+  }
+  else{
+    DisplayDocument();
+    opentexteditor();
+  }
   return false;
 });
 
@@ -1522,10 +1602,6 @@ Mousetrap.bind(['command+v', 'ctrl+v'], function() {
   }
 });
 
-Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
-  ipcRenderer.send(TITLEBAR_OPENWINDOW); 
-  return false;
-});
 
 Mousetrap.bind(['f5'], function() {
   ipcRenderer.send(TITLEBAR_OPEN_GENERATOR_WINDOW); 
@@ -1697,7 +1773,14 @@ ipcRenderer.on(NOTIFY_UPDATECOMPLETE, (event, message) => {
 
 
     downloaddisplay.style.display = "none";
-    infodisplay.innerHTML = i18n.__("Save complete.")
+    if (message == "cancel")
+    {
+      infodisplay.innerHTML = i18n.__("Save canceled.")
+    }
+    else
+    {
+      infodisplay.innerHTML = i18n.__("Save complete.")
+    }
     return;
   }
 
@@ -2004,6 +2087,18 @@ function togglehierarchy()
   }
 }
 
+function geteditorOpen(){
+  var sizes = splitinstance.getSizes();
+  if (sizes[2] > 10)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
 function toggletexteditor()
 {
   var sizes = splitinstance.getSizes();
@@ -2017,6 +2112,7 @@ function toggletexteditor()
     open(sizes,2);
   }
 }
+
 function opentexteditor()
 {
   var sizes = splitinstance.getSizes();
@@ -2851,6 +2947,11 @@ function rebuildhierarchy(content)
   columnrowcount = [];
   for(var i = 0; i < textEntries.length; i++)
   {
+    if (textEntries[i].parentid == null)
+    {
+      textEntries[i].parentid = "";
+    }
+
     if (textEntries[i].parentid != "")
     {
       continue;
@@ -3452,21 +3553,35 @@ function dragNode(buttonelmnt, parentelmnt){
       y: (e.clientY)
     }
 
+    //var modifiedzoom = zoom / 2;
+    //mouseorigin = convertworldtodoccords(mouseorigin.x, mouseorigin.y);
+
+    scale = buttonelmnt.getAttribute("scaled");
+
+    if (!scale){scale = currentscale;}
+    
+    softlockdistance = (16 * scale) * zoom;
+
+    //console.log(modifiedzoom + " - " + mouseorigin.x + " " + mouseorigin.y);
     for (var i in selectednodes)
     {
       nodeorigin = convertdoctoworldcords(parseFloat(selectednodes[i].style.left), parseFloat(selectednodes[i].style.top));
-      nodeorigin.x = nodeorigin.x - mouseorigin.x;
-      nodeorigin.y = nodeorigin.y - mouseorigin.y
+
+      nodeorigin.x = (nodeorigin.x - mouseorigin.x) // / zoom
+      nodeorigin.y = (nodeorigin.y - mouseorigin.y) // / zoom
       
 
       selectednodesinfo[i] = nodeorigin;
     }
-    
-    scale = buttonelmnt.getAttribute("scaled");
 
-    if (!scale){scale = currentscale;}
+    console.log("nodeorigin:")
+    console.log(nodeorigin);
+    console.log("mouseorigin:")
+    console.log(mouseorigin);
+    console.log("zoom:" + zoom)
+    console.log("scale:" + scale)
+    
   
-    softlockdistance = (32 * scale) * zoom;
 
     document.onmouseup = closeDragElement;
     // call a function whenever the cursor moves:
@@ -3512,8 +3627,8 @@ function dragNode(buttonelmnt, parentelmnt){
 
           selectednodes[i].style.opacity = '0.6';
           document.body.appendChild(selectednodes[i]);
-          selectednodes[i].style.left = ((e.clientX - 32) + selectednodesinfo[i].x) + "px";
-          selectednodes[i].style.top = ((e.clientY - 32) + selectednodesinfo[i].y) + "px";
+          // selectednodes[i].style.left = (e.clientX + selectednodesinfo[i].x) + "px";
+          // selectednodes[i].style.top = (e.clientY + selectednodesinfo[i].y) + "px";
           selectednodes[i].style.transform = `matrix(${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0, ${zoom * ((basenodescaleunlocked + 0.1) * scale)}, 0, 0)`;
         }
       }
@@ -3527,8 +3642,8 @@ function dragNode(buttonelmnt, parentelmnt){
       for (var i in selectednodes)
       {
         if (selectednodes[i].getAttribute("locked") == "true"){continue;}
-        selectednodes[i].style.left = ((e.clientX - 32) + selectednodesinfo[i].x) + "px";
-        selectednodes[i].style.top = ((e.clientY - 32) + selectednodesinfo[i].y) + "px";
+        selectednodes[i].style.left = (e.clientX + selectednodesinfo[i].x) + "px";
+        selectednodes[i].style.top = (e.clientY + selectednodesinfo[i].y) + "px";
       }
     }
   }
@@ -3576,10 +3691,10 @@ function dragNode(buttonelmnt, parentelmnt){
     var originy = parentelmnt.getBoundingClientRect().top;
   
     var normalizedx = (x - originx);
-    var multipliednormalizedx = (normalizedx * modifiedzoom) - 32;
+    var multipliednormalizedx = (normalizedx * modifiedzoom);
   
     var normalizedy = (y - originy);
-    var multipliednormalizedy = (normalizedy * modifiedzoom) - 32;
+    var multipliednormalizedy = (normalizedy * modifiedzoom);
 
     //parentelmnt.appendChild(buttonelmnt);
 

@@ -17,7 +17,7 @@ button {
 
 .basebtn{
     white-space: nowrap;
-    min-width: 100px;
+    min-width: 150px;
     height: 20px;
     background-color: var(--main-button-color);
     user-select: none;

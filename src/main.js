@@ -15,15 +15,12 @@ const contextMenu = require('electron-context-menu');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
-setInterval(() => {
-   autoUpdater.checkForUpdatesAndNotify();
-}, 1000 * 60 * 15);
-
 //require('@treverix/remote/main').initialize()
 const {
    SAVE_MAP_TO_STORAGE,
    CHANGE_MAP,
    CREATE_NEW_NODE,
+   RECENT_PROJECTS,
    PROJECT_INITIALIZED,
    RESET_MAP,
    SET_MOUSEMODE,
@@ -61,6 +58,7 @@ const {
    TOGGLE_NODE,
    TITLEBAR_NEWPROJECT,
    TITLEBAR_LOADPROJECT,
+   TITLEBAR_LOADRECENTPROJECT,
    TITLEBAR_SAVEPROJECT,
    TITLEBAR_SAVEASPROJECT,
    TITLEBAR_CLOSE,
@@ -80,6 +78,7 @@ const {
    EDITOR_SETPACK,
    EDITOR_SETCOMPRESSION,
    EDITOR_CHECKBROKEN,
+   EDITOR_GLOBALSETTINGS,
    UPDATE_BROKENLINKS,
    SEARCH_TITLES,
    SEARCH_CONTENT,
@@ -96,8 +95,11 @@ const { send } = require('process');
 const sharp = require('sharp');
 const probe = require('probe-image-size');
 
+var UpdateInterval = null;
+
 var cachePath = path.join( app.getPath('userData'), '/Cache/');
 var versioninfo = path.join( app.getPath('userData'), '/versioninfo.json');
+var globalSettings = path.join( app.getPath('userData'), '/DmmapsSettings/globalsettings.json');
 var nodepath = [];
 var nodeclipboard = [];
 var docpath = "";
@@ -149,14 +151,17 @@ function createWindow() {
    {
       if (dirtyproject)
       {
+
          const choice = dialog.showMessageBoxSync(this,
          {
             type: 'question',
-            buttons: [i18n.__('Yes'), i18n.__('No')],
+            buttons: [ i18n.__('No'), i18n.__('Confirm')],
             title: i18n.__('Confirm'),
-            message: i18n.__('You have unsaved data, Are you sure you want to quit?')
+            message: i18n.__('You have unsaved data, Are you sure you want to quit?'),
+            defaultId: 1,
+            cancelId: 0,
          });
-         if (choice === 1) {
+         if (choice === 0) {
             e.preventDefault();
          }
          else
@@ -165,6 +170,14 @@ function createWindow() {
          }
       }
    });
+
+   win.once('ready-to-show', () => {
+      win.webContents.send(SET_MOUSEMODE,0);
+      CheckVersion();
+      
+      loadSettings();
+      updaterenderer();
+   })
 
    editorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 450, height: 900, maxWidth: 600,  parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
@@ -182,6 +195,10 @@ function createWindow() {
 
       e.preventDefault();        
    });
+
+   editorwindow.once('ready-to-show', () => {
+      CheckGlobalSettings();
+   })
 
    generatorwindow = new BrowserWindow({backgroundColor: '#2e2c29',width: 300, height: 600, maxWidth: 500, parent: win, frame: false, show:false, webPreferences: {
       nodeIntegration: true, enableRemoteModule: true
@@ -232,13 +249,14 @@ let deleteoptions  = {
    buttons: [i18n.__("Delete Document"),i18n.__("Don't Delete")],
    message: i18n.__("Do you really want to delete this document?"),
    defaultId: 1, // bound to buttons array
+   cancelId: 1
   }
 
 let nodedeleteoptions  = {
    buttons: [i18n.__("Documents and Nodes"),i18n.__("Just Nodes"), i18n.__("Cancel")],
    message: i18n.__("Do you want to delete the attached documents as well?"),
    defaultId: 2, // bound to buttons array
-
+   cancelId: 2
 }
 
 let backupoptions  = {
@@ -278,7 +296,7 @@ function checkbackup()
    } 
    else {
       //alert("This file doesn't exist, cannot delete");
-      console.log("File doesn't exist.");
+      //console.log("File doesn't exist.");
    }
 
 }
@@ -314,6 +332,154 @@ function CheckVersion()
       });
    }
 }
+
+
+//If the global settings exist then load auto update from them, else set it to default on and continue.
+function CheckGlobalSettings(){
+   if (fs.existsSync(globalSettings)) {
+      fs.readFile(globalSettings, 'utf-8', (err, json) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+         let jsondata = JSON.parse(json);
+         
+         if (jsondata.isnodeoverlay == null){
+            jsondata.isnodeoverlay = true;
+         }
+
+         let data = {
+            autoupdate: (jsondata.autoupdate === "true" || jsondata.autoupdate),
+            isnodeoverlay: (jsondata.isnodeoverlay === "true" || jsondata.isnodeoverlay)
+         };
+
+         if (data.autoupdate){
+            if (UpdateInterval == null){
+               autoUpdater.checkForUpdatesAndNotify();
+               UpdateInterval = setInterval(function (){
+                  autoUpdater.checkForUpdatesAndNotify();
+               }, 1000 * 60 * 15);
+            }
+         }
+         else{
+            if (UpdateInterval != null){
+               clearInterval(UpdateInterval);
+               UpdateInterval = null;
+            }
+         }
+         editorwindow.webContents.send(EDITOR_GLOBALSETTINGS, data);         
+      });
+   }
+   else{
+      var data = {
+         autoupdate: true,
+         isnodeoverlay: true,
+         fileHistory: []
+      };
+
+      if (UpdateInterval == null){
+         autoUpdater.checkForUpdatesAndNotify();
+         UpdateInterval = setInterval(function (){
+            autoUpdater.checkForUpdatesAndNotify();
+         }, 1000 * 60 * 15);
+      }
+
+      fs.writeFile(globalSettings , JSON.stringify(data, null, 2), (err) => {
+         if(err){
+             console.log("An error ocurred creating the file "+ err.message)
+             return;
+         }  
+      });
+      editorwindow.webContents.send(EDITOR_GLOBALSETTINGS, data);
+   }
+}
+
+ipcMain.on(EDITOR_GLOBALSETTINGS, async (event, data) =>
+{
+   fs.writeFile(globalSettings , JSON.stringify(data, null, 2), (err) => {
+      if(err){
+          console.log("An error ocurred creating the file "+ err.message)
+          return;
+      }  
+   });
+   CheckGlobalSettings();
+   return true;
+})
+
+function SaveDatabaseHistory(dbFileName)
+{
+   if (fs.existsSync(globalSettings)) {
+      fs.readFile(globalSettings, 'utf-8', (err, json) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+         let jsondata = JSON.parse(json);
+         if (jsondata.fileHistory == null){
+            jsondata.fileHistory = [];
+         }
+
+         let index = jsondata.fileHistory.indexOf(dbFileName);
+         if (index > -1) {
+            jsondata.fileHistory.splice(index, 1);
+         }
+
+         jsondata.fileHistory.unshift(dbFileName);
+
+         fs.writeFile(globalSettings , JSON.stringify(jsondata, null, 2), (err) => {
+            if(err){
+                console.log("An error ocurred creating the file "+ err.message)
+                return;
+            }  
+         });
+      });
+   }
+   else{
+      var data = {
+         autoupdate: true,
+         fileHistory: []
+      };
+
+      data.fileHistory.unshift(dbFileName);
+
+      fs.writeFile(globalSettings , JSON.stringify(jsondata, null, 2), (err) => {
+         if(err){
+             console.log("An error ocurred creating the file "+ err.message)
+             return;
+         }  
+      });
+   }
+}
+
+ipcMain.on(RECENT_PROJECTS, (event, data) =>
+{
+   if (fs.existsSync(globalSettings)) {
+      fs.readFile(globalSettings, 'utf-8', (err, json) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+         let jsondata = JSON.parse(json);
+         if (jsondata.fileHistory == null){
+            jsondata.fileHistory = [];
+         }
+         event.returnValue = jsondata.fileHistory;
+      });
+   }
+   else{
+      event.returnValue = [];
+   }
+})
+
+ipcMain.on('displayVerification', async (event, args) => {
+   dialog.showMessageBox(args).then(result => {
+       event.returnValue = result.response;
+   }).catch(err => {
+       console.log(err)
+       event.returnValue = 1;
+   })
+})
+   
 
 function DisplayNotes()
 {
@@ -467,56 +633,7 @@ contextMenu({
          label: i18n.__('Delete Node'),
          visible: nodemenu === true,
          click: () => {
-            dialog.showMessageBox(null, nodedeleteoptions).then( (data) => {
-               if (data.response != 2)
-               {
-                  for (var o in nodepath)
-                  {
-                     for (var i = 0; i < CurrentContent.content.nodes.length; i++)
-                     {
-                        if (CurrentContent.content.nodes[i].id == nodepath[o])
-                        {
-                           if (data.response == 0 && CurrentContent.content.nodes[i].documentref != "")
-                           {
-                              for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
-                              {
-                                 if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
-                                 {
-                                    if (CurrentContent.content.textEntries[j].childdocuments.length > 0)
-                                    {
-                                       for (var k = 0; k < CurrentContent.content.textEntries[j].childdocuments.length; k++)
-                                       {
-                                          for (var l = 0; l < CurrentContent.content.textEntries.length; l++)
-                                          {
-                                             if (CurrentContent.content.textEntries[l].id == CurrentContent.content.textEntries[j].childdocuments[k])
-                                             {
-                                                CurrentContent.content.textEntries[l].parentid = "";
-                                             }
-                                          }
-                                       }
-                                    }
-                                    CurrentContent.content.textEntries.splice(j, 1);
-                                 }
-                              }
-                           }
-
-                           CurrentContent.content.nodes.splice(i, 1);
-                           break;
-                        }
-                     }
-                  }
-
-                  win.webContents.send(DELETE_NODE, nodepath);
-
-                  win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
-                  updateproject();
-               }
-             });
-            /*
-            dialog.showMessageBox(deleteoptions, (response, checkboxChecked) => {
-               win.webContents.send(DELETE_NODE, nodepath);
-            })
-            */
+            deleteselectednodes();
             nodemenu = false;
          }
       },
@@ -590,6 +707,55 @@ contextMenu({
 	]
 });
 
+function deleteselectednodes()
+{
+   dialog.showMessageBox(null, nodedeleteoptions).then( (data) => {
+      if (data.response != 2)
+      {
+         for (var o in nodepath)
+         {
+            for (var i = 0; i < CurrentContent.content.nodes.length; i++)
+            {
+               if (CurrentContent.content.nodes[i].id == nodepath[o])
+               {
+                  if (data.response == 0 && CurrentContent.content.nodes[i].documentref != "")
+                  {
+                     for (var j = 0; j < CurrentContent.content.textEntries.length; j++)
+                     {
+                        if (CurrentContent.content.textEntries[j].id == CurrentContent.content.nodes[i].documentref)
+                        {
+                           if (CurrentContent.content.textEntries[j].childdocuments.length > 0)
+                           {
+                              for (var k = 0; k < CurrentContent.content.textEntries[j].childdocuments.length; k++)
+                              {
+                                 for (var l = 0; l < CurrentContent.content.textEntries.length; l++)
+                                 {
+                                    if (CurrentContent.content.textEntries[l].id == CurrentContent.content.textEntries[j].childdocuments[k])
+                                    {
+                                       CurrentContent.content.textEntries[l].parentid = "";
+                                    }
+                                 }
+                              }
+                           }
+                           CurrentContent.content.textEntries.splice(j, 1);
+                        }
+                     }
+                  }
+
+                  CurrentContent.content.nodes.splice(i, 1);
+                  break;
+               }
+            }
+         }
+
+      win.webContents.send(DELETE_NODE, nodepath);
+
+      win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
+      updateproject();  
+      }
+   });
+}
+
 function iscurrentdoc()
 {
    for (var i = 0; i < CurrentContent.content.nodes.length; i++)
@@ -662,11 +828,12 @@ function loadproject()
 
 if(process.argv.length >= 2) {
    let filePath = process.argv[1];
-   if (filePath != null && filePath != "")
+   
+   if (filePath != null && filePath != "" && filePath != ".")
    {
       fs.readFile(filePath, 'utf-8', (err, data) => {
          if(err){
-            console.log("An error ocurred reading the file :" + err.message);
+            console.log("An error ocurred reading the file :" + err.message + "\n Filepath=" + filePath);
             return;
          }
          Databasetemplate.fromjson(data);
@@ -700,27 +867,54 @@ const deeploadproject = async () => {
    const filename = await dialog.showOpenDialog(win, options, {
       // The Configuration object sets different properties on the Open File Dialog
    });
-
  
    // If we don't have any files, return early from the function
    if (!filename.filePaths[0]) {
        return;
    }
 
-   fs.readFile(filename.filePaths[0], 'utf-8', (err, data) => {
-      if(err){
-         console.log("An error ocurred reading the file :" + err.message);
-         return;
-      }
-      Databasetemplate.fromjson(data);
-      CurrentContent.projecturl = filename.filePaths[0];
-      updaterenderer();
-      if (!CurrentContent.packmode)
-      {
-         checkBrokenLinks();
-      }
-   }); 
+   
+   loadPath(filename.filePaths[0]);
+   // fs.readFile(filename.filePaths[0], 'utf-8', (err, data) => {
+   //    if(err){
+   //       console.log("An error ocurred reading the file :" + err.message);
+   //       return;
+   //    }
+   //    Databasetemplate.fromjson(data);
+   //    CurrentContent.projecturl = filename.filePaths[0];
+   //    updaterenderer();
+   //    if (!CurrentContent.packmode)
+   //    {
+   //       checkBrokenLinks();
+   //    }
+   // }); 
 }
+
+function loadPath(path){
+   if (fs.existsSync(path)) {
+      SaveDatabaseHistory(path);
+      fs.readFile(path, 'utf-8', (err, data) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+            return;
+         }
+         Databasetemplate.fromjson(data);
+         CurrentContent.projecturl = path;
+         updaterenderer();
+         if (!CurrentContent.packmode)
+         {
+            checkBrokenLinks();
+         }
+      }); 
+   }
+
+}
+
+
+ipcMain.on(TITLEBAR_LOADRECENTPROJECT, (event, data) =>
+{
+   loadPath(data);
+})
 
 function saveproject()
 {
@@ -741,17 +935,20 @@ const saveasproject = async () => {
    }
    // Triggers the OS' Open File Dialog box. We also pass it as a Javascript
    // object of different configuration arguments to the function
+   
  
    //This operation is asynchronous and needs to be awaited
-   const filename = await dialog.showSaveDialog(win, options, {
+   var filename = await dialog.showSaveDialog(win, options, {
        // The Configuration object sets different properties on the Open File Dialog 
        //properties: ['openDirectory']
    });
- 
-   // If we don't have any files, return early from the function
-   if (!filename) {
-       return;
+
+   if (filename.canceled)
+   {
+      win.webContents.send(NOTIFY_UPDATECOMPLETE, "cancel");
+      return;
    }
+ 
    CurrentContent.name = basename(filename.filePath, '.dmdb');
    CurrentContent.projecturl = filename.filePath;
 
@@ -1044,6 +1241,7 @@ ipcMain.on(REFRESH_DATABASE_COMPLETE, function(event) {
 ipcMain.on(REFRESH_PAGE, function(event) {
    win.webContents.send(SET_MOUSEMODE,0);
    CheckVersion();
+   CheckGlobalSettings();
    loadSettings();
    updaterenderer();
 });
@@ -1089,7 +1287,6 @@ ipcMain.on(NEW_DOCUMENT, function(event, selectedid) {
 
 ipcMain.on(CHILD_DOCUMENT, function(event, data) 
 {
-   //console.log(data);
    if (data.delta < 5)
    {
       reorder(CurrentContent.content.textEntries, getlocation(data.child), getlocation(data.parent))
@@ -1118,17 +1315,14 @@ function getlocation(id)
 }
 
 function reorder(input, from, to) {
-   let numberOfDeletedElm = 1;
    if (from < to){
       to -= 1;
       if (to < 0){to = 0;}
    }
  
-   const elm = input.splice(from, numberOfDeletedElm)[0];
+   const elm = input.splice(from, 1)[0];
  
-   numberOfDeletedElm = 0;
- 
-   input.splice(to, numberOfDeletedElm, elm);
+   input.splice(to, 0, elm);
  }
 
 function setupperchild(data)
@@ -1144,6 +1338,7 @@ function setupperchild(data)
 
             win.webContents.send(REFRESH_HIERARCHY, CurrentContent.content);
             updateproject();  
+            return;
          }
          else
          {
@@ -1319,6 +1514,12 @@ ipcMain.on(DELETE_DOCUMENT, function(event, docid) {
       }
    });
 });
+
+ipcMain.on(DELETE_NODE, function(event, data)
+{
+   nodepath = data.nodes;
+   deleteselectednodes();
+})
 
 ipcMain.on(SELECT_DOCUMENT, function(event, value) {
    docselected = value;
@@ -1679,6 +1880,7 @@ ipcMain.on(NOTIFY_RESTART, function(event) {
          buttons: [i18n.__("Yes"),i18n.__("No")],
          message: i18n.__("You have unsaved data, Are you sure you want to restart?"),
          defaultId: 1, // bound to buttons array
+         cancelId: 1
       }
       dialog.showMessageBox(null, temprestartoptions).then( (data) => {
          if (data.response == 0)
@@ -2156,17 +2358,19 @@ function getAttrFromString(str, node, attr) {
 
 function loadSettings()
 {
-   fs.readFile( path.join( app.getPath('userData'), '/DmmapsSettings/themesettings.json'), 'utf-8', (err, data) => {
-      if(err){
-         console.log("An error ocurred reading the file :" + err.message);
-          return;
-      }
-      if (data != null)
-      {
-         editorwindow.webContents.send(UPDATE_THEME, JSON.parse(data));
-         win.webContents.send(UPDATE_THEME, JSON.parse(data));
-      }
-  });
+   if (fs.existsSync(path.join( app.getPath('userData'), '/DmmapsSettings/themesettings.json'))) {
+      fs.readFile( path.join( app.getPath('userData'), '/DmmapsSettings/themesettings.json'), 'utf-8', (err, data) => {
+         if(err){
+            console.log("An error ocurred reading the file :" + err.message);
+             return;
+         }
+         if (data != null)
+         {
+            editorwindow.webContents.send(UPDATE_THEME, JSON.parse(data));
+            win.webContents.send(UPDATE_THEME, JSON.parse(data));
+         }
+     });
+   }
 
   sendPack();
 }
@@ -2181,20 +2385,31 @@ function sendPack()
     }
 
    editorwindow.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
-   win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
+   //win.webContents.send(EDITOR_MEASUREMENTSETTINGS, editorupdatedata);
 }
 
 function clearCache()
 {
    fs.readdir(cachePath, (err, files) => {
-      if (err) throw err;
-    
-      for (const file of files) {
+      if (err) console.log(err);
+
+      //console.log(files);
+      for (let file of files) {
          var tokencheck = checkTokens(path.join(cachePath, file).replace(/\\/g, '/'));
+         // fs.access(path.join(cachePath, file), fs.constants.R_OK | fs.constants.W_OK, (err) => {
+         //       if (err) {
+         //          console.log("%s doesn't exist", path.join(cachePath, file));
+         //       } else {
+         //          console.log('can read/write %s', path.join(cachePath, file));
+         //       }
+         // });
+
+         // console.log(path.join(cachePath, file).replace(/\\/g, '/') + " - " + tokencheck);
+         // console.log(CurrentContent.backgroundurl);
          if (path.join(cachePath, file).replace(/\\/g, '/') != CurrentContent.backgroundurl && tokencheck == false)
          {
             fs.unlink(path.join(cachePath, file), err => {
-               if (err) throw err;
+               //if (err) console.log(err);
             });
          }
       }
@@ -2694,7 +2909,7 @@ ipcMain.on('app_version', (event) => {
 
 
 app.on('ready', () => {
-   autoUpdater.checkForUpdatesAndNotify();
+   //autoUpdater.checkForUpdatesAndNotify();
    checkbackup();
    screenwidth = screen.getPrimaryDisplay().workAreaSize;
 })

@@ -161,7 +161,7 @@ window.addEventListener('DOMContentLoaded', () => {
     //getversion();
 })
 
-Mousetrap.bind(['command+w', 'ctrl+w', 'f3'], function() {
+Mousetrap.bind(['f4'], function() {
     ipcRenderer.send(TITLEBAR_OPENWINDOW); 
     return false;
 });
